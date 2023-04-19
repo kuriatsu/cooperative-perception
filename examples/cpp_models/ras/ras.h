@@ -11,17 +11,18 @@ public:
     float ego_speed;
 	int req_time;
 	int req_target;
-	int ego_recognition;
-	std::vector<int> target_risk;
-	std::vector<int> target_pose;
+	int ego_recog;
+	std::vector<bool> target_risk;
+	std::vector<bool> target_pose;
 
     RasState():
-    RasState(int _ego_pose, float _ego_speed, int _req_time, int _req_target, int _ego_recognition, std::vector<int> _target_risk, std::vector<int> _target_pose) :
+    RasState(int _ego_pose, float _ego_speed, int _req_time, int _req_target, int _ego_recog, std::vector<int> _target_risk, std::vector<int> _target_pose) :
 		ego_pose(_ego_pose),
 		ego_speed(_ego_speed),
+		ego_recog(_ego_recog),
 		req_time(_req_time),
-		ego_recognition(_ego_recognition),
-		target_risk(_risk_state),
+		req_target(_req_target),
+		target_risk(_target_risk),
 		target_pose(_target_pose) {
 		}
 	~RasState();
@@ -36,9 +37,10 @@ protected:
 	mutable std::vector<ValuedAction> mdp_policy;
 
 public:
-	enum { NO_REQ = 0 }; // action
+	int target_num;
+	enum { NO_ACTION = target_num*2, REQUEST = 0, RECOG = target_num }; // action
 	enum { NO_INT = 0, INT = 1}; // observation
-	enum { NONE = 0 }; // req_target
+	enum { NO_TARGET = target_num }; // req_target
 	enum { NO_RISK = 0, RISK = 1 }; // risk_state, ego_recognition
 	
 public:
