@@ -66,6 +66,7 @@ bool Ras::Step(State& state, double rand_num, ACT_TYPE action, double& reward, O
 		return false;
 }
 
+
 void Ras::EgoVehicleTransition(const int& pose, const int& speed, const vector<int>& recog_list, const vector<int>& target_list, const ACT_TYPE& action, vector<int>& state_after, int& reward){
 	std::vector<double> acc_list;
 
@@ -81,4 +82,64 @@ void Ras::EgoVehicleTransition(const int& pose, const int& speed, const vector<i
 
 	for (auto it=recog_list.begin(), end=recog_list.end(); it != end; ++it) {
 		target_position = target_list[std::distance(recog_list.begin(), it)];
+        int dist = target_position - pose;
+        bool is_decel_target = false; 
+
+        if (dist < 0) {
+            is_decel_target = false;
+        }
+        else if (action == INT) {
+            is decel_target = (*it == true);
+        }
+        else {
+            is_decel_target = (*it == true)
+        }
+
+        if (!is_decel_target){
+            continue;
+        }
+
+        double a = 0.0;
+        decel_distance = (speed** - min_speed**2)/(2*9.8*ordinary_G) + safety_margin;
+
+        if (dist > decel_distance) {
+            a = (min_speed**2-speed**2)/(2*(dist-safety_margin));
+        }
+        else {
+            a = 0.0;
+        }
+
+        acc_list.emplace_back(a);
+    }
+
+    a_itr = std::min_element(acc_list.begin(), acc_list.end());
+    a = acc_list(a_itr);
+    decel_target = std::distance(acc_list.begin(), a_itr);
+    auto &x = state_after[0];
+    auto &v = state_after[1];
+    v = speed + a*delta_t;
+    if (v <= min_speed) {
+        v = min_speed;
+        a = 0.0;
+    }
+    else if (v >= ideal_speed) {
+        v = ideal_speed;
+        a = 0.0;
+    }
+
+    x = pose + speed * delta_t + 0.5*a*delta_t**2;
+    return;
+}
+
+double Ras::ObsProb(OBS_TYPE obs, const State& state, ACT_TYPE action) const {
+    const SimpleState& simple_state = static_cast<const SimpleState&>(state);
+
+    if (REQUEST <= action & action < RECOG) {
+        return OperatorModel(state.req_time);
+    }
+    else {
+        return 1.0;
+    }
+}
+
 
