@@ -14,5 +14,6 @@ public:
         acc_time_slope(_acc_time_slope){
         }
     ~OperatorModel();
-
+	
+	double int_acc(const int time) const;
 };

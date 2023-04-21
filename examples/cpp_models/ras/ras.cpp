@@ -10,6 +10,18 @@ using namespace std;
 namespace despot {
 
 RasState::RasState() {
+	ego_pose = 0;
+	ego_speed = 11.2;
+	req_time = 0;
+	req_target = NO_TARGET;
+
+	bool recog[] = {NO_RISK, RISK};
+	bool risk[] = {NO_RISK, RISK};
+	int poses[] = {80, 100};
+
+	ego_recog.assign(std::begin(recog), std::end(ecog));
+	target_risk.assign(std::begin(risk), std::end(risk));
+	target_pose.assing(std::begin(poses), std::end(poses));
 }
 
 RasState::~RasState() {
@@ -21,12 +33,19 @@ string RasState::text() const {
 		   "ego_recog: " + to_string(ego_recog) + "\n" +
 		   "req_time: " + to_string(req_time) + "\n" +
 		   "req_target: " + to_string(req_target) + "\n" +
-		   "target_risk: " + to_string(target_risk) + "\n";
+		   "target_risk: " + to_string(target_risk) + "\n" +
 		   "target_pose: " + to_string(target_pose) + "\n";
 }
 
+Ras::Ras() {
+	target_num = 2;
+	min_speed = 2.8;
+	ordinary_G = 0.2;
+	safety_margin = 5;
+}
+
 int Ras::NumActions() const {
-	return 1+ target_risk.size()*2
+	return 1 + target_num * 2;
 }
 
 bool Ras::Step(State& state, double rand_num, ACT_TYPE action, double& reward, OBS_TYPE& obs) const {
@@ -135,7 +154,7 @@ double Ras::ObsProb(OBS_TYPE obs, const State& state, ACT_TYPE action) const {
     const SimpleState& simple_state = static_cast<const SimpleState&>(state);
 
     if (REQUEST <= action & action < RECOG) {
-        return OperatorModel(state.req_time);
+        return operator_model::int_prob(state.req_time);
     }
     else {
         return 1.0;
