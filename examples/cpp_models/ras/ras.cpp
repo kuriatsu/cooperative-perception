@@ -12,16 +12,12 @@ namespace despot {
 RasState::RasState() {
 	ego_pose = 0;
 	ego_speed = 11.2;
+	std::vector<bool> _ego_recog{RISK, NO_RISK};
+	ego_recog = _ego_recog;
 	req_time = 0;
 	req_target = NO_TARGET;
-
-	bool recog[] = {NO_RISK, RISK};
-	bool risk[] = {NO_RISK, RISK};
-	int poses[] = {80, 100};
-
-	ego_recog.assign(std::begin(recog), std::end(ecog));
-	target_risk.assign(std::begin(risk), std::end(risk));
-	target_pose.assing(std::begin(poses), std::end(poses));
+	std::veclt<bool> _risk_bin{RISK, RISK};
+	risk_bin = _risk_bin;
 }
 
 RasState::~RasState() {
@@ -38,21 +34,23 @@ string RasState::text() const {
 }
 
 Ras::Ras() {
-	target_num = 2;
+	planning_horizon = 150;
 	ideal_speed = 11.2
 	yield_speed = 2.8;
 	ordinary_G = 0.2;
 	safety_margin = 5;
+
+	std::vector<double> _risk_recog{0.5, 0.2};
+	std::vector<int> _risk_pose{80, 100};
+	risk_recog = _risk_recog;
+	risk_pose = _risk_pose;
+	risk_thresh = 0.5;
 
 	r_false_positive = -50;
 	r_false_negative = -1000;
 	r_eff = -10;
 	r_comf = -1;
 	r_reqest = -1;
-
-	planning_horizon = 150;
-
-
 }
 
 int Ras::NumActions() const {
@@ -217,33 +215,81 @@ double Ras::ObsProb(OBS_TYPE obs, const State& state, ACT_TYPE action) const {
 
 State* Ras::CreateStartState(string type) const {
 	
-	std::vector<bool> recog{true, true};
-	std::vector<bool> risk{true, false};
-	std::vector<bool> pose{60, 100};
+	// set ego_recog and risk_bin based on threshold
+	std::vector<bool> _ego_recog, _risk_bin;
+	for (auto val : risk_recog) {
+		_ego_recog.emplace_back((val < risk_thresh) ? NO_RISK : RISK);
+		_risk_bin.emplace_back(RISK);
+	}
 
 	return new RasState(
 			0, // ego_pose
 			ideal_speed, // ego_speed
 			0, // req_time
 			NO_TARGET, // req_target
-			recog, // ego_recog
-			risk, // target_risk
-			pose // target_pose
+			_ego_recog, // ego_recog
+			_risk_bin, // target_risk
 			)
 }
 
 Belief* Ras::InitialBelief(const State* start, string type) const {
-	// recognition likelihood of the automated system
 
-	if (type == "DEFAULT" || type == "PARTICLE") {
-		vector<State*> particles;
-		for (int i = 0; i < recog.size() ** 2; i++) {
-			RasState* p = static_cast<RasState*>(Allocate(-1,  
+	if (type != "DEFAULT" && type != "PARTICLE") {
+		std::cout << "specified type " + type + " is not supported";
+		exit(1);
+	}
+
+	// recognition likelihood of the automated system
+	std::vector<std::vector<bool>> risk_bin_list(2**target_num, std::vector<bool>(target_num));
+	GetBinProduct(risk_list_bin, 0, 0); 
+	vector<State*> particles;
+
+	for (auto row : risk_bin_list) {
+		double prob = 1.0;
+		std::vector<bool> _ego_recog, _risk_bin;
+		// set ego_recog and risk_bin based on threshold
+		for (auto col=row.begin(), c_end=row.end(); col!=c_end; col++) {
+			idx = std::distance(col.begin(), col);
+			_ego_recog.emplace_back((risk_prob[idx] < risk_thresh) ? NO_RISK : RISK);
+			if (col) {
+				prob *= risk_prob[idx]; 
+				_risk_bin.emplace_back(RISK);
+			}
+			else {
+				prob *= 1.0 - risk_prob[idx]; 
+				_risk_bin.emplace_back(NO_RISK);
+			}
 		}
+
+		RasState* p = static_cast<RasState*>(Allocate(-1, prob));  
+		p->ego_pose = ego_pose;
+		p->ego_speed = ego_speed;
+		p->ego_recog = _ego_recog;
+		p->req_time = req_time;
+	  	p->req_target = req_target;
+		p->risk_bin = _risk_bin;
+		particles.push_back(p);
+	}
+	return new ParticleBelief(particles, this);
 }
 
 
-void Ras::BitProduct(const std::vector<double>& prob_list, std::vector<std::vector<bool>>
+void Ras::GetBinProduct(std::vector<std::vector<bool>>& out_list, int col, int row) {
+
+	if (col == out_list[-1].size()) {
+		out_list.emplace_back(buf_list);
+		row++;
+		return;
+	}
+	if (row == out_list.size()) {
+		return;
+	}
+
+	for (int i=0; i<2; i++) {
+		GetBinProduct(out_list, col++, row);	
+		buf_list[row][col] = (i!=0);
+	}
+}
 
 double Ras::GetMaxReward() const {
 	return 0;
@@ -253,3 +299,67 @@ ValuedAction Ras::GetBestAction() const {
 	return ValuedAction(NONE, 0);
 }
 
+State* Ras::Allocate(int state_id, double weight) const {
+	RasState* ras_state = memory_pool_.Allocate();
+	ras_state->state_id = state_id;
+	ras_state->weight = weight;
+	return ras_state;
+}
+
+State* Ras::Copy(const State* particle) const {
+	RasState* state = memory_pool_.Allocate();
+	*state = *static_cast<const RasState*>(particle);
+	state->SetAllocated();
+	return state;
+}
+
+void Ras::Free(State* particle) const {
+	memory_pool_.Free(static_cast<RasState*>(particle));
+}
+
+int Ras::NumActiveParticles() const {
+	return memory_pool_.num_allocated();
+}
+
+void Ras::PrintState(const State& state, ostream& out) const {
+	const RasState& ras_state = static_cast<const RasState&>(state);
+	out << "ego_pose : " << ras_state.ego_pose << "\n"
+		<< "ego_speed : " << ras_state.ego_speed << "\n"
+		<< "ego_recog : " << ras_state.ego_recog << "\n"
+		<< "req_time : " << ras_state.req_time << "\n"
+		<< "req_target : " << ras_state.req_target << "\n"
+		<< "risk_bin : " << ras_state.risk_bin << "\n"
+		<< endl;
+}
+
+void Ras::PrintObs(const State& state, OBS_TYPE obs, ostream& out) cosnt {
+	out << (obs ? "INT" : "NO_INT") << endl;
+}
+
+void Ras::PrintBelief(const Belief& belief, ostream& out) const {
+	const vector<State*>& particles = static_cast<const ParticleBelief&>(belief).particles();
+	
+	double status = 0;
+	vector<double> probs(risk_pose.size());
+	for (int i = 0; i < particles.size(); i++) {
+		State* particle = particles[i];
+		const RasState* state = static_cast<cosnt RasState*>(particle);
+		for (auto itr=state.risk_bin.begin(), end=state.risk_bin.end(); itr!=end; itr++) {
+			prob[std::distance(state.risk_bin.begin(), itr)] += itr * particle-> weight;
+		}
+	}
+
+	for (int i = 0; i < risk_pose.size(); i++) {
+		out << "risk id : " << i << " prob : " << probs[i] << endl;
+	}
+}
+
+void Ras::PrintAction(ACT_TYPE action, ostream& out) const {
+	if (REQUEST <= action < RECOG)
+		out << "request to " << action - REQUEST << endl;
+	else if (RECOG <= action < NO_ACTION) 
+		out << "change recog state " << action - RECOG << endl;
+	else
+		out << "nothing" << endl;
+}
+				

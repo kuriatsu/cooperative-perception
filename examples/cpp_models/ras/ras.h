@@ -10,21 +10,21 @@ class RasState : public State {
 public:
 	int ego_pose;
     float ego_speed;
+	std::vector<bool> ego_recog;
 	int req_time;
 	int req_target;
-	std::vector<bool> ego_recog;
-	std::vector<bool> target_risk;
-	std::vector<bool> target_pose;
+
+	// hidden state
+	std::vector<bool> risk_bin;
 
     RasState():
-    RasState(int _ego_pose, float _ego_speed, int _req_time, int _req_target, int _ego_recog, std::vector<int> _target_risk, std::vector<int> _target_pose) :
+    RasState(int _ego_pose, float _ego_speed, int _ego_recog, int _req_time, int _req_target, std::vector<int> _risk_bin) :
 		ego_pose(_ego_pose),
 		ego_speed(_ego_speed),
 		ego_recog(_ego_recog),
 		req_time(_req_time),
 		req_target(_req_target),
-		target_risk(_target_risk),
-		target_pose(_target_pose) {
+		risk_bin(_risk_bin),
 		}
 	~RasState();
 	
@@ -39,18 +39,17 @@ protected:
 	OperatorModel operator_model();
 	
 public:
-	enum { NO_ACTION = target_num*2, REQUEST = 0, RECOG = target_num }; // action
-	enum { NO_INT = false, INT = true}; // observation
-	enum { NO_TARGET = target_num }; // req_target
-	enum { NO_RISK = false, RISK = true} // risk_state, ego_recognition
-
 	// state transition parameter
-	int target_num;
-	double min_speed;
+	int planning_holizon;
+	double yield_speed;
+	double ideal_speed;
 	double ordinary_G;
 	int safety_margin;
-	double ideal_speed;
-	double yield_speed; 
+
+	// recognition likelihood of the ADS
+	std::vector<double> risk_recog;
+	std::vector<int> risk_pose;
+	int risk_thresh;
 	
 	// reward
 	int r_false_positive;
@@ -59,6 +58,11 @@ public:
 	int r_comf;
 	int r_request;
 	
+	enum { NO_ACTION = risk_pose.size()*2, REQUEST = 0, RECOG = risk_pose.size() }; // action
+	enum { NO_INT = false, INT = true}; // observation
+	enum { NO_TARGET = target_num }; // req_target
+	enum { NO_RISK = false, RISK = true} // risk_state, ego_recognition
+
 public:
 	Ras();
 
@@ -72,9 +76,9 @@ public:
 	double GetMaxReward() const;
 
 	// Optional
-	ScenarioUpperBound* CreateScenarioUpperBound(std::string name="DEFAULT", std::string particle_bound_name = "DEFAULT") const;
+	// ScenarioUpperBound* CreateScenarioUpperBound(std::string name="DEFAULT", std::string particle_bound_name = "DEFAULT") const;
 	ValuedAction GetBestAction() const;
-	ScenarioLowerBound* CreateScenarioLowerBound(std::string name = "DEFAULT", std::string particle_bound_name = "DEFAULT") const;
+	// ScenarioLowerBound* CreateScenarioLowerBound(std::string name = "DEFAULT", std::string particle_bound_name = "DEFAULT") const;
 
 	State* Allocate(int state_id, double weight) constj
 	State* Copy(const State* particle) const;
