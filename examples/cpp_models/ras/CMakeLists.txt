@@ -1,9 +1,12 @@
 cmake_minimum_required(VERSION 2.8.3)
+project(despot)
 
 add_executable("${PROJECT_NAME}_ras"
-	src/ras.cpp
-	src/main.cpp
-	src/operator_model.cpp
+	main.cpp
+	ras.cpp
+    ras.h
+	operator_model.cpp
+    operator_model.h
 	)
 
 target_link_libraries("${PROJECT_NAME}_ras"

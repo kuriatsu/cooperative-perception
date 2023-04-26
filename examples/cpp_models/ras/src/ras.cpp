@@ -2,7 +2,7 @@
 
 #include <despot/core/builtin_lower_bounds.h>
 #include <despot/core/builtin_policy.h>
-#include <despot/core/builtin_upper_bound.h>
+// #include <despot/core/builtin_upper_bound.h>
 #include <despot/core/particle_belief.h>
 
 using namespace std;

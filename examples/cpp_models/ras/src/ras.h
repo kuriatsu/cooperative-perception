@@ -17,15 +17,15 @@ public:
 	// hidden state
 	std::vector<bool> risk_bin;
 
-    RasState():
-    RasState(int _ego_pose, float _ego_speed, int _ego_recog, int _req_time, int _req_target, std::vector<int> _risk_bin) :
+    RasState();
+    RasState(int _ego_pose, float _ego_speed, int _ego_recog, int _req_time, int _req_target, std::vector<bool> _risk_bin) :
 		ego_pose(_ego_pose),
 		ego_speed(_ego_speed),
 		ego_recog(_ego_recog),
 		req_time(_req_time),
 		req_target(_req_target),
-		risk_bin(_risk_bin),
-		}
+		risk_bin(_risk_bin)	{
+        }
 	~RasState();
 	
 	std::string text() const;
