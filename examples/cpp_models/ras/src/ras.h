@@ -9,7 +9,7 @@ namespace despot {
 class RasState : public State {
 public:
 	int ego_pose;
-    float ego_speed;
+    double ego_speed;
 	std::vector<bool> ego_recog;
 	int req_time;
 	int req_target;
@@ -18,7 +18,7 @@ public:
 	std::vector<bool> risk_bin;
 
     RasState();
-    RasState(int _ego_pose, float _ego_speed, int _ego_recog, int _req_time, int _req_target, std::vector<bool> _risk_bin) :
+    RasState(int _ego_pose, float _ego_speed, std::vector<bool> _ego_recog, int _req_time, int _req_target, std::vector<bool> _risk_bin) :
 		ego_pose(_ego_pose),
 		ego_speed(_ego_speed),
 		ego_recog(_ego_recog),
@@ -36,15 +36,16 @@ protected:
 	mutable MemoryPool<RasState> memory_pool;
 	std::vector<RasState*> states;
 	mutable std::vector<ValuedAction> mdp_policy;
-	OperatorModel operator_model();
+	OperatorModel operator_model;
 	
 public:
 	// state transition parameter
-	int planning_holizon;
+	int planning_horizon;
 	double yield_speed;
 	double ideal_speed;
 	double ordinary_G;
 	int safety_margin;
+    double delta_t;
 
 	// recognition likelihood of the ADS
 	std::vector<double> risk_recog;
@@ -58,20 +59,22 @@ public:
 	int r_comf;
 	int r_request;
 	
-	enum { NO_ACTION = risk_pose.size()*2, REQUEST = 0, RECOG = risk_pose.size() }; // action
+	enum { NO_ACTION = 2*2, REQUEST = 0, RECOG = 2 }; // action TODO define based on the given situation
+	// enum { NO_ACTION = risk_pose.size()*2, REQUEST = 0, RECOG = risk_pose.size() }; // action
 	enum { NO_INT = false, INT = true}; // observation
-	enum { NO_TARGET = target_num }; // req_target
-	enum { NO_RISK = false, RISK = true} // risk_state, ego_recognition
+	enum { NO_TARGET = 2 }; // req_target
+	// enum { NO_TARGET = risk_pose.size()} // req_target TODO define based on the given situation
+	enum { NO_RISK = false, RISK = true}; // risk_state, ego_recognition
 
 public:
 	Ras();
 
 	// Essential
 	int NumActions() const;
-	bool Step(State& state, double rand_num, ACT_TYPE action, double& reward, OBS_TYPE& obs) const;
+	bool Step(State& state, double rand_num, ACT_TYPE action, double& reward, OBS_TYPE& obs);
 	double ObsProb(OBS_TYPE obs, const State& state, ACT_TYPE action) const;
-	// State* CreateStartState(std::string type="DEFAULT") const;
-	Belief* InitialBelief(const State* start, std::string type = "DEFAULT") const;
+	State* CreateStartState(std::string type="DEFAULT") const;
+	Belief* InitialBelief(const State* start, std::string type = "DEFAULT");
 
 	double GetMaxReward() const;
 
@@ -80,7 +83,7 @@ public:
 	ValuedAction GetBestAction() const;
 	// ScenarioLowerBound* CreateScenarioLowerBound(std::string name = "DEFAULT", std::string particle_bound_name = "DEFAULT") const;
 
-	State* Allocate(int state_id, double weight) constj
+	State* Allocate(int state_id, double weight) const;
 	State* Copy(const State* particle) const;
 	void Free(State* particle) const;
 	int NumActiveParticles() const;
@@ -91,8 +94,9 @@ public:
 	void PrintAction(ACT_TYPE action, std::ostream& out = std::cout) const;
 
 protected:
-	void EgoVehicleTransition(int& pose, int& speed, const vector<int>& recog_list, const vector<int>& target_list, const ACT_TYPE& action);
-	int CalcReward(const State& state_prev, const State& state_curr const ACT_TYPE& action) const;
+	void EgoVehicleTransition(int& pose, double& speed, const std::vector<bool>& recog_list, const std::vector<int>& target_poses, const ACT_TYPE& action);
+	int CalcReward(const State& state_prev, const State& state_curr, const std::vector<int>& risk_poses, const ACT_TYPE& action) const;
+    void GetBinProduct(std::vector<std::vector<bool>>& out_list, int col, int row);
 };
 
 } // namespace despot

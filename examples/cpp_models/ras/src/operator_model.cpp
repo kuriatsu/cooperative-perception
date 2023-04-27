@@ -12,11 +12,12 @@ OperatorModel::~OperatorModel(){
 double OperatorModel::int_acc(const int time) const {
 
 	if (time < min_time) {
-		return false
+		return false;
 	}
 	else {
-		acc = acc_time_min + acc_time_slope * (time - min_time);
-		acc = std::min(acc, 1.0);
-		return acc
+		double acc = acc_time_min + acc_time_slope * (time - min_time);
+		acc = (acc < 1.0) ? acc : 1.0;
+		return acc;
 	}
+}
 

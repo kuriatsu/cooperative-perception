@@ -12,11 +12,11 @@ namespace despot {
 RasState::RasState() {
 	ego_pose = 0;
 	ego_speed = 11.2;
-	std::vector<bool> _ego_recog{RISK, NO_RISK};
+	vector<bool> _ego_recog{Ras::RISK, Ras::NO_RISK}; //TODO define based on the given situation
 	ego_recog = _ego_recog;
 	req_time = 0;
-	req_target = NO_TARGET;
-	std::veclt<bool> _risk_bin{RISK, RISK};
+	req_target = Ras::NO_TARGET;
+	vector<bool> _risk_bin{Ras::RISK, Ras::RISK}; //TODO define based on the given situation
 	risk_bin = _risk_bin;
 }
 
@@ -25,23 +25,23 @@ RasState::~RasState() {
 
 string RasState::text() const {
 	return "ego_pose: " + to_string(ego_pose) + "\n" + 
-		   "ego_speed: " + to_string(ego_speed) + "\n" +
+		   "ego_speed: " + to_string(ego_speed) + "\n" + 
 		   "ego_recog: " + to_string(ego_recog) + "\n" +
 		   "req_time: " + to_string(req_time) + "\n" +
 		   "req_target: " + to_string(req_target) + "\n" +
-		   "target_risk: " + to_string(target_risk) + "\n" +
-		   "target_pose: " + to_string(target_pose) + "\n";
+		   "target_risk: " + to_string(risk_bin) + "\n" ;
 }
 
 Ras::Ras() {
 	planning_horizon = 150;
-	ideal_speed = 11.2
+	ideal_speed = 11.2;
 	yield_speed = 2.8;
 	ordinary_G = 0.2;
 	safety_margin = 5;
+    delta_t = 1.0;
 
-	std::vector<double> _risk_recog{0.5, 0.2};
-	std::vector<int> _risk_pose{80, 100};
+	vector<double> _risk_recog{0.5, 0.2};
+	vector<int> _risk_pose{80, 100};
 	risk_recog = _risk_recog;
 	risk_pose = _risk_pose;
 	risk_thresh = 0.5;
@@ -50,68 +50,68 @@ Ras::Ras() {
 	r_false_negative = -1000;
 	r_eff = -10;
 	r_comf = -1;
-	r_reqest = -1;
+	r_request = -1;
 }
 
 int Ras::NumActions() const {
-	return 1 + target_num * 2;
+	return 1 * risk_recog.size() * 2;
 }
 
-bool Ras::Step(State& state, double rand_num, ACT_TYPE action, double& reward, OBS_TYPE& obs) const {
-	RasState& state_prev = static_cast <RasState&>(state);
-	RasState state_curr = state_prev
+bool Ras::Step(State& state, double rand_num, ACT_TYPE action, double& reward, OBS_TYPE& obs) {
+	RasState& state_prev = static_cast<RasState&>(state);
+	RasState state_curr = state_prev;
 	reward = 0.0;
 
 	// ego state trantion
-	ego_transition(state_curr.ego_pose, state_curr.ego_speed, state_prev.ego_recog, state_prev.target_pose, action);
+	EgoVehicleTransition(state_curr.ego_pose, state_curr.ego_speed, state_prev.ego_recog, risk_pose, action);
 
 	// when action = change recog state 
-	if (RECOG <= action < NO_ACTION) {
-		int t_index = action - RECOG 
-		state_curr.ego_recog[t_index] = !state_prev.ego_recog[t_index];
+	if (RECOG <= action && action < NO_ACTION) {
+		int idx = action - RECOG;
+		state_curr.ego_recog[idx] = !state_prev.ego_recog[idx];
 		obs = NO_INT;
 	}
 	// when action = request intervention
-	else if (REQUEST <= action < RECOG) {
-		int t_index = action - REQUEST;
-		double acc = intervention_acc(state_prev.req_time);
+	else if (REQUEST <= action && action < RECOG) {
+		int idx = action - REQUEST;
+		double acc = operator_model.int_acc(state_prev.req_time);
 
 		// request to the same target
-		if (state_prev.req_target == t_index) {
+		if (state_prev.req_target == idx) {
 			// observation probability
-			obs = (rand_num > acc & state_prev.risk_state[index] != state_prev.ego_recog[index]) ? INT : NO_INT;
+			obs = (rand_num > acc && state_prev.risk_bin[idx] != state_prev.ego_recog[idx]) ? INT : NO_INT;
 			state_curr.req_time ++;
 		} 
 		// request to new target
 		else {
 			state_curr.req_time = 1;
-			state_curr.req_target = index;
+			state_curr.req_target = idx;
 			obs = NO_INT;
 		}
 	}
 
-	reward = CalcReward(state_prev, state_curr, action);
+	reward = CalcReward(state_prev, state_curr, risk_pose, action);
 
-	if (ras_state.ego_pose >= planning_horizon)
+	if (state_curr.ego_pose >= planning_horizon)
 		return true;
 	else
 		return false;
 }
 
-int Ras::CalcReward(const State& state_prev, const State& state_curr const ACT_TYPE& action) const {
-	RasState& _state_prev = static_cast<RasState&>(state_prev);
-	RasState& _state_curr = static_cast<RasState&>(state_curr);
+int Ras::CalcReward(const State& state_prev, const State& state_curr, const vector<int>& risk_poses, const ACT_TYPE& action) const {
+	const RasState& _state_prev = static_cast<const RasState&>(state_prev);
+	const RasState& _state_curr = static_cast<const RasState&>(state_curr);
 	int reward = 0;
 
-	for (auto it=_state_prev.target_pose.begin(), end=_state_prev.target_pose.end(); it != end; ++it) {
-		target_index = std::distance(_state_prev.target_index.begin(), it);
-		if (_state_prev.ego_pose <= *itr < _state_curr.ego_pose) {
+	for (auto it=risk_poses.begin(), end=risk_poses.end(); it != end; ++it) {
+		int target_index = distance(risk_poses.begin(), it);
+		if (_state_prev.ego_pose <= *it && *it < _state_curr.ego_pose) {
 
 			// driving safety
-			if (_state_curr.ego_recog[target_index] && !_state_curr.target_risk[target_index]) {
+			if (_state_curr.ego_recog[target_index] && !_state_curr.risk_bin[target_index]) {
 				reward += 1 * r_false_positive;
 			}
-			else if (!_state_curr.ego_recog[target_index] && _state_curr.target_risk[target_index]) {
+			else if (!_state_curr.ego_recog[target_index] && _state_curr.risk_bin[target_index]) {
 				reward += 1 * r_false_negative;
 			}
 
@@ -129,7 +129,7 @@ int Ras::CalcReward(const State& state_prev, const State& state_curr const ACT_T
 	}
 
 	// driving comfort (avoid harsh driving)
-	reward += ((_state_curr.ego_speed - _state_prev.ego_speed)/(ideal_speed - yield_speed)) ** 2 * r_comf;
+	reward += pow((_state_curr.ego_speed - _state_prev.ego_speed)/(ideal_speed - yield_speed), 2.0) * r_comf;
 	
 	// int request
 	if (action != NO_ACTION) {
@@ -140,21 +140,21 @@ int Ras::CalcReward(const State& state_prev, const State& state_curr const ACT_T
 }
 
 
-void Ras::EgoVehicleTransition(int& pose, int& speed, const vector<int>& recog_list, const vector<int>& target_list, const ACT_TYPE& action){
-	std::vector<double> acc_list;
+void Ras::EgoVehicleTransition(int& pose, double& speed, const vector<bool>& recog_list, const vector<int>& target_poses, const ACT_TYPE& action){
+	vector<double> acc_list;
 
-	if speed < self.ideal_speed {
+	if (speed < ideal_speed) {
 		acc_list.emplace_back(ordinary_G);
 	}
-	else if {
-		acc_list.emplace_back(0.0);
+    else if (speed == ideal_speed) {
+        acc_list.emplace_back(0.0);
 	}
 	else {
 		acc_list.emplace_back(-ordinary_G);
 	}
 
 	for (auto it=recog_list.begin(), end=recog_list.end(); it != end; ++it) {
-		target_position = target_list[std::distance(recog_list.begin(), it)];
+		int target_position = target_poses[distance(recog_list.begin(), it)];
         int dist = target_position - pose;
         bool is_decel_target = false; 
 
@@ -162,10 +162,10 @@ void Ras::EgoVehicleTransition(int& pose, int& speed, const vector<int>& recog_l
             is_decel_target = false;
         }
         else if (action == INT) {
-            is decel_target = (*it == true);
+            is_decel_target = (*it == true);
         }
         else {
-            is_decel_target = (*it == true)
+            is_decel_target = (*it == true);
         }
 
         if (!is_decel_target){
@@ -173,10 +173,10 @@ void Ras::EgoVehicleTransition(int& pose, int& speed, const vector<int>& recog_l
         }
 
         double a = 0.0;
-        decel_distance = (speed** - yield_speed**2)/(2*9.8*ordinary_G) + safety_margin;
+        int decel_distance = (pow(speed, 2.0) - pow(yield_speed, 2))/(2.0*9.8*ordinary_G) + safety_margin;
 
         if (dist > decel_distance) {
-            a = (yield_speed**2-speed**2)/(2*(dist-safety_margin));
+            a = (pow(yield_speed, 2.0) - pow(speed, 2.0))/(2.0*(dist-safety_margin));
         }
         else {
             a = 0.0;
@@ -185,9 +185,9 @@ void Ras::EgoVehicleTransition(int& pose, int& speed, const vector<int>& recog_l
         acc_list.emplace_back(a);
     }
 
-    a_itr = std::min_element(acc_list.begin(), acc_list.end());
-    a = acc_list(a_itr);
-    decel_target = std::distance(acc_list.begin(), a_itr);
+    auto a_itr = min_element(acc_list.begin(), acc_list.end());
+    double a = *a_itr;
+    // int decel_target = distance(acc_list.begin(), a_itr);
     speed += a*delta_t;
     if (speed <= yield_speed) {
         speed =	yield_speed;
@@ -198,15 +198,15 @@ void Ras::EgoVehicleTransition(int& pose, int& speed, const vector<int>& recog_l
         a = 0.0;
     }
 
-    pose += speed * delta_t + 0.5*a*delta_t**2;
+    pose += speed * delta_t + pow(0.5*a*delta_t, 2.0);
     return;
 }
 
 double Ras::ObsProb(OBS_TYPE obs, const State& state, ACT_TYPE action) const {
-    const SimpleState& simple_state = static_cast<const SimpleState&>(state);
+    const RasState& ras_state = static_cast<const RasState&>(state);
 
-    if (REQUEST <= action & action < RECOG) {
-        return operator_model.int_prob(state.req_time);
+    if (REQUEST <= action && action < RECOG) {
+        return operator_model.int_acc(ras_state.req_time);
     }
     else {
         return 1.0;
@@ -216,7 +216,7 @@ double Ras::ObsProb(OBS_TYPE obs, const State& state, ACT_TYPE action) const {
 State* Ras::CreateStartState(string type) const {
 	
 	// set ego_recog and risk_bin based on threshold
-	std::vector<bool> _ego_recog, _risk_bin;
+	vector<bool> _ego_recog, _risk_bin;
 	for (auto val : risk_recog) {
 		_ego_recog.emplace_back((val < risk_thresh) ? NO_RISK : RISK);
 		_risk_bin.emplace_back(RISK);
@@ -225,48 +225,48 @@ State* Ras::CreateStartState(string type) const {
 	return new RasState(
 			0, // ego_pose
 			ideal_speed, // ego_speed
+			_ego_recog, // ego_recog
 			0, // req_time
 			NO_TARGET, // req_target
-			_ego_recog, // ego_recog
-			_risk_bin, // target_risk
-			)
+			_risk_bin); // target_risk
 }
 
-Belief* Ras::InitialBelief(const State* start, string type) const {
+Belief* Ras::InitialBelief(const State* start, string type) {
 
 	if (type != "DEFAULT" && type != "PARTICLE") {
-		std::cout << "specified type " + type + " is not supported";
+		cout << "specified type " + type + " is not supported";
 		exit(1);
 	}
 
 	// recognition likelihood of the automated system
-	std::vector<std::vector<bool>> risk_bin_list(2**target_num, std::vector<bool>(target_num));
-	GetBinProduct(risk_list_bin, 0, 0); 
+	vector<vector<bool>> risk_bin_list(pow(risk_recog.size(), 2.0), vector<bool>(risk_recog.size()));
+	GetBinProduct(risk_bin_list, 0, 0); 
 	vector<State*> particles;
 
 	for (auto row : risk_bin_list) {
 		double prob = 1.0;
-		std::vector<bool> _ego_recog, _risk_bin;
+		vector<bool> _ego_recog, _risk_bin;
 		// set ego_recog and risk_bin based on threshold
-		for (auto col=row.begin(), c_end=row.end(); col!=c_end; col++) {
-			idx = std::distance(col.begin(), col);
-			_ego_recog.emplace_back((risk_prob[idx] < risk_thresh) ? NO_RISK : RISK);
-			if (col) {
-				prob *= risk_prob[idx]; 
+		for (auto col=row.begin(), end=row.end(); col!=end; col++) {
+			int idx = distance(row.begin(), col);
+			_ego_recog.emplace_back((risk_recog[idx] < risk_thresh) ? NO_RISK : RISK);
+			if (*col) {
+				prob *= risk_recog[idx]; 
 				_risk_bin.emplace_back(RISK);
 			}
 			else {
-				prob *= 1.0 - risk_prob[idx]; 
+				prob *= 1.0 - risk_recog[idx]; 
 				_risk_bin.emplace_back(NO_RISK);
 			}
 		}
 
+        // TODO define based on the given sitiation
 		RasState* p = static_cast<RasState*>(Allocate(-1, prob));  
-		p->ego_pose = ego_pose;
-		p->ego_speed = ego_speed;
+		p->ego_pose = 0;
+		p->ego_speed = ideal_speed;
 		p->ego_recog = _ego_recog;
-		p->req_time = req_time;
-	  	p->req_target = req_target;
+		p->req_time = 0;
+	  	p->req_target = NO_TARGET;
 		p->risk_bin = _risk_bin;
 		particles.push_back(p);
 	}
@@ -274,7 +274,7 @@ Belief* Ras::InitialBelief(const State* start, string type) const {
 }
 
 
-void Ras::GetBinProduct(std::vector<std::vector<bool>>& out_list, int col, int row) {
+void Ras::GetBinProduct(vector<vector<bool>>& out_list, int col, int row) {
 
 	if (col == out_list[-1].size()) {
 		out_list.emplace_back(buf_list);
@@ -296,29 +296,29 @@ double Ras::GetMaxReward() const {
 }
 
 ValuedAction Ras::GetBestAction() const {
-	return ValuedAction(NONE, 0);
+	return ValuedAction(NO_ACTION, 0);
 }
 
 State* Ras::Allocate(int state_id, double weight) const {
-	RasState* ras_state = memory_pool_.Allocate();
+	RasState* ras_state = memory_pool.Allocate();
 	ras_state->state_id = state_id;
 	ras_state->weight = weight;
 	return ras_state;
 }
 
 State* Ras::Copy(const State* particle) const {
-	RasState* state = memory_pool_.Allocate();
+	RasState* state = memory_pool.Allocate();
 	*state = *static_cast<const RasState*>(particle);
 	state->SetAllocated();
 	return state;
 }
 
 void Ras::Free(State* particle) const {
-	memory_pool_.Free(static_cast<RasState*>(particle));
+	memory_pool.Free(static_cast<RasState*>(particle));
 }
 
 int Ras::NumActiveParticles() const {
-	return memory_pool_.num_allocated();
+	return memory_pool.num_allocated();
 }
 
 void Ras::PrintState(const State& state, ostream& out) const {
@@ -332,20 +332,20 @@ void Ras::PrintState(const State& state, ostream& out) const {
 		<< endl;
 }
 
-void Ras::PrintObs(const State& state, OBS_TYPE obs, ostream& out) cosnt {
+void Ras::PrintObs(const State& state, OBS_TYPE obs, ostream& out) const {
 	out << (obs ? "INT" : "NO_INT") << endl;
 }
 
 void Ras::PrintBelief(const Belief& belief, ostream& out) const {
 	const vector<State*>& particles = static_cast<const ParticleBelief&>(belief).particles();
 	
-	double status = 0;
+	// double status = 0;
 	vector<double> probs(risk_pose.size());
 	for (int i = 0; i < particles.size(); i++) {
 		State* particle = particles[i];
-		const RasState* state = static_cast<cosnt RasState*>(particle);
-		for (auto itr=state.risk_bin.begin(), end=state.risk_bin.end(); itr!=end; itr++) {
-			prob[std::distance(state.risk_bin.begin(), itr)] += itr * particle-> weight;
+		const RasState* state = static_cast<const RasState*>(particle);
+		for (auto itr=state->risk_bin.begin(), end=state->risk_bin.end(); itr!=end; itr++) {
+			probs[distance(state->risk_bin.begin(), itr)] += *itr * particle-> weight;
 		}
 	}
 
@@ -355,11 +355,11 @@ void Ras::PrintBelief(const Belief& belief, ostream& out) const {
 }
 
 void Ras::PrintAction(ACT_TYPE action, ostream& out) const {
-	if (REQUEST <= action < RECOG)
+	if (REQUEST <= action && action < RECOG)
 		out << "request to " << action - REQUEST << endl;
-	else if (RECOG <= action < NO_ACTION) 
+	else if (RECOG <= action && action < NO_ACTION) 
 		out << "change recog state " << action - RECOG << endl;
 	else
 		out << "nothing" << endl;
 }
-				
+} // namespace despot
