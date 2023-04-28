@@ -13,11 +13,11 @@ public:
 		return model;
 	}
 
-	World* InitialzeWorld(std::string& world_type, DSPOMDP* model, option::Option* options) {
+	World* InitializeWorld(std::string& world_type, DSPOMDP* model, option::Option* options) {
 		return InitializePOMDPWorld(world_type, model, options);
 	}
 
-	void InitialzeDefaultParameters() {
+    void InitializeDefaultParameters() {
 	}
 
 	std::string ChooseSolver() {
@@ -25,6 +25,6 @@ public:
 	}
 };
 
-int main(int argc, char** argv) {
+int main(int argc, char* argv[]) {
 	return MyPlanner().RunEvaluation(argc, argv);
 }

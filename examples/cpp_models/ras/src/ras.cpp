@@ -2,7 +2,7 @@
 
 #include <despot/core/builtin_lower_bounds.h>
 #include <despot/core/builtin_policy.h>
-// #include <despot/core/builtin_upper_bound.h>
+#include <despot/core/builtin_upper_bounds.h>
 #include <despot/core/particle_belief.h>
 
 using namespace std;
@@ -57,7 +57,7 @@ int Ras::NumActions() const {
 	return 1 * risk_recog.size() * 2;
 }
 
-bool Ras::Step(State& state, double rand_num, ACT_TYPE action, double& reward, OBS_TYPE& obs) {
+bool Ras::Step(State& state, double rand_num, ACT_TYPE action, double& reward, OBS_TYPE& obs)  const {
 	RasState& state_prev = static_cast<RasState&>(state);
 	RasState state_curr = state_prev;
 	reward = 0.0;
@@ -140,7 +140,7 @@ int Ras::CalcReward(const State& state_prev, const State& state_curr, const vect
 }
 
 
-void Ras::EgoVehicleTransition(int& pose, double& speed, const vector<bool>& recog_list, const vector<int>& target_poses, const ACT_TYPE& action){
+void Ras::EgoVehicleTransition(int& pose, double& speed, const vector<bool>& recog_list, const vector<int>& target_poses, const ACT_TYPE& action) const {
 	vector<double> acc_list;
 
 	if (speed < ideal_speed) {
@@ -231,7 +231,7 @@ State* Ras::CreateStartState(string type) const {
 			_risk_bin); // target_risk
 }
 
-Belief* Ras::InitialBelief(const State* start, string type) {
+Belief* Ras::InitialBelief(const State* start, string type) const {
 
 	if (type != "DEFAULT" && type != "PARTICLE") {
 		cout << "specified type " + type + " is not supported";
@@ -274,20 +274,27 @@ Belief* Ras::InitialBelief(const State* start, string type) {
 }
 
 
-void Ras::GetBinProduct(vector<vector<bool>>& out_list, int col, int row) {
+// get every combination of the recognition state.
+// [[true, true], [true, false], [false, true], [false, false]] for 2 obstacles
+void Ras::GetBinProduct(vector<vector<bool>>& out_list, int col, int row) const {
 
+    cout << out_list << endl;
+    // proceed to the next combination 
 	if (col == out_list[-1].size()) {
-		out_list.emplace_back(buf_list);
+		// out_list.emplace_back(buf_list);
 		row++;
 		return;
 	}
+    // last row
 	if (row == out_list.size()) {
 		return;
 	}
 
+    // loop [true, false]
 	for (int i=0; i<2; i++) {
 		GetBinProduct(out_list, col++, row);	
-		buf_list[row][col] = (i!=0);
+		out_list[row][col] = (i!=0); // 0: false 1: true
+
 	}
 }
 

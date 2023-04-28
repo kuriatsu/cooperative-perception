@@ -71,10 +71,10 @@ public:
 
 	// Essential
 	int NumActions() const;
-	bool Step(State& state, double rand_num, ACT_TYPE action, double& reward, OBS_TYPE& obs);
+	bool Step(State& state, double rand_num, ACT_TYPE action, double& reward, OBS_TYPE& obs) const;
 	double ObsProb(OBS_TYPE obs, const State& state, ACT_TYPE action) const;
 	State* CreateStartState(std::string type="DEFAULT") const;
-	Belief* InitialBelief(const State* start, std::string type = "DEFAULT");
+	Belief* InitialBelief(const State* start, std::string type = "DEFAULT") const;
 
 	double GetMaxReward() const;
 
@@ -94,9 +94,9 @@ public:
 	void PrintAction(ACT_TYPE action, std::ostream& out = std::cout) const;
 
 protected:
-	void EgoVehicleTransition(int& pose, double& speed, const std::vector<bool>& recog_list, const std::vector<int>& target_poses, const ACT_TYPE& action);
+	void EgoVehicleTransition(int& pose, double& speed, const std::vector<bool>& recog_list, const std::vector<int>& target_poses, const ACT_TYPE& action) const ;
 	int CalcReward(const State& state_prev, const State& state_curr, const std::vector<int>& risk_poses, const ACT_TYPE& action) const;
-    void GetBinProduct(std::vector<std::vector<bool>>& out_list, int col, int row);
+    void GetBinProduct(std::vector<std::vector<bool>>& out_list, int col, int row) const ;
 };
 
 } // namespace despot
