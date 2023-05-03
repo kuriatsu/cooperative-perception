@@ -16,7 +16,7 @@ RasState::RasState() {
 	ego_recog = _ego_recog;
 	req_time = 0;
 	req_target = Ras::NO_TARGET;
-	vector<bool> _risk_bin{Ras::RISK, Ras::RISK}; //TODO define based on the given situation
+	vector<bool> _risk_bin{Ras::RISK, Ras::NO_RISK}; //TODO define based on the given situation
 	risk_bin = _risk_bin;
 }
 
@@ -29,7 +29,7 @@ string RasState::text() const {
 		   "ego_recog: " + to_string(ego_recog) + "\n" +
 		   "req_time: " + to_string(req_time) + "\n" +
 		   "req_target: " + to_string(req_target) + "\n" +
-		   "target_risk: " + to_string(risk_bin) + "\n" ;
+		   "risk_bin: " + to_string(risk_bin) + "\n" ;
 }
 
 Ras::Ras() {
@@ -54,12 +54,12 @@ Ras::Ras() {
 }
 
 int Ras::NumActions() const {
-	return 1 * risk_recog.size() * 2;
+	return 1 + risk_recog.size() * 2;
 }
 
 bool Ras::Step(State& state, double rand_num, ACT_TYPE action, double& reward, OBS_TYPE& obs)  const {
-	RasState& state_prev = static_cast<RasState&>(state);
-	RasState state_curr = state_prev;
+	RasState& state_curr = static_cast<RasState&>(state);
+	RasState state_prev = state_curr;
 	reward = 0.0;
 
 	// ego state trantion
@@ -239,8 +239,11 @@ Belief* Ras::InitialBelief(const State* start, string type) const {
 	}
 
 	// recognition likelihood of the automated system
-	vector<vector<bool>> risk_bin_list(pow(risk_recog.size(), 2.0), vector<bool>(risk_recog.size()));
-	GetBinProduct(risk_bin_list, 0, 0); 
+	// vector<vector<bool>> risk_bin_list(pow(risk_recog.size(), 2.0), vector<bool>(risk_recog.size()));
+    vector<bool> buf(risk_recog.size(), false);
+	vector<vector<bool>> risk_bin_list;
+	// vector<vector<bool>> risk_bin_list(1, buf);
+	GetBinProduct(risk_bin_list, buf, 0); 
 	vector<State*> particles;
 
 	for (auto row : risk_bin_list) {
@@ -268,6 +271,7 @@ Belief* Ras::InitialBelief(const State* start, string type) const {
 		p->req_time = 0;
 	  	p->req_target = NO_TARGET;
 		p->risk_bin = _risk_bin;
+        cout << *p << endl;
 		particles.push_back(p);
 	}
 	return new ParticleBelief(particles, this);
@@ -276,26 +280,18 @@ Belief* Ras::InitialBelief(const State* start, string type) const {
 
 // get every combination of the recognition state.
 // [[true, true], [true, false], [false, true], [false, false]] for 2 obstacles
-void Ras::GetBinProduct(vector<vector<bool>>& out_list, int col, int row) const {
+void Ras::GetBinProduct(vector<vector<bool>>& out_list, std::vector<bool> buf, int row) const {
 
-    cout << out_list << endl;
-    // proceed to the next combination 
-	if (col == out_list[-1].size()) {
-		// out_list.emplace_back(buf_list);
-		row++;
-		return;
-	}
-    // last row
-	if (row == out_list.size()) {
-		return;
-	}
+    cout << "row" << row << "list" << out_list << endl;
+    if (row == buf.size()) {
+        out_list.emplace_back(buf);
+        return;
+    }
 
-    // loop [true, false]
-	for (int i=0; i<2; i++) {
-		GetBinProduct(out_list, col++, row);	
-		out_list[row][col] = (i!=0); // 0: false 1: true
-
-	}
+    for (int i=0; i<2; i++) {
+        buf[row] = (i) ? false : true;   
+        GetBinProduct(out_list, buf, row+1);
+    }
 }
 
 double Ras::GetMaxReward() const {
@@ -369,4 +365,4 @@ void Ras::PrintAction(ACT_TYPE action, ostream& out) const {
 	else
 		out << "nothing" << endl;
 }
-} // namespace despot
+}
