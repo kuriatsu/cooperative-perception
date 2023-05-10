@@ -46,9 +46,9 @@ Ras::Ras() {
 	risk_pose = _risk_pose;
 	risk_thresh = 0.5;
 
-	r_false_positive = -50;
+	r_false_positive = -500;
 	r_false_negative = -1000;
-	r_eff = -10;
+	r_eff = -1000;
 	r_comf = -1;
 	r_request = -1;
 }
@@ -80,7 +80,7 @@ bool Ras::Step(State& state, double rand_num, ACT_TYPE action, double& reward, O
 		if (state_prev.req_target == idx) {
 			// observation probability
 			obs = (rand_num > acc && state_prev.risk_bin[idx] != state_prev.ego_recog[idx]) ? INT : NO_INT;
-			state_curr.req_time ++;
+			state_curr.req_time += 1;
 		} 
 		// request to new target
 		else {
@@ -108,23 +108,24 @@ int Ras::CalcReward(const State& state_prev, const State& state_curr, const vect
 		if (_state_prev.ego_pose <= *it && *it < _state_curr.ego_pose) {
 
 			// driving safety
-			if (_state_curr.ego_recog[target_index] && !_state_curr.risk_bin[target_index]) {
+			if (_state_curr.ego_recog[target_index] == RISK && _state_curr.risk_bin[target_index] == NO_RISK) {
 				reward += 1 * r_false_positive;
 			}
-			else if (!_state_curr.ego_recog[target_index] && _state_curr.risk_bin[target_index]) {
+			else if (_state_curr.ego_recog[target_index] == NO_RISK && _state_curr.risk_bin[target_index] == RISK) {
 				reward += 1 * r_false_negative;
 			}
 
-			// driving efficiency
-			if (!_state_curr.ego_recog[target_index]) {
-				// when no risk, higher is better
-				reward += (ideal_speed - _state_curr.ego_speed)/(ideal_speed - yield_speed) * r_eff;
-			}
-			else {
-				// when risk, lower is better
-			   	reward += (_state_curr.ego_speed - yield_speed)/(ideal_speed - yield_speed) * r_eff;
-			}
-
+            else {
+                // driving efficiency
+                if (_state_curr.risk_bin[target_index] == NO_RISK) {
+                    // when no risk, higher is better
+                    reward += (ideal_speed - _state_curr.ego_speed)/(ideal_speed - yield_speed) * r_eff;
+                }
+                else {
+                    // when risk, lower is better
+                    reward += (_state_curr.ego_speed - yield_speed)/(ideal_speed - yield_speed) * r_eff;
+                }
+            }
 		}
 	}
 
@@ -132,8 +133,9 @@ int Ras::CalcReward(const State& state_prev, const State& state_curr, const vect
 	reward += pow((_state_curr.ego_speed - _state_prev.ego_speed)/(ideal_speed - yield_speed), 2.0) * r_comf;
 	
 	// int request
+	// if (REQUEST <= action && action < RECOG) {
 	if (action != NO_ACTION) {
-		reward += 1 * r_request;
+        reward += 1 * r_request;
 	}
 
 	return reward;
