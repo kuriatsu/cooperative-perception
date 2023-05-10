@@ -40,7 +40,7 @@ Ras::Ras() {
 	safety_margin = 5;
     delta_t = 1.0;
 
-	vector<double> _risk_recog{0.5, 0.2};
+	vector<double> _risk_recog{0.2, 0.2};
 	vector<int> _risk_pose{80, 100};
 	risk_recog = _risk_recog;
 	risk_pose = _risk_pose;
@@ -218,6 +218,7 @@ State* Ras::CreateStartState(string type) const {
 	// set ego_recog and risk_bin based on threshold
 	vector<bool> _ego_recog, _risk_bin;
 	for (auto val : risk_recog) {
+        cout << "initial state risk_recog val " << val << "thesh " << risk_thresh << endl;
 		_ego_recog.emplace_back((val < risk_thresh) ? NO_RISK : RISK);
 		_risk_bin.emplace_back(RISK);
 	}
@@ -299,7 +300,7 @@ double Ras::GetMaxReward() const {
 }
 
 ValuedAction Ras::GetBestAction() const {
-	return ValuedAction(NO_ACTION, 0);
+	return ValuedAction(NO_ACTION, -1);
 }
 
 State* Ras::Allocate(int state_id, double weight) const {

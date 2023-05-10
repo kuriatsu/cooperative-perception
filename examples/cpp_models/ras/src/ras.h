@@ -50,7 +50,7 @@ public:
 	// recognition likelihood of the ADS
 	std::vector<double> risk_recog;
 	std::vector<int> risk_pose;
-	int risk_thresh;
+	double risk_thresh;
 	
 	// reward
 	int r_false_positive;
@@ -77,10 +77,10 @@ public:
 	Belief* InitialBelief(const State* start, std::string type = "DEFAULT") const;
 
 	double GetMaxReward() const;
+	ValuedAction GetBestAction() const;
 
 	// Optional
 	// ScenarioUpperBound* CreateScenarioUpperBound(std::string name="DEFAULT", std::string particle_bound_name = "DEFAULT") const;
-	ValuedAction GetBestAction() const;
 	// ScenarioLowerBound* CreateScenarioLowerBound(std::string name = "DEFAULT", std::string particle_bound_name = "DEFAULT") const;
 
 	State* Allocate(int state_id, double weight) const;
