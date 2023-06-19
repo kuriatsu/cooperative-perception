@@ -61,10 +61,9 @@ public:
 	
 	enum { NO_ACTION = 2*2, REQUEST = 0, RECOG = 2 }; // action TODO define based on the given situation
 	// enum { NO_ACTION = risk_pose.size()*2, REQUEST = 0, RECOG = risk_pose.size() }; // action
-	enum { NO_INT = false, INT = true}; // observation
 	enum { NO_TARGET = 2 }; // req_target
 	// enum { NO_TARGET = risk_pose.size()} // req_target TODO define based on the given situation
-	enum { NO_RISK = false, RISK = true}; // risk_state, ego_recognition
+	enum { NO_RISK = 0, RISK = 1, NONE = 2}; // risk_state, ego_recognition
 
 public:
 	Ras();

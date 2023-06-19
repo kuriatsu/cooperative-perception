@@ -9,10 +9,11 @@ using namespace std;
 
 namespace despot {
 
+
 RasState::RasState() {
 	ego_pose = 0;
 	ego_speed = 11.2;
-	vector<bool> _ego_recog{Ras::RISK, Ras::NO_RISK}; //TODO define based on the given situation
+	vector<bool> _ego_recog{Ras::NO_RISK, Ras::NO_RISK}; //TODO define based on the given situation
 	ego_recog = _ego_recog;
 	req_time = 0;
 	req_target = Ras::NO_TARGET;
@@ -29,7 +30,8 @@ string RasState::text() const {
 		   "ego_recog: " + to_string(ego_recog) + "\n" +
 		   "req_time: " + to_string(req_time) + "\n" +
 		   "req_target: " + to_string(req_target) + "\n" +
-		   "risk_bin: " + to_string(risk_bin) + "\n" ;
+		   "risk_bin: " + to_string(risk_bin) + "\n" +
+           "weight:" + to_string(weight) + "\n";
 }
 
 Ras::Ras() {
@@ -40,7 +42,7 @@ Ras::Ras() {
 	safety_margin = 5;
     delta_t = 1.0;
 
-	vector<double> _risk_recog{0.2, 0.2};
+	vector<double> _risk_recog{0.45, 0.45};
 	vector<int> _risk_pose{80, 100};
 	risk_recog = _risk_recog;
 	risk_pose = _risk_pose;
@@ -69,7 +71,7 @@ bool Ras::Step(State& state, double rand_num, ACT_TYPE action, double& reward, O
 	if (RECOG <= action && action < NO_ACTION) {
 		int idx = action - RECOG;
 		state_curr.ego_recog[idx] = !state_prev.ego_recog[idx];
-		obs = NO_INT;
+		obs = NONE;
 	}
 	// when action = request intervention
 	else if (REQUEST <= action && action < RECOG) {
@@ -79,14 +81,15 @@ bool Ras::Step(State& state, double rand_num, ACT_TYPE action, double& reward, O
 		// request to the same target
 		if (state_prev.req_target == idx) {
 			// observation probability
-			obs = (rand_num > acc && state_prev.risk_bin[idx] != state_prev.ego_recog[idx]) ? INT : NO_INT;
+			obs = (rand_num < acc && state_prev.risk_bin[idx] == RISK) ? RISK : NO_RISK;
 			state_curr.req_time += 1;
+
 		} 
 		// request to new target
 		else {
 			state_curr.req_time = 1;
 			state_curr.req_target = idx;
-			obs = NO_INT;
+			obs = NONE;
 		}
 	}
 
@@ -108,23 +111,29 @@ int Ras::CalcReward(const State& state_prev, const State& state_curr, const vect
 		if (_state_prev.ego_pose <= *it && *it < _state_curr.ego_pose) {
 
 			// driving safety
-			if (_state_curr.ego_recog[target_index] == RISK && _state_curr.risk_bin[target_index] == NO_RISK) {
+			if (_state_curr.ego_recog[target_index] == _state_curr.risk_bin[target_index]) {
+				reward += 1 * 1000;
+                // std::cout << "conservative penal: " << reward << "pose: " << _state_prev.ego_pose << std::endl;
+			}
+            else if (_state_curr.ego_recog[target_index] == RISK && _state_curr.risk_bin[target_index] == NO_RISK) {
 				reward += 1 * r_false_positive;
+                // std::cout << "conservative penal: " << reward << "pose: " << _state_prev.ego_pose << std::endl;
 			}
 			else if (_state_curr.ego_recog[target_index] == NO_RISK && _state_curr.risk_bin[target_index] == RISK) {
 				reward += 1 * r_false_negative;
+                // std::cout << "aggressive penal: " << reward << "pose: " << _state_prev.ego_pose << "weigt: " << state_prev.weight << std::endl;
 			}
 
             else {
                 // driving efficiency
-                if (_state_curr.risk_bin[target_index] == NO_RISK) {
+                // if (_state_curr.risk_bin[target_index] == NO_RISK) {
                     // when no risk, higher is better
-                    reward += (ideal_speed - _state_curr.ego_speed)/(ideal_speed - yield_speed) * r_eff;
-                }
-                else {
+                //     reward += (ideal_speed - _state_curr.ego_speed)/(ideal_speed - yield_speed) * r_eff;
+                // }
+                // else {
                     // when risk, lower is better
-                    reward += (_state_curr.ego_speed - yield_speed)/(ideal_speed - yield_speed) * r_eff;
-                }
+                //     reward += (_state_curr.ego_speed - yield_speed)/(ideal_speed - yield_speed) * r_eff;
+                // }
             }
 		}
 	}
@@ -163,7 +172,7 @@ void Ras::EgoVehicleTransition(int& pose, double& speed, const vector<bool>& rec
         if (dist < 0) {
             is_decel_target = false;
         }
-        else if (action == INT) {
+        else if (REQUEST <= action && action < RECOG) {
             is_decel_target = (*it == true);
         }
         else {
@@ -206,9 +215,16 @@ void Ras::EgoVehicleTransition(int& pose, double& speed, const vector<bool>& rec
 
 double Ras::ObsProb(OBS_TYPE obs, const State& state, ACT_TYPE action) const {
     const RasState& ras_state = static_cast<const RasState&>(state);
+    int idx = action - REQUEST;
+    double acc = operator_model.int_acc(ras_state.req_time);
 
     if (REQUEST <= action && action < RECOG) {
-        return operator_model.int_acc(ras_state.req_time);
+        if (ras_state.risk_bin[idx] == obs) {
+            return acc;
+        }
+        else {
+            return 1.0 - acc;
+        }
     }
     else {
         return 1.0;
@@ -222,7 +238,7 @@ State* Ras::CreateStartState(string type) const {
 	for (auto val : risk_recog) {
         cout << "initial state risk_recog val " << val << "thesh " << risk_thresh << endl;
 		_ego_recog.emplace_back((val < risk_thresh) ? NO_RISK : RISK);
-		_risk_bin.emplace_back(RISK);
+		_risk_bin.emplace_back(NO_RISK);
 	}
 
 	return new RasState(
@@ -302,7 +318,7 @@ double Ras::GetMaxReward() const {
 }
 
 ValuedAction Ras::GetBestAction() const {
-	return ValuedAction(NO_ACTION, -1);
+	return ValuedAction(0, -1);
 }
 
 State* Ras::Allocate(int state_id, double weight) const {
@@ -335,11 +351,22 @@ void Ras::PrintState(const State& state, ostream& out) const {
 		<< "req_time : " << ras_state.req_time << "\n"
 		<< "req_target : " << ras_state.req_target << "\n"
 		<< "risk_bin : " << ras_state.risk_bin << "\n"
+        << "weight : " << ras_state.weight << "\n"
 		<< endl;
 }
 
 void Ras::PrintObs(const State& state, OBS_TYPE obs, ostream& out) const {
-	out << (obs ? "INT" : "NO_INT") << endl;
+    switch(obs) {
+        case NONE:
+            out << "NONE" << endl;
+            break;
+        case NO_RISK:
+            out << "NO_RISK" << endl;
+            break;
+        case RISK:
+            out << "RISK" << endl;
+            break;
+    }
 }
 
 void Ras::PrintBelief(const Belief& belief, ostream& out) const {
