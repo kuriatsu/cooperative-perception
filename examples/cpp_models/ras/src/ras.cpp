@@ -319,11 +319,11 @@ void Ras::GetBinProduct(vector<vector<bool>>& out_list, std::vector<bool> buf, i
 }
 
 double Ras::GetMaxReward() const {
-	return 0;
+	return 1000;
 }
 
 ValuedAction Ras::GetBestAction() const {
-	return ValuedAction(0, -1);
+	return ValuedAction(NO_ACTION, 0);
 }
 
 State* Ras::Allocate(int state_id, double weight) const {
