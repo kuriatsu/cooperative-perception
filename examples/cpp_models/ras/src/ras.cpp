@@ -52,7 +52,7 @@ Ras::Ras() {
 	r_false_negative = -1000;
 	r_eff = -1000;
 	r_comf = -1;
-	r_request = -1;
+	r_request = 1;
 }
 
 int Ras::NumActions() const {
@@ -72,18 +72,23 @@ bool Ras::Step(State& state, double rand_num, ACT_TYPE action, double& reward, O
 		int idx = action - RECOG;
 		state_curr.ego_recog[idx] = !state_prev.ego_recog[idx];
 		obs = NONE;
+        state_curr.req_time = 1;
 	}
 	// when action = request intervention
 	else if (REQUEST <= action && action < RECOG) {
 		int idx = action - REQUEST;
 		double acc = operator_model.int_acc(state_prev.req_time);
+        state_curr.req_time += 1;
 
 		// request to the same target
 		if (state_prev.req_target == idx) {
 			// observation probability
-			obs = (rand_num < acc && state_prev.risk_bin[idx] == RISK) ? RISK : NO_RISK;
-			state_curr.req_time += 1;
-
+            if (rand_num < acc) {
+                obs = (state_prev.risk_bin[idx] == RISK) ? RISK : NO_RISK;
+            }
+            else {
+                obs = (state_prev.risk_bin[idx] == RISK) ? NO_RISK : RISK;
+            }
 		} 
 		// request to new target
 		else {
@@ -100,6 +105,22 @@ bool Ras::Step(State& state, double rand_num, ACT_TYPE action, double& reward, O
 	else
 		return false;
 }
+
+
+double Ras::ObsProb(OBS_TYPE obs, const State& state, ACT_TYPE action) const {
+
+    if (REQUEST <= action && action < RECOG) {
+        const RasState& ras_state = static_cast<const RasState&>(state);
+        int idx = action - REQUEST;
+        double acc = operator_model.int_acc(ras_state.req_time);
+        // std::cout << "obs_prob acc : " << acc << " obs : " << obs << "action : " << action << "\n" << " state : " << ras_state << std::endl;
+        return (ras_state.risk_bin[idx] == obs) ? acc : 1.0 - acc;
+    }
+    else {
+        return 1.0;
+    }
+}
+
 
 int Ras::CalcReward(const State& state_prev, const State& state_curr, const vector<int>& risk_poses, const ACT_TYPE& action) const {
 	const RasState& _state_prev = static_cast<const RasState&>(state_prev);
@@ -173,10 +194,10 @@ void Ras::EgoVehicleTransition(int& pose, double& speed, const vector<bool>& rec
             is_decel_target = false;
         }
         else if (REQUEST <= action && action < RECOG) {
-            is_decel_target = (*it == true);
+            is_decel_target = (*it == RISK);
         }
         else {
-            is_decel_target = (*it == true);
+            is_decel_target = (*it == RISK);
         }
 
         if (!is_decel_target){
@@ -213,32 +234,16 @@ void Ras::EgoVehicleTransition(int& pose, double& speed, const vector<bool>& rec
     return;
 }
 
-double Ras::ObsProb(OBS_TYPE obs, const State& state, ACT_TYPE action) const {
-    const RasState& ras_state = static_cast<const RasState&>(state);
-    int idx = action - REQUEST;
-    double acc = operator_model.int_acc(ras_state.req_time);
-
-    if (REQUEST <= action && action < RECOG) {
-        if (ras_state.risk_bin[idx] == obs) {
-            return acc;
-        }
-        else {
-            return 1.0 - acc;
-        }
-    }
-    else {
-        return 1.0;
-    }
-}
 
 State* Ras::CreateStartState(string type) const {
 	
 	// set ego_recog and risk_bin based on threshold
+    std::cout << "create state" << std::endl;
 	vector<bool> _ego_recog, _risk_bin;
 	for (auto val : risk_recog) {
         cout << "initial state risk_recog val " << val << "thesh " << risk_thresh << endl;
 		_ego_recog.emplace_back((val < risk_thresh) ? NO_RISK : RISK);
-		_risk_bin.emplace_back(NO_RISK);
+		_risk_bin.emplace_back(RISK);
 	}
 
 	return new RasState(
