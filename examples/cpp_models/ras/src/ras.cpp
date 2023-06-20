@@ -52,7 +52,7 @@ Ras::Ras() {
 	r_false_negative = -1000;
 	r_eff = -1000;
 	r_comf = -1;
-	r_request = 1;
+	r_request = -1;
 }
 
 int Ras::NumActions() const {
