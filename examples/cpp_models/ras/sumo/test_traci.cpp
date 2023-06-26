@@ -5,9 +5,10 @@ using namespace libtraci;
 
 int main(int argc, char* argv[]) {
     Simulation::start({"sumo-gui", "-c", "straight_random.sumocfg"});
-    for (auto &it : Edge::getIDList()) {
-        std::cout << it << std::endl;
-    }
+    auto edge_list = Edge::getIDList();
+    auto route_list = Route::getIDList(); 
+    Vehicle::add("ego_vehicle", route_list[0]);
+    Vehicle::setColor("ego_vehicle", libsumo::TraCIColor(0, 200, 0));
     for (int i = 0; i < 3000; i++) {
         Simulation::step();
         Person::add("ped_"+std::to_string(i), "E0", 100);
