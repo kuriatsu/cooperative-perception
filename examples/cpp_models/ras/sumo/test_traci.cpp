@@ -1,6 +1,5 @@
 #include <iostream>
 #include <libsumo/libtraci.h>
-
 using namespace libtraci;
 
 int main(int argc, char* argv[]) {
@@ -19,7 +18,7 @@ int main(int argc, char* argv[]) {
     Vehicle::add("ego_vehicle", Route::getIDList()[0]);
     Vehicle::setColor("ego_vehicle", libsumo::TraCIColor(0, 200, 0));
     Vehicle::setMaxSpeed("ego_vehicle", 50.0/3.6);
-    Vehicle::setAccel("ego_vehicle", 2.5*9.8);
+    Vehicle::setAccel("ego_vehicle", 1.5*9.8);
 
     for (int i = 0; i < 3000; i++) {
         Simulation::step();
