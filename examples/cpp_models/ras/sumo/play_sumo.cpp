@@ -4,9 +4,22 @@ using namespace libtraci;
 
 void PlaySumo::perception(const std::string ego_name) {
 
-    auto edges = Vehicle::GetRoute(ego_name);
-    for (auto& edge : edges) {
-        auto peds = Edge::getLastStepPersonIDs(edge);
+    double ego_pose = Vehicle::GetLanePosition(ego_name);
+    std::string ego_edge = Vehicle::GetRoadID(ego_name);
+
+    // get obstacles along to the ego vehicle route
+    auto edge_list = Vehicle::GetRoute(ego_name);
+    for (auto& edge : edge_list) {
+        auto ped_list = Edge::getLastStepPersonIDs(edge);
+        for (std::string& ped : ped_list) {
+            auto ped_pose = Person::getPosition(ped);
+            std::string ped_edge = Person::getRoadID(ped);
+
+            double dist = sqrt(pow(ego_pose[0]-ped_pose[0], 2) + pow(ego_pose[0]-ped_pose[0], 2));
+            double ped_lane_pose = Person::getLanePosition(ped);
+
+        }
+
 
 void PlaySumo::controlEgoVehicle(const std::string ego_name) {
 
