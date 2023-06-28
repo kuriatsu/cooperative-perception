@@ -2,23 +2,38 @@
 
 using namespace libtraci;
 
+std::vector<double> PlaySumo::getRelativePosition(const std::vectol<double>& ego_pose, const double& target_position) {
+    double& x = target_position[0];
+    double& y = target_position[1];
+    double& theta = ego_pose[2];
+    s_x = x - ego_pose[0];
+    s_y = y - ego_pose[1];
+    r_x = s_x * cos(theta) - s_y * sin(theta); 
+    r_y = s_x * sin(theta) + s_y * cos(theta); 
+    return {r_x, r_y}; 
+}
+
 void PlaySumo::perception(const std::string ego_name) {
 
-    double ego_pose = Vehicle::GetLanePosition(ego_name);
+    std::vector<double> perception_range = {50, 150};
+    std::vector<double> ego_pose = Vehicle::GetLanePosition(ego_name);
+    ego_pose.emplace_back(Vehicle::GetAngle(ego_name));
+    std::vector<std::string> ego_route = Vehicle::GetRoute(ego_name);
     std::string ego_edge = Vehicle::GetRoadID(ego_name);
 
-    // get obstacles along to the ego vehicle route
-    auto edge_list = Vehicle::GetRoute(ego_name);
-    for (auto& edge : edge_list) {
-        auto ped_list = Edge::getLastStepPersonIDs(edge);
-        for (std::string& ped : ped_list) {
-            auto ped_pose = Person::getPosition(ped);
-            std::string ped_edge = Person::getRoadID(ped);
+    for (std::string& ped : Edge::getLastStepPersonIDs(edge)) {
+        std::string ped_edge = Person::getRoadID(ped);
+        
+        // get obstacles along to the ego vehicle route
+        if (std::find(ego_route.begin(), ego_route.end(), ped_edge) == ego_route.end()) continue;
 
-            double dist = sqrt(pow(ego_pose[0]-ped_pose[0], 2) + pow(ego_pose[0]-ped_pose[0], 2));
-            double ped_lane_pose = Person::getLanePosition(ped);
-
-        }
+        auto ped_position = Person::getPosition(ped);
+        auto r_ped_position = getRelativePosition(ego_pose, ped_position);
+        if (-perception_range[0]/2 < r_ped_position[0]
+            && r_ped_position[0] < perception_range[0]/2
+            && 0 < r_ped_position[1]
+            && r_ped_position[1] < perception_range[1]) {
+            target_list.append(
 
 
 void PlaySumo::controlEgoVehicle(const std::string ego_name) {
