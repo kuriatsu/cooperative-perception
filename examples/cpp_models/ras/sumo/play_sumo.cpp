@@ -16,9 +16,8 @@ std::vector<std::string> SumoSimulation::perception() {
     Pose ego_pose(Vehicle::getPosition(m_ego_name));
     ego_pose.theta = Vehicle::getAngle(m_ego_name);
     std::vector<std::string> ego_route = Vehicle::getRoute(m_ego_name);
-    const std::string& ego_edge = Vehicle::getRoadID(m_ego_name);
 
-    for (std::string& ped : Edge::getLastStepPersonIDs(ego_edge)) {
+    for (std::string& ped : Person::getIDList()) {
         std::string ped_edge = Person::getRoadID(ped);
         
         // get obstacles along to the ego vehicle route
@@ -97,6 +96,7 @@ void SumoSimulation::spawnEgoVehicle() {
 
 void SumoSimulation::spawnPedestrians() {
     double interval = 1/m_density;
+    std::cout << "test" << std::endl;
 
     // Generate random value
     std::mt19937 mt{std::random_device{}()};
@@ -111,6 +111,7 @@ void SumoSimulation::spawnPedestrians() {
         // add peds
         for (int i=0; i<length; i+=(int)interval) {
             double position = i + position_noise(mt);
+            std::cout << position << ", " << length << std::endl;
             Person::add(std::to_string(i), edge, position);
             Person::setColor(std::to_string(i), libsumo::TraCIColor(200, 0, 0));
             // Person::appendWalkingStage(std::to_string(i), {edge}, 0);
