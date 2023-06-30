@@ -2,7 +2,10 @@
 
 #include <iostream>
 #include <libsumo/libtraci.h>
-
+#include <unordered_map>
+#include <random>
+#include <algorithm>
+#include "libgeometry.h"
 
 using namespace libtraci;
 
@@ -16,14 +19,16 @@ public:
     double m_v_yield_speed = 2.8;
     double m_safety_margin = 5.0;
     std::vector<double> m_perception_range = {50, 150}; // x l&r, y_forward
+    std::string m_ego_name = "ego_vehicle";
 
 public:
-    void spawnEgoVehicle();
+    SumoSimulation();
+    std::vector<std::string> perception();
+    void controlEgoVehicle(const std::vector<std::string>& targets);
     void spawnPedestrians();
-    void controlEgoVehicle();
-    void perception();
-
+    void spawnEgoVehicle();
+    
 private:
-    std::unordered_map<std::string, std::vector<double, double>> m_risks;
+    std::unordered_map<std::string, Risk> m_risks;
      
 };

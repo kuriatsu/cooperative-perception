@@ -1,21 +1,24 @@
 #include "play_sumo.h"
-#include "libgeometry.h"
 
 using namespace libtraci;
 
 
-void SumoSimulation::perception(const std::string ego_name) {
+SumoSimulation::SumoSimulation() {
+    return;
+}
+
+std::vector<std::string> SumoSimulation::perception() {
 
     // <id, distance>
-    std::unordered_map<std::string, double> targets;
+    std::vector<std::string> targets;
 
     // get ego vehicle pose, route, current edge
-    Pose ego_pose(Vehicle::GetPosition(ego_name));
-    ego_pose.theta = Vehicle::GetAngle(ego_name);
-    std::vector<std::string> ego_route = Vehicle::GetRoute(ego_name);
-    std::string ego_edge = Vehicle::GetRoadID(ego_name);
+    Pose ego_pose(Vehicle::getPosition(m_ego_name));
+    ego_pose.theta = Vehicle::getAngle(m_ego_name);
+    std::vector<std::string> ego_route = Vehicle::getRoute(m_ego_name);
+    const std::string& ego_edge = Vehicle::getRoadID(m_ego_name);
 
-    for (std::string& ped : Edge::getLastStepPersonIDs(edge)) {
+    for (std::string& ped : Edge::getLastStepPersonIDs(ego_edge)) {
         std::string ped_edge = Person::getRoadID(ped);
         
         // get obstacles along to the ego vehicle route
@@ -24,8 +27,9 @@ void SumoSimulation::perception(const std::string ego_name) {
         // get risk position
         Pose risk_pose(Person::getPosition(ped));
         Pose rel_risk_pose = risk_pose.transformTo(ego_pose);
-        if (fabs(rel_risk_pose.x) < perception_range[0]/2 && 0 < rel_risk_pose.y && rel_risk_pose.y < perception_range[1]) {
-            targets[ped] = rel_risk_pose.y;
+        m_risks[ped].distance = rel_risk_pose.y;
+        if (fabs(rel_risk_pose.x) < m_perception_range[0]/2 && 0 < rel_risk_pose.y && rel_risk_pose.y < m_perception_range[1]) {
+            targets.emplace_back(ped);
         }
     }
 
@@ -33,45 +37,43 @@ void SumoSimulation::perception(const std::string ego_name) {
 }
 
 
-void SumoSimulation::controlEgoVehicle(const std::string ego_name, const auto& targets){
+void SumoSimulation::controlEgoVehicle(const std::vector<std::string>& targets){
 
-    vector<double> acc_list;
-    double speed = Vehicle::getSpeed(ego_name);
+    std::vector<double> acc_list;
+    double speed = Vehicle::getSpeed(m_ego_name);
 
-	for (const auto &it : targets) {
-        double &dist = it.second();
+	for (const std::string &it : targets) {
+        Risk &target = m_risks[it];
         bool is_decel_target = false; 
 
-        if (dist < 0) {
+        if (target.distance < 0) {
             is_decel_target = false;
         }
         else {
-            is_decel_target = (*it == true);
+            is_decel_target = (target.risk == true);
         }
 
         if (!is_decel_target){
             continue;
         }
 
-        double a = (pow(yield_speed, 2.0) - pow(speed, 2.0))/(2.0*(dist-safety_margin));
+        double a = (pow(m_v_yield_speed, 2.0) - pow(speed, 2.0))/(2.0*(target.distance-m_safety_margin));
         acc_list.emplace_back(a);
     }
 
     auto a_itr = min_element(acc_list.begin(), acc_list.end());
     double acc = *a_itr;
-    // int decel_target = distance(acc_list.begin(), a_itr);
-    a = (a >= 0) ? min(acc, m_v_accel) : max(acc, -m_v_accel);
-    speed += a*delta_t;
-    if (speed <= yield_speed) {
-        speed =	yield_speed;
-        a = 0.0;
+    // int decel_target = target.distanceance(acc_list.begin(), a_itr);
+    acc = (acc >= 0) ? std::min(acc, m_v_accel) : std::max(acc, -m_v_accel);
+    speed += acc*1.0;
+    if (speed <= m_v_yield_speed) {
+        acc = 0.0;
     }
-    else if (speed >= ideal_speed) {
-        speed = ideal_speed;
-        a = 0.0;
+    else if (speed >= m_v_max_speed) {
+        acc = 0.0;
     }
     
-    Vehicle::setAccel(ego_name, a);
+    Vehicle::setAccel(m_ego_name, acc);
 }
 
 
@@ -93,8 +95,8 @@ void SumoSimulation::spawnEgoVehicle() {
     Vehicle::setAccel("ego_vehicle", 1.5*9.8);
 }
 
-void SumoSimulation::spawnPedestrians(const int density) {
-    double interval = 1/density;
+void SumoSimulation::spawnPedestrians() {
+    double interval = 1/m_density;
 
     // Generate random value
     std::mt19937 mt{std::random_device{}()};
@@ -104,16 +106,16 @@ void SumoSimulation::spawnPedestrians(const int density) {
     auto lane_list = Lane::getIDList();
     for (std::string& lane_id : lane_list) {
         std::string edge = Lane::getEdgeID(lane_id);
-        double length = Lane::getLength(lane_id)
+        double length = Lane::getLength(lane_id);
 
         // add peds
         for (int i=0; i<length; i+=(int)interval) {
             double position = i + position_noise(mt);
-            Person::add(std::to_string(i), edge, position)
+            Person::add(std::to_string(i), edge, position);
             Person::setColor(std::to_string(i), libsumo::TraCIColor(200, 0, 0));
             // Person::appendWalkingStage(std::to_string(i), {edge}, 0);
-            Person::appendWaitingState(std::to_string(i), 1000);
-            risks[std::to_string(i)] = risk_val(mt); 
+            Person::appendWaitingStage(std::to_string(i), 1000);
+            m_risks[std::to_string(i)] = Risk(std::to_string(i), risk_val(mt)); 
         }
     }
 }
@@ -121,8 +123,14 @@ void SumoSimulation::spawnPedestrians(const int density) {
 
 int main(int argc, char* argv[]) {
     Simulation::start({"sumo-gui", "-c", "straight_random.sumocfg"});
+    auto sim = SumoSimulation();
+    sim.spawnPedestrians();
+    sim.spawnEgoVehicle();
+
     for (int i = 0; i < 3000; i++) {
         Simulation::step();
+        auto targets = sim.perception();
+        sim.controlEgoVehicle(targets);
     }
 
     Simulation::close();
