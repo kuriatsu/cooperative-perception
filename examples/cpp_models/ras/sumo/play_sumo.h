@@ -11,7 +11,7 @@ using namespace libtraci;
 
 class SumoSimulation {
 public:
-    int m_density = 0.1; // 1ppl per 1m
+    double m_density = 0.1; // 1ppl per 1m
     double m_risk_thresh = 0.5;
     double m_v_min_decel = 2.0 * 9.8;
     double m_v_accel = 2.5 * 9.8;

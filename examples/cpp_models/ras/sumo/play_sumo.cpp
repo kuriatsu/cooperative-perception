@@ -17,18 +17,22 @@ std::vector<std::string> SumoSimulation::perception() {
     ego_pose.theta = Vehicle::getAngle(m_ego_name);
     std::vector<std::string> ego_route = Vehicle::getRoute(m_ego_name);
 
-    for (std::string& ped : Person::getIDList()) {
-        std::string ped_edge = Person::getRoadID(ped);
+    for (std::string& ped_id : Person::getIDList()) {
+        std::string ped_edge = Person::getRoadID(ped_id);
         
         // get obstacles along to the ego vehicle route
-        // if (std::find(ego_route.begin(), ego_route.end(), ped_edge) == ego_route.end()) continue;
+        // if (std::find(ego_route.begin(), ego_route.end(), ped_id_edge) == ego_route.end()) continue;
 
         // get risk position
-        Pose risk_pose(Person::getPosition(ped));
+        Pose risk_pose(Person::getPosition(ped_id));
         Pose rel_risk_pose = risk_pose.transformTo(ego_pose);
-        m_risks[ped].distance = rel_risk_pose.y;
+        m_risks[ped_id].distance = rel_risk_pose.y;
         if (fabs(rel_risk_pose.x) < m_perception_range[0]/2 && 0 < rel_risk_pose.y && rel_risk_pose.y < m_perception_range[1]) {
-            targets.emplace_back(ped);
+            Person::setColor(ped_id, libsumo::TraCIColor(200, 0, 0));
+            targets.emplace_back(ped_id);
+        }
+        else {
+            Person::setColor(ped_id, libsumo::TraCIColor(0, 0, 200));
         }
     }
 
@@ -65,12 +69,13 @@ void SumoSimulation::controlEgoVehicle(const std::vector<std::string>& targets){
     // int decel_target = target.distanceance(acc_list.begin(), a_itr);
     acc = (acc >= 0) ? std::min(acc, m_v_accel) : std::max(acc, -m_v_accel);
     speed += acc*1.0;
-    if (speed <= m_v_yield_speed) {
-        acc = 0.0;
-    }
-    else if (speed >= m_v_max_speed) {
-        acc = 0.0;
-    }
+    std::cout << acc << std::endl;
+    // if (speed <= m_v_yield_speed) {
+    //     acc = 0.0;
+    //  }
+    // else if (speed >= m_v_max_speed) {
+    //     acc = 0.0;
+    // }
     
     Vehicle::setAccel(m_ego_name, acc);
 }
@@ -105,18 +110,23 @@ void SumoSimulation::spawnPedestrians() {
     // add peds for each lane
     auto lane_list = Lane::getIDList();
     for (std::string& lane_id : lane_list) {
+
+        const auto& allowed_list = Lane::getAllowed(lane_id);
+        if (!std::count(allowed_list.begin(), allowed_list.end(),"pedestrian")) continue;
+
         std::string edge = Lane::getEdgeID(lane_id);
-        double length = Lane::getLength(lane_id);
+        double lane_length = Lane::getLength(lane_id);
 
         // add peds
-        for (int i=0; i<length; i+=(int)interval) {
+        for (int i=0; i<lane_length; i+=(int)interval) {
             double position = i + position_noise(mt);
-            std::cout << position << ", " << length << std::endl;
-            Person::add(std::to_string(i), edge, position);
-            Person::setColor(std::to_string(i), libsumo::TraCIColor(200, 0, 0));
-            // Person::appendWalkingStage(std::to_string(i), {edge}, 0);
-            Person::appendWaitingStage(std::to_string(i), 1000);
-            m_risks[std::to_string(i)] = Risk(std::to_string(i), risk_val(mt)); 
+            std::string ped_id = lane_id + "-" + std::to_string(i);
+            std::cout << position << ", " << lane_length << std::endl;
+            Person::add(ped_id, edge, position);
+            Person::setColor(ped_id, libsumo::TraCIColor(0, 0, 200));
+            Person::appendWalkingStage(ped_id, {edge}, 0);
+            Person::appendWaitingStage(ped_id, 1000);
+            m_risks[ped_id] = Risk(ped_id, risk_val(mt)); 
         }
     }
 }
