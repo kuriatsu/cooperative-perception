@@ -13,11 +13,12 @@ class SumoSimulation {
 public:
     double m_density = 0.1; // 1ppl per 1m
     double m_risk_thresh = 0.5;
-    double m_v_min_decel = 2.0 * 9.8;
-    double m_v_accel = 2.5 * 9.8;
+    double m_v_max_decel = -0.2 * 9.8;
+    double m_v_max_accel = 0.15 * 9.8;
     double m_v_max_speed = 11.2;
     double m_v_yield_speed = 2.8;
     double m_safety_margin = 5.0;
+    double m_delta_t = 1.0;
     std::vector<double> m_perception_range = {50, 150}; // x l&r, y_forward
     std::string m_ego_name = "ego_vehicle";
 

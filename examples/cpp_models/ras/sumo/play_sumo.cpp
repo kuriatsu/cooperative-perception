@@ -9,13 +9,18 @@ SumoSimulation::SumoSimulation() {
 
 std::vector<std::string> SumoSimulation::perception() {
 
-    // <id, distance>
+    Pose ego_pose;
+    try { 
+        ego_pose = Pose(Vehicle::getPosition(m_ego_name));
+        ego_pose.theta = Vehicle::getAngle(m_ego_name);
+    }
+    catch (libsumo::TraCIException& error) {
+        std::cout << "no ego_vehicle" << std::endl;
+        Simulation::close();
+    }
+    // std::vector<std::string> ego_route = Vehicle::getRoute(m_ego_name);
+    
     std::vector<std::string> targets;
-
-    // get ego vehicle pose, route, current edge
-    Pose ego_pose(Vehicle::getPosition(m_ego_name));
-    ego_pose.theta = Vehicle::getAngle(m_ego_name);
-    std::vector<std::string> ego_route = Vehicle::getRoute(m_ego_name);
 
     for (std::string& ped_id : Person::getIDList()) {
         std::string ped_edge = Person::getRoadID(ped_id);
@@ -42,9 +47,18 @@ std::vector<std::string> SumoSimulation::perception() {
 
 void SumoSimulation::controlEgoVehicle(const std::vector<std::string>& targets){
 
-    std::vector<double> acc_list;
-    double speed = Vehicle::getSpeed(m_ego_name);
+    double speed;
+    try {
+        speed = Vehicle::getSpeed(m_ego_name);
+    }
+    catch (libsumo::TraCIException& error) {
+        std::cout << "no ego_vehicle" << std::endl;
+        Simulation::close();
+    }
 
+    if (speed < m_v_yield_speed) return;
+
+    std::vector<double> acc_list;
 	for (const std::string &it : targets) {
         Risk &target = m_risks[it];
         bool is_decel_target = false; 
@@ -61,15 +75,17 @@ void SumoSimulation::controlEgoVehicle(const std::vector<std::string>& targets){
         }
 
         double a = (pow(m_v_yield_speed, 2.0) - pow(speed, 2.0))/(2.0*(target.distance-m_safety_margin));
+        std::cout << "ped: " << target.id << " dist: "<<  target.distance << " acc: " << a << std::endl;
         acc_list.emplace_back(a);
     }
 
+    if (acc_list.empty()) return;
+
     auto a_itr = min_element(acc_list.begin(), acc_list.end());
-    double acc = *a_itr;
+    double min_acc = *a_itr;
     // int decel_target = target.distanceance(acc_list.begin(), a_itr);
-    acc = (acc >= 0) ? std::min(acc, m_v_accel) : std::max(acc, -m_v_accel);
-    speed += acc*1.0;
-    std::cout << acc << std::endl;
+    std::cout << "speed: " << speed << " acc: " << min_acc << std::endl;
+    // speed += min_acc * m_delta_t;
     // if (speed <= m_v_yield_speed) {
     //     acc = 0.0;
     //  }
@@ -77,7 +93,14 @@ void SumoSimulation::controlEgoVehicle(const std::vector<std::string>& targets){
     //     acc = 0.0;
     // }
     
-    Vehicle::setAccel(m_ego_name, acc);
+    if (min_acc >= 0.0) {
+        min_acc = std::min(min_acc, m_v_max_accel);
+        Vehicle::setAcceleration(m_ego_name, min_acc, m_delta_t);
+    }
+    else {
+        min_acc = std::max(min_acc, m_v_max_decel);
+        Vehicle::setAcceleration(m_ego_name, min_acc, m_delta_t);
+    }
 }
 
 
@@ -95,8 +118,9 @@ void SumoSimulation::spawnEgoVehicle() {
 
     Vehicle::add("ego_vehicle", Route::getIDList()[0]);
     Vehicle::setColor("ego_vehicle", libsumo::TraCIColor(0, 200, 0));
-    Vehicle::setMaxSpeed("ego_vehicle", 50.0/3.6);
-    Vehicle::setAccel("ego_vehicle", 1.5*9.8);
+    Vehicle::setMaxSpeed("ego_vehicle", m_v_max_speed);
+    Vehicle::setAccel("ego_vehicle", m_v_max_accel);
+    Vehicle::setDecel("ego_vehicle", -m_v_max_decel);
 }
 
 void SumoSimulation::spawnPedestrians() {
@@ -121,7 +145,6 @@ void SumoSimulation::spawnPedestrians() {
         for (int i=0; i<lane_length; i+=(int)interval) {
             double position = i + position_noise(mt);
             std::string ped_id = lane_id + "-" + std::to_string(i);
-            std::cout << position << ", " << lane_length << std::endl;
             Person::add(ped_id, edge, position);
             Person::setColor(ped_id, libsumo::TraCIColor(0, 0, 200));
             Person::appendWalkingStage(ped_id, {edge}, 0);
@@ -133,7 +156,8 @@ void SumoSimulation::spawnPedestrians() {
 
 
 int main(int argc, char* argv[]) {
-    Simulation::start({"sumo-gui", "-c", "straight_random.sumocfg"});
+    Simulation::start({"sumo-gui", "-c", "straight.sumocfg"});
+    // Simulation::start({"sumo-gui", "-r", "./straight.net.xml"});
     auto sim = SumoSimulation();
     sim.spawnPedestrians();
     sim.spawnEgoVehicle();
