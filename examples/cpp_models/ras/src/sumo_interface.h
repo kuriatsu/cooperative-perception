@@ -28,6 +28,9 @@ public:
     void controlEgoVehicle(const std::vector<std::string>& targets);
     void spawnPedestrians();
     void spawnEgoVehicle();
+    void step();
+    void start();
+    void close();
     
 private:
     std::unordered_map<std::string, Risk> m_risks;

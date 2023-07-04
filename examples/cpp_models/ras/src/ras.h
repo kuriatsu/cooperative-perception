@@ -38,6 +38,14 @@ protected:
 	mutable std::vector<ValuedAction> mdp_policy;
 	OperatorModel operator_model;
 	
+private:
+	// reward
+	int r_false_positive = -500;
+	int r_false_negative = -1000;
+	int r_eff = -1000;
+	int r_comf = -1;
+	int r_request = -1;
+
 public:
 	// state transition parameter
 	int planning_horizon;
@@ -45,19 +53,11 @@ public:
 	double ideal_speed;
 	double ordinary_G;
 	int safety_margin;
-    double delta_t;
-
-	// recognition likelihood of the ADS
-	std::vector<double> risk_recog;
-	std::vector<int> risk_pose;
 	double risk_thresh;
+
+	// recognition likelihood of the ADSbelief(belief);::vector<double> risk_recog;
+	std::vector<Risk> risks;
 	
-	// reward
-	int r_false_positive;
-	int r_false_negative;
-	int r_eff;
-	int r_comf;
-	int r_request;
 	
 	enum { NO_ACTION = 2*2, REQUEST = 0, RECOG = 2 }; // action TODO define based on the given situation
 	// enum { NO_ACTION = risk_pose.size()*2, REQUEST = 0, RECOG = risk_pose.size() }; // action
@@ -66,7 +66,15 @@ public:
 	enum { NO_RISK = 0, RISK = 1, NONE = 2}; // risk_state, ego_recognition
 
 public:
-	Ras();
+	Ras(int planning_horizon, double ideal_speed, double yield_speed, double ordinary_G, double safety_margin, double risk_thresh);
+    Ras::Ras() :
+        planning_horizon(150),
+        ideal_speed(11.2),
+        yield_speed(2.8),
+        ordinary_G(0.2),
+        safety_margin(5),
+        risk_thresh(0.5){ 
+        }
 
 	// Essential
 	int NumActions() const;

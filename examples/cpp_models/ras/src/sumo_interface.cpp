@@ -155,6 +155,19 @@ void SumoInterface::spawnPedestrians() {
 }
 
 
+void SumoInterface::step() {
+    Simulation::Step();
+}
+
+void SumoInterface::close() {
+    Simulation::close();
+}
+
+void SumoInterface::stat() {
+    Simulation::start({"sumo-gui", "-c", "straight.sumocfg"});
+    // Simulation::start({"sumo-gui", "-r", "./straight.net.xml"});
+}
+
 /*
 int main(int argc, char* argv[]) {
     Simulation::start({"sumo-gui", "-c", "straight.sumocfg"});
@@ -167,8 +180,6 @@ int main(int argc, char* argv[]) {
         Simulation::step();
         auto targets = sim.perception();
         sim.controlEgoVehicle(targets);
-    }
-
     Simulation::close();
 }
 */

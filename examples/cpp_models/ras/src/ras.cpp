@@ -34,26 +34,14 @@ string RasState::text() const {
            "weight:" + to_string(weight) + "\n";
 }
 
-Ras::Ras() {
-	planning_horizon = 150;
-	ideal_speed = 11.2;
-	yield_speed = 2.8;
-	ordinary_G = 0.2;
-	safety_margin = 5;
-    delta_t = 1.0;
-
-	vector<double> _risk_recog{0.45, 0.45};
-	vector<int> _risk_pose{80, 100};
-	risk_recog = _risk_recog;
-	risk_pose = _risk_pose;
-	risk_thresh = 0.5;
-
-	r_false_positive = -500;
-	r_false_negative = -1000;
-	r_eff = -1000;
-	r_comf = -1;
-	r_request = -1;
-}
+Ras::Ras() :
+	planning_horizon(150),
+	ideal_speed(11.2),
+	yield_speed(2.8),
+	ordinary_G(0.2),
+	safety_margin(5),
+	risk_thresh(0.5){ 
+    }
 
 int Ras::NumActions() const {
 	return 1 + risk_recog.size() * 2;
@@ -219,8 +207,9 @@ void Ras::EgoVehicleTransition(int& pose, double& speed, const vector<bool>& rec
 
     auto a_itr = min_element(acc_list.begin(), acc_list.end());
     double a = *a_itr;
+    int &delta_t = Globals::config.time_per_move;
     // int decel_target = distance(acc_list.begin(), a_itr);
-    speed += a*delta_t;
+    speed += a * delta_t;
     if (speed <= yield_speed) {
         speed =	yield_speed;
         a = 0.0;

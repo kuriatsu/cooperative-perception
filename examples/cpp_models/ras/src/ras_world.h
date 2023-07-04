@@ -7,7 +7,7 @@ using namespace despot;
 
 class RasWorld: public World {
 public:
-    SumoInterface sim;
+    SumoInterface sim();
 
 public:
     bool Connect();
