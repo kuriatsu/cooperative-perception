@@ -1,11 +1,6 @@
 #include "operator_model.h"
 #include <iostream>
 
-OperatorModel::OperatorModel(){
-	min_time = 3.0;
-	acc_time_min = 0.5;
-	acc_time_slope = 0.25;
-}
 
 OperatorModel::~OperatorModel(){
 }

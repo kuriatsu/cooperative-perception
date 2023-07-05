@@ -3,6 +3,7 @@
 #include <despot/interface/pomdp.h>
 #include <despot/core/mdp.h>
 #include "operator_model.h"
+#include "libgeometry.h"
 
 namespace despot {
 
@@ -13,17 +14,19 @@ public:
 	std::vector<bool> ego_recog;
 	int req_time;
 	int req_target;
+    std::vector<int> risk_pose;
 
 	// hidden state
 	std::vector<bool> risk_bin;
 
     RasState();
-    RasState(int _ego_pose, float _ego_speed, std::vector<bool> _ego_recog, int _req_time, int _req_target, std::vector<bool> _risk_bin) :
+    RasState(int _ego_pose, float _ego_speed, std::vector<bool> _ego_recog, int _req_time, int _req_target, std::vector<bool> _risk_bin, std::vector<int> _risk_pose) :
 		ego_pose(_ego_pose),
 		ego_speed(_ego_speed),
 		ego_recog(_ego_recog),
 		req_time(_req_time),
 		req_target(_req_target),
+		risk_pose(_risk_pose),
 		risk_bin(_risk_bin)	{
         }
 	~RasState();
@@ -48,33 +51,38 @@ private:
 
 public:
 	// state transition parameter
-	int planning_horizon;
-	double yield_speed;
-	double ideal_speed;
-	double ordinary_G;
-	int safety_margin;
-	double risk_thresh;
+	int m_planning_horizon;
+	double m_yield_speed;
+	double m_ideal_speed;
+	double m_ordinary_G;
+	int m_safety_margin;
+	double m_risk_thresh;
 
 	// recognition likelihood of the ADSbelief(belief);::vector<double> risk_recog;
-	std::vector<Risk> risks;
+	// std::vector<int> m_risk_positions;
 	
-	
-	enum { NO_ACTION = 2*2, REQUEST = 0, RECOG = 2 }; // action TODO define based on the given situation
-	// enum { NO_ACTION = risk_pose.size()*2, REQUEST = 0, RECOG = risk_pose.size() }; // action
-	enum { NO_TARGET = 2 }; // req_target
-	// enum { NO_TARGET = risk_pose.size()} // req_target TODO define based on the given situation
-	enum { NO_RISK = 0, RISK = 1, NONE = 2}; // risk_state, ego_recognition
+    int REQUEST = 0, NO_ACTION, RECOG; // action, request start index
+	enum { NO_RISK = 0, RISK = 1, NONE = 2}; // risk_state, ego_recognition, observation
 
 public:
-	Ras(int planning_horizon, double ideal_speed, double yield_speed, double ordinary_G, double safety_margin, double risk_thresh);
-    Ras::Ras() :
-        planning_horizon(150),
-        ideal_speed(11.2),
-        yield_speed(2.8),
-        ordinary_G(0.2),
-        safety_margin(5),
-        risk_thresh(0.5){ 
+	Ras(int planning_horizon, double ideal_speed, double yield_speed, double ordinary_G, double safety_margin, double risk_thresh) :
+        m_planning_horizon(planning_horizon),
+        m_ideal_speed(ideal_speed),
+        m_yield_speed(yield_speed),
+        m_ordinary_G(ordinary_G),
+        m_safety_margin(safety_margin),
+        m_risk_thresh(risk_thresh){ 
         }
+
+    Ras() :
+        m_planning_horizon(150),
+        m_ideal_speed(11.2),
+        m_yield_speed(2.8),
+        m_ordinary_G(0.2),
+        m_safety_margin(5),
+        m_risk_thresh(0.5){ 
+        }
+
 
 	// Essential
 	int NumActions() const;
@@ -95,6 +103,7 @@ public:
 	void Free(State* particle) const;
 	int NumActiveParticles() const;
 
+    std::vector<double> getRiskProb(const Belief& belief); 
 	void PrintState(const State& state, std::ostream& out = std::cout) const;
 	void PrintBelief(const Belief& belief, std::ostream& out = std::cout) const;
 	void PrintObs(const State& state, OBS_TYPE observation, std::ostream& out = std::cout) const;

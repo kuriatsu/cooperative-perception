@@ -1,6 +1,7 @@
 #include <despot/planner.h>
 #include "ras.h"
 #include "ras_world.h"
+#include "operator_model.h"
 
 using namespace despot;
 
@@ -9,13 +10,17 @@ public:
 	MyPlanner() {
 	}
 
+    OperatorModel m_operator_model(3.0, 0.5, 0.25);
+
 	DSPOMDP* InitializeModel(option::Option* options) {
 		DSPOMDP* model = new Ras();
+        model->operator_model = m_operator_model;
 		return model;
 	}
 
 	World* InitializeWorld(std::string& world_type, DSPOMDP* model, option::Option* options) {
         SumoWorld* world = new RasWorld();
+        world->operator_model = operator_model;
         world->connect();
         world->Initialize();
         world_type = "simulator";
@@ -42,9 +47,8 @@ public:
 
         sim.step();
         auto targets = sim.perception();
-        sim.controlEgoVehicle(targets);
-
-        Belief* belief = model->InitialBelief(world->GetCurrentState(), belief_type);
+        
+        Belief* belief = model->InitialBelief(world->GetCurrentState(targets), belief_type);
         assert(belief != NULL);
         solver->belief(belief);
 
@@ -64,6 +68,9 @@ public:
         solver->BeliefUpdate(action, obs);
         double end_t = get_time_second();
         double update_time = end_t - start_t;
+
+        world->updateBeliefState(action, obs, model->getRiskProb(solver->belief);
+        sim.controlEgoVehicle(targets);
     }
 
     

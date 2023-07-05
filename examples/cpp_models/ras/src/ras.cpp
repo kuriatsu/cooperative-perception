@@ -13,12 +13,11 @@ namespace despot {
 RasState::RasState() {
 	ego_pose = 0;
 	ego_speed = 11.2;
-	vector<bool> _ego_recog{Ras::NO_RISK, Ras::NO_RISK}; //TODO define based on the given situation
-	ego_recog = _ego_recog;
+	vector<bool> ego_recog{Ras::NO_RISK, Ras::NO_RISK}; //TODO define based on the given situation
 	req_time = 0;
-	req_target = Ras::NO_TARGET;
-	vector<bool> _risk_bin{Ras::RISK, Ras::NO_RISK}; //TODO define based on the given situation
-	risk_bin = _risk_bin;
+	req_target = Ras::NO_ACTION;
+    vector<int> risk_pose{80, 100};
+	vector<bool> risk_bin{Ras::RISK, Ras::NO_RISK}; //TODO define based on the given situation
 }
 
 RasState::~RasState() {
@@ -34,17 +33,9 @@ string RasState::text() const {
            "weight:" + to_string(weight) + "\n";
 }
 
-Ras::Ras() :
-	planning_horizon(150),
-	ideal_speed(11.2),
-	yield_speed(2.8),
-	ordinary_G(0.2),
-	safety_margin(5),
-	risk_thresh(0.5){ 
-    }
 
 int Ras::NumActions() const {
-	return 1 + risk_recog.size() * 2;
+	return 1 + risks->size() * 2;
 }
 
 bool Ras::Step(State& state, double rand_num, ACT_TYPE action, double& reward, OBS_TYPE& obs)  const {
@@ -240,7 +231,7 @@ State* Ras::CreateStartState(string type) const {
 			ideal_speed, // ego_speed
 			_ego_recog, // ego_recog
 			0, // req_time
-			NO_TARGET, // req_target
+			NO_ACTION, // req_target
 			_risk_bin); // target_risk
 }
 
@@ -251,11 +242,14 @@ Belief* Ras::InitialBelief(const State* start, string type) const {
 		exit(1);
 	}
 
+    // action index
+    int risk_num = start->risk_bin.size();
+    RECOG = risk_num+1;
+    NO_ACTION = risk_num;
+
 	// recognition likelihood of the automated system
-	// vector<vector<bool>> risk_bin_list(pow(risk_recog.size(), 2.0), vector<bool>(risk_recog.size()));
-    vector<bool> buf(risk_recog.size(), false);
+    vector<bool> buf(risk_size, false);
 	vector<vector<bool>> risk_bin_list;
-	// vector<vector<bool>> risk_bin_list(1, buf);
 	GetBinProduct(risk_bin_list, buf, 0); 
 	vector<State*> particles;
 
@@ -265,7 +259,7 @@ Belief* Ras::InitialBelief(const State* start, string type) const {
 		// set ego_recog and risk_bin based on threshold
 		for (auto col=row.begin(), end=row.end(); col!=end; col++) {
 			int idx = distance(row.begin(), col);
-			_ego_recog.emplace_back((risk_recog[idx] < risk_thresh) ? NO_RISK : RISK);
+			_ego_recog.emplace_back((risk_recog[idx] < m_risk_thresh) ? NO_RISK : RISK);
 			if (*col) {
 				prob *= risk_recog[idx]; 
 				_risk_bin.emplace_back(RISK);
@@ -278,12 +272,12 @@ Belief* Ras::InitialBelief(const State* start, string type) const {
 
         // TODO define based on the given sitiation
 		RasState* p = static_cast<RasState*>(Allocate(-1, prob));  
-		p->ego_pose = 0;
-		p->ego_speed = ideal_speed;
-		p->ego_recog = _ego_recog;
-		p->req_time = 0;
-	  	p->req_target = NO_TARGET;
-		p->risk_bin = _risk_bin;
+		p->ego_pose = start->ego_pose;
+		p->ego_speed = start->ego_speed;
+		p->ego_recog = start->ego_recog;
+		p->req_time = start->req_time;
+	  	p->req_target = start->req_target;
+		p->risk_bin = start->risk_bin;
         cout << *p << endl;
 		particles.push_back(p);
 	}
@@ -337,7 +331,22 @@ int Ras::NumActiveParticles() const {
 	return memory_pool.num_allocated();
 }
 
-void Ras::PrintState(const State& state, ostream& out) const {
+std::vector<double> Ras::getRiskProb(const Belief& belief) {
+	const vector<State*>& particles = static_cast<const ParticleBelief&>(belief).particles();
+	
+	// double status = 0;
+	vector<double> probs(risk_pose.size());
+	for (int i = 0; i < particles.size(); i++) {
+		State* particle = particles[i];
+		const RasState* state = static_cast<const RasState*>(particle);
+		for (auto itr=state->risk_bin.begin(), end=state->risk_bin.end(); itr!=end; itr++) {
+			probs[distance(state->risk_bin.begin(), itr)] += *itr * particle-> weight;
+		}
+	}
+    return probs;
+}
+
+void Ras::printState(const State& state, ostream& out) const {
 	const RasState& ras_state = static_cast<const RasState&>(state);
 	out << "ego_pose : " << ras_state.ego_pose << "\n"
 		<< "ego_speed : " << ras_state.ego_speed << "\n"

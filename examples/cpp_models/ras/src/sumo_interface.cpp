@@ -154,6 +154,9 @@ void SumoInterface::spawnPedestrians() {
     }
 }
 
+double SumoInterface::getEgoSpeed() {
+    return Vehicle::getSpeed(m_ego_name);
+}
 
 void SumoInterface::step() {
     Simulation::Step();
