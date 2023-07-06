@@ -44,7 +44,8 @@ bool Ras::Step(State& state, double rand_num, ACT_TYPE action, double& reward, O
 	reward = 0.0;
 
 	// ego state trantion
-	EgoVehicleTransition(state_curr.ego_pose, state_curr.ego_speed, state_prev.ego_recog, risk_pose, action);
+	// EgoVehicleTransition(state_curr.ego_pose, state_curr.ego_speed, state_prev.ego_recog, risk_pose, action);
+    vehicle_model.getTransition(state_curr.ego_speed, state_curr.ego_pose, state_prev.ego_recog, risk_pose);
 
 	// when action = change recog state 
 	if (RECOG <= action && action < NO_ACTION) {
@@ -150,7 +151,7 @@ int Ras::CalcReward(const State& state_prev, const State& state_curr, const vect
 	return reward;
 }
 
-
+/*
 void Ras::EgoVehicleTransition(int& pose, double& speed, const vector<bool>& recog_list, const vector<int>& target_poses, const ACT_TYPE& action) const {
 	vector<double> acc_list;
 
@@ -213,7 +214,7 @@ void Ras::EgoVehicleTransition(int& pose, double& speed, const vector<bool>& rec
     pose += speed * delta_t + pow(0.5*a*delta_t, 2.0);
     return;
 }
-
+*/
 
 State* Ras::CreateStartState(string type) const {
 	

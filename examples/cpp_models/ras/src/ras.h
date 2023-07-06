@@ -4,6 +4,7 @@
 #include <despot/core/mdp.h>
 #include "operator_model.h"
 #include "libgeometry.h"
+#include "vehicle_model.h"
 
 namespace despot {
 

@@ -2,7 +2,7 @@
 
 class OperatorModel {
 public:
-    int min_time;
+    double min_time;
     double acc_time_min;
     double acc_time_slope;
 

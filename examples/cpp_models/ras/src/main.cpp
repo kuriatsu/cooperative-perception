@@ -2,6 +2,7 @@
 #include "ras.h"
 #include "ras_world.h"
 #include "operator_model.h"
+#include "sumo_interface.h"
 
 using namespace despot;
 
@@ -10,7 +11,26 @@ public:
 	MyPlanner() {
 	}
 
-    OperatorModel m_operator_model(3.0, 0.5, 0.25);
+    // params
+    // operator_model
+    double min_time = 3.0;
+    double acc_time_min = 0.5;
+    double acc_time_slope = 0.25;
+
+    // vehicle model
+    double max_speed = 11.2;
+    double yield_speed = 2.8;
+    double max_accel = 0.15 * 9.8;
+    double max_decel = 0.2 * 9.8;
+    int safety_margin = 5;
+    double delta_t = Globals::config.time_per_move;
+
+    // sim model
+    double obstacle_density = 0.1 // 1ppl per 1m
+    std::vector<double> perception_range = {50, 150} // left+right range, forward range
+
+    OperatorModel m_operator_model(min_time, acc_time_min, acc_time_slope);
+    VehicleModel m_vehicle_model(max_speed, yield_speed, max_accel, max_decel, safety_margin, delta_t);
 
 	DSPOMDP* InitializeModel(option::Option* options) {
 		DSPOMDP* model = new Ras();
@@ -21,6 +41,7 @@ public:
 	World* InitializeWorld(std::string& world_type, DSPOMDP* model, option::Option* options) {
         SumoWorld* world = new RasWorld();
         world->operator_model = operator_model;
+        world->sim = SumoSimulation(max_speed, yield_speed, max_accel, max_decel, safety_margin, delta_t, obstacle_density, perception_range);
         world->connect();
         world->Initialize();
         world_type = "simulator";
@@ -45,8 +66,8 @@ public:
     bool RunStep(Solver* solver, World* world, Logger* logger) {
         logger->CheckTargetTime();
 
-        sim.step();
-        auto targets = sim.perception();
+        world->sim.step();
+        auto targets = world->sim.perception();
         
         Belief* belief = model->InitialBelief(world->GetCurrentState(targets), belief_type);
         assert(belief != NULL);
@@ -70,7 +91,7 @@ public:
         double update_time = end_t - start_t;
 
         world->updateBeliefState(action, obs, model->getRiskProb(solver->belief);
-        sim.controlEgoVehicle(targets);
+        world->sim.controlEgoVehicle(targets);
     }
 
     

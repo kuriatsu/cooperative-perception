@@ -56,7 +56,7 @@ void SumoInterface::controlEgoVehicle(const std::vector<std::string>& targets){
         Simulation::close();
     }
 
-    if (speed < m_v_yield_speed) return;
+    if (speed < m_yield_speed) return;
 
     std::vector<double> acc_list;
 	for (const std::string &it : targets) {
@@ -74,7 +74,7 @@ void SumoInterface::controlEgoVehicle(const std::vector<std::string>& targets){
             continue;
         }
 
-        double a = (pow(m_v_yield_speed, 2.0) - pow(speed, 2.0))/(2.0*(target.distance-m_safety_margin));
+        double a = (pow(m_yield_speed, 2.0) - pow(speed, 2.0))/(2.0*(target.distance-m_safety_margin));
         std::cout << "ped: " << target.id << " dist: "<<  target.distance << " acc: " << a << std::endl;
         acc_list.emplace_back(a);
     }
@@ -86,19 +86,19 @@ void SumoInterface::controlEgoVehicle(const std::vector<std::string>& targets){
     // int decel_target = target.distanceance(acc_list.begin(), a_itr);
     std::cout << "speed: " << speed << " acc: " << min_acc << std::endl;
     // speed += min_acc * m_delta_t;
-    // if (speed <= m_v_yield_speed) {
+    // if (speed <= m_yield_speed) {
     //     acc = 0.0;
     //  }
-    // else if (speed >= m_v_max_speed) {
+    // else if (speed >= m_max_speed) {
     //     acc = 0.0;
     // }
     
     if (min_acc >= 0.0) {
-        min_acc = std::min(min_acc, m_v_max_accel);
+        min_acc = std::min(min_acc, m_max_accel);
         Vehicle::setAcceleration(m_ego_name, min_acc, m_delta_t);
     }
     else {
-        min_acc = std::max(min_acc, m_v_max_decel);
+        min_acc = std::max(min_acc, m_max_decel);
         Vehicle::setAcceleration(m_ego_name, min_acc, m_delta_t);
     }
 }
@@ -118,9 +118,9 @@ void SumoInterface::spawnEgoVehicle() {
 
     Vehicle::add("ego_vehicle", Route::getIDList()[0]);
     Vehicle::setColor("ego_vehicle", libsumo::TraCIColor(0, 200, 0));
-    Vehicle::setMaxSpeed("ego_vehicle", m_v_max_speed);
-    Vehicle::setAccel("ego_vehicle", m_v_max_accel);
-    Vehicle::setDecel("ego_vehicle", -m_v_max_decel);
+    Vehicle::setMaxSpeed("ego_vehicle", m_max_speed);
+    Vehicle::setAccel("ego_vehicle", m_max_accel);
+    Vehicle::setDecel("ego_vehicle", -m_max_decel);
 }
 
 void SumoInterface::spawnPedestrians() {

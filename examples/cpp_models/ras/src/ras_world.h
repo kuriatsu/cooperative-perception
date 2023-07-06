@@ -15,7 +15,7 @@ private:
     int NONE = 2;
 
 public:
-    SumoInterface sim();
+    SumoInterface sim;
     OperatorModel operator_model;
 
 public:
