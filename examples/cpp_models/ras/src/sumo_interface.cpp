@@ -1,11 +1,7 @@
-#include "play_sumo.h"
+#include "sumo_interface.h"
 
 using namespace libtraci;
 
-
-SumoInterface::SumoInterface() {
-    return;
-}
 
 std::vector<std::string> SumoInterface::perception() {
 
@@ -159,14 +155,14 @@ double SumoInterface::getEgoSpeed() {
 }
 
 void SumoInterface::step() {
-    Simulation::Step();
+    Simulation::step();
 }
 
 void SumoInterface::close() {
     Simulation::close();
 }
 
-void SumoInterface::stat() {
+void SumoInterface::start() {
     Simulation::start({"sumo-gui", "-c", "straight.sumocfg"});
     // Simulation::start({"sumo-gui", "-r", "./straight.net.xml"});
 }

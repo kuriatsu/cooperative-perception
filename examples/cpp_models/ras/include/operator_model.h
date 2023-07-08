@@ -7,7 +7,7 @@ public:
     double acc_time_slope;
 
 public:
-    OperatorModel();
+    OperatorModel():
         min_time(3.0),
         acc_time_min(0.5),
         acc_time_slope(0.25){

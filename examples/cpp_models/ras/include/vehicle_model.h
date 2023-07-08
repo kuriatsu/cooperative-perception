@@ -1,6 +1,10 @@
 #pragma once
+#include <vector>
+#include <iostream>
+#include <cmath>
+#include <algorithm>
 
-Class VehicleModel {
+class VehicleModel {
 public:
     double m_max_speed;
     double m_yield_speed;
@@ -15,7 +19,7 @@ public:
         m_yield_speed(2.8),
         m_max_accel(0.15*9.8),
         m_max_decel(-0.2*9.8),
-        m_safety_margin(5)
+        m_safety_margin(5),
         m_delta_t(1.0) {
         }
 
@@ -24,10 +28,11 @@ public:
         m_yield_speed(yield_speed),
         m_max_accel(max_accel),
         m_max_decel(max_decel),
-        m_safety_margin(safety_margin)
+        m_safety_margin(safety_margin),
         m_delta_t(delta_t) {
         }
 
     double getAccel(const double speed, const std::vector<bool>& recog_list, const std::vector<int>& target_poses);
 
-    double getTransition(double& speed, int& pose, const std::vector<bool>& recog_list, const std::vector<int>& target_poses); 
+    void getTransition(double& speed, int& pose, const std::vector<bool>& recog_list, const std::vector<int>& target_poses); 
+};

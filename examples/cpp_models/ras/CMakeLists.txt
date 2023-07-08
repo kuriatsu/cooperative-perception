@@ -1,19 +1,30 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(despot)
+project(ras)
 
-add_executable("${PROJECT_NAME}_ras"
-	main.cpp
-	ras.cpp
-    ras.h
-	operator_model.cpp
-    operator_model.h
+add_library(operator_model SHARED src/operator_model.cpp)
+add_library(vehicle_model SHARED src/vehicle_model.cpp)
+add_library(sumo_interface SHARED src/sumo_interface.cpp)
+add_library(target_select SHARED src/target_select.cpp)
+add_library(ras_world SHARED src/ras_world.cpp)
+
+
+add_executable("${PROJECT_NAME}"
+	src/main.cpp
 	)
 
-target_link_libraries("${PROJECT_NAME}_ras"
-	"${PROJECT_NAME}"
+
+target_link_libraries("${PROJECT_NAME}"
+        operator_model
+        vehicle_model
+        sumo_interface
+        target_select
+        ras_world
 	)
 
-install(TARGETS "${PROJECT_NAME}_ras"
-	RUNTIME DESTINATION "{BINARY_INSTALL_PATH}"
-	)
+target_include_directories(operator_model PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
+target_include_directories(vehicle_model PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
+target_include_directories(sumo_interface PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
+target_include_directories(target_select PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
+target_include_directories(ras_world PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
+target_include_directories("${PROJECT_NAME}" PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
 

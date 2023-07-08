@@ -9,7 +9,7 @@
 
 using namespace libtraci;
 
-class SumoSimulation {
+class SumoInterface {
 public:
     double m_max_speed = 11.2;
     double m_yield_speed = 2.8;
@@ -24,7 +24,7 @@ public:
     double m_risk_thresh = 0.5;
 
 public:
-    SumoSimulation():
+    SumoInterface():
         m_max_speed(11.2),
         m_yield_speed(2.8),
         m_max_accel(0.15*9.8),
@@ -35,7 +35,7 @@ public:
         m_perception_range({50, 150}) {
     }
 
-    SumoSimulation(double max_speed, double yield_speed, double max_accel, double max_decel, int safety_margin, double delta_t, double density, std::vector<double> perception_range):
+    SumoInterface(double max_speed, double yield_speed, double max_accel, double max_decel, int safety_margin, double delta_t, double density, std::vector<double> perception_range):
         m_max_speed(max_speed),
         m_yield_speed(yield_speed),
         m_max_accel(max_accel),
@@ -50,6 +50,7 @@ public:
     void controlEgoVehicle(const std::vector<std::string>& targets);
     void spawnPedestrians();
     void spawnEgoVehicle();
+    double getEgoSpeed();
     void step();
     void start();
     void close();

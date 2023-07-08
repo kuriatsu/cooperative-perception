@@ -1,6 +1,5 @@
-#include "operator_model.h"
 #include <iostream>
-
+#include <operator_model.h>
 
 OperatorModel::~OperatorModel(){
 }
