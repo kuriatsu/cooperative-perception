@@ -8,7 +8,7 @@
 
 namespace despot {
 
-class RasState : public State {
+class TAState : public State {
 public:
 	int ego_pose;
     double ego_speed;
@@ -20,8 +20,11 @@ public:
 	// hidden state
 	std::vector<bool> risk_bin;
 
-    RasState();
-    RasState(int _ego_pose, float _ego_speed, std::vector<bool> _ego_recog, int _req_time, int _req_target, std::vector<bool> _risk_bin, std::vector<int> _risk_pose) :
+    TAState(){
+
+    }
+
+    TAState(int _ego_pose, float _ego_speed, std::vector<bool> _ego_recog, int _req_time, int _req_target, std::vector<bool> _risk_bin, std::vector<int> _risk_pose) :
 		ego_pose(_ego_pose),
 		ego_speed(_ego_speed),
 		ego_recog(_ego_recog),
@@ -30,61 +33,46 @@ public:
 		risk_pose(_risk_pose),
 		risk_bin(_risk_bin)	{
         }
-	~RasState();
+	~TAState();
 	
 	std::string text() const;
 };
 
-class Ras: public DSPOMDP {
+class TaskAllocation: public DSPOMDP {
 protected:
-	mutable MemoryPool<RasState> memory_pool;
-	std::vector<RasState*> states;
+	mutable MemoryPool<TAState>      memory_pool;
+	std::vector<TAState*>            states;
 	mutable std::vector<ValuedAction> mdp_policy;
-	OperatorModel operator_model;
+	OperatorModel                     operator_model;
 	
 private:
 	// reward
 	int r_false_positive = -500;
 	int r_false_negative = -1000;
-	int r_eff = -1000;
-	int r_comf = -1;
-	int r_request = -1;
+	int r_eff            = -1000;
+	int r_comf           = -1;
+	int r_request        = -1;
 
 public:
+    TaskAllocation(int planning_horizon, double ideal_speed, double yield_speed, double risk_thresh, VehicleModel& vehicle_model, OperatorModel& operator_model); 
+    TaskAllocation();
+
 	// state transition parameter
-	int m_planning_horizon;
+	int    m_planning_horizon;
 	double m_yield_speed;
 	double m_ideal_speed;
-	double m_ordinary_G;
-	int m_safety_margin;
 	double m_risk_thresh;
 
 	// recognition likelihood of the ADSbelief(belief);::vector<double> risk_recog;
 	// std::vector<int> m_risk_positions;
+
+    VehicleModel m_vehicle_model;
+    OperatorModel m_operator_model;
 	
     int REQUEST = 0, NO_ACTION, RECOG; // action, request start index
 	enum { NO_RISK = 0, RISK = 1, NONE = 2}; // risk_state, ego_recognition, observation
 
 public:
-	Ras(int planning_horizon, double ideal_speed, double yield_speed, double ordinary_G, double safety_margin, double risk_thresh) :
-        m_planning_horizon(planning_horizon),
-        m_ideal_speed(ideal_speed),
-        m_yield_speed(yield_speed),
-        m_ordinary_G(ordinary_G),
-        m_safety_margin(safety_margin),
-        m_risk_thresh(risk_thresh){ 
-        }
-
-    Ras() :
-        m_planning_horizon(150),
-        m_ideal_speed(11.2),
-        m_yield_speed(2.8),
-        m_ordinary_G(0.2),
-        m_safety_margin(5),
-        m_risk_thresh(0.5){ 
-        }
-
-
 	// Essential
 	int NumActions() const;
 	bool Step(State& state, double rand_num, ACT_TYPE action, double& reward, OBS_TYPE& obs) const;
@@ -112,7 +100,7 @@ public:
 
 protected:
 	void EgoVehicleTransition(int& pose, double& speed, const std::vector<bool>& recog_list, const std::vector<int>& target_poses, const ACT_TYPE& action) const ;
-	int CalcReward(const State& state_prev, const State& state_curr, const std::vector<int>& risk_poses, const ACT_TYPE& action) const;
+	int CalcReward(const State& state_prev, const State& state_curr, const ACT_TYPE& action) const;
     void GetBinProduct(std::vector<std::vector<bool>>& out_list, std::vector<bool> buf, int row) const ;
 };
 

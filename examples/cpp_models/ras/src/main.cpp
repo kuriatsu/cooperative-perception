@@ -12,6 +12,8 @@ public:
 	}
 
     // params
+    int planning_horizon = 150;
+    double risk_thresh = 0.5;
     // operator_model
     double min_time = 3.0;
     double acc_time_min = 0.5;
@@ -29,12 +31,11 @@ public:
     double obstacle_density = 0.1 // 1ppl per 1m
     std::vector<double> perception_range = {50, 150} // left+right range, forward range
 
-    OperatorModel m_operator_model(min_time, acc_time_min, acc_time_slope);
-    VehicleModel m_vehicle_model(max_speed, yield_speed, max_accel, max_decel, safety_margin, delta_t);
+    OperatorModel operator_model(min_time, acc_time_min, acc_time_slope);
+    VehicleModel vehicle_model(max_speed, yield_speed, max_accel, max_decel, safety_margin, delta_t);
 
 	DSPOMDP* InitializeModel(option::Option* options) {
-		DSPOMDP* model = new Ras();
-        model->operator_model = m_operator_model;
+		DSPOMDP* model = new TaskAllocation(planning_horizon, max_speed, yield_speed, risk_thresh, vehicle_model, operator_model);
 		return model;
 	}
 
