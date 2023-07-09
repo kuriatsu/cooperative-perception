@@ -154,6 +154,18 @@ double SumoInterface::getEgoSpeed() {
     return Vehicle::getSpeed(m_ego_name);
 }
 
+Risk* SumoInterface::getRisk(std::string id){
+    return &m_risks[id];
+}
+
+std::vector<Risk> SumoInterface::getRisk(std::vector<std::string> ids){
+    std::vector<Risk> out_list;
+    for (const auto& id : ids) {
+        out_list.emplace_back(m_risks[id]);
+    }
+    return out_list;
+}
+
 void SumoInterface::step() {
     Simulation::step();
 }

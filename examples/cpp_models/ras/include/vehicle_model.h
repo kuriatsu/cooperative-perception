@@ -32,7 +32,7 @@ public:
         m_delta_t(delta_t) {
         }
 
-    double getAccel(const double speed, const std::vector<bool>& recog_list, const std::vector<int>& target_poses);
+    double getAccel(const double speed, const std::vector<bool>& recog_list, const std::vector<int>& target_poses) const;
 
-    void getTransition(double& speed, int& pose, const std::vector<bool>& recog_list, const std::vector<int>& target_poses); 
+    void getTransition(double& speed, int& pose, const std::vector<bool>& recog_list, const std::vector<int>& target_poses) const; 
 };

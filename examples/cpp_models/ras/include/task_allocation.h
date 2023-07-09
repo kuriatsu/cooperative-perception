@@ -54,20 +54,21 @@ private:
 	int r_request        = -1;
 
 public:
-    TaskAllocation(int planning_horizon, double ideal_speed, double yield_speed, double risk_thresh, VehicleModel& vehicle_model, OperatorModel& operator_model); 
+    TaskAllocation(int planning_horizon, double ideal_speed, double yield_speed, double risk_thresh, VehicleModel* vehicle_model, OperatorModel* operator_model); 
     TaskAllocation();
 
 	// state transition parameter
 	int    m_planning_horizon;
 	double m_yield_speed;
-	double m_ideal_speed;
+	double m_max_speed;
 	double m_risk_thresh;
 
 	// recognition likelihood of the ADSbelief(belief);::vector<double> risk_recog;
 	// std::vector<int> m_risk_positions;
 
-    VehicleModel m_vehicle_model;
-    OperatorModel m_operator_model;
+    VehicleModel* m_vehicle_model;
+    OperatorModel* m_operator_model;
+    TAState *m_start_state;
 	
     int REQUEST = 0, NO_ACTION, RECOG; // action, request start index
 	enum { NO_RISK = 0, RISK = 1, NONE = 2}; // risk_state, ego_recognition, observation

@@ -1,6 +1,6 @@
 #include "vehicle_model.h"
 
-double VehicleModel::getAccel(const double speed, const std::vector<bool>& recog_list, const std::vector<int>& target_poses) {
+double VehicleModel::getAccel(const double speed, const std::vector<bool>& recog_list, const std::vector<int>& target_poses) const {
 
     if (speed < m_yield_speed) return 0.0;
 
@@ -35,7 +35,7 @@ double VehicleModel::getAccel(const double speed, const std::vector<bool>& recog
 }
 
 
-void VehicleModel::getTransition(double& speed, int& pose, const std::vector<bool>& recog_list, const std::vector<int>& target_poses) {
+void VehicleModel::getTransition(double& speed, int& pose, const std::vector<bool>& recog_list, const std::vector<int>& target_poses) const {
 
     double a = getAccel(speed, recog_list, target_poses);
     // int decel_target = distance(acc_list.begin(), a_itr);

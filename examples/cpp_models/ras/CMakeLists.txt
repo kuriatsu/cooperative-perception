@@ -16,7 +16,7 @@ target_include_directories(ras_world PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
 include_directories(../../../include)
 link_directories(../../../build)
 
-target_link_libraries(task_allocation despot operator_model vehicle_model)
+target_link_libraries(task_allocation operator_model vehicle_model)
 
 add_executable("${PROJECT_NAME}"
 	src/main.cpp

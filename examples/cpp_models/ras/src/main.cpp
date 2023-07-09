@@ -1,5 +1,5 @@
 #include <despot/planner.h>
-#include "ras.h"
+#include "task_allocation.h"
 #include "ras_world.h"
 #include "operator_model.h"
 #include "sumo_interface.h"
@@ -31,18 +31,18 @@ public:
     double obstacle_density = 0.1 // 1ppl per 1m
     std::vector<double> perception_range = {50, 150} // left+right range, forward range
 
-    OperatorModel operator_model(min_time, acc_time_min, acc_time_slope);
+    OperatorModel operator_model = new OperatorModel(min_time, acc_time_min, acc_time_slope);
     VehicleModel vehicle_model(max_speed, yield_speed, max_accel, max_decel, safety_margin, delta_t);
 
 	DSPOMDP* InitializeModel(option::Option* options) {
-		DSPOMDP* model = new TaskAllocation(planning_horizon, max_speed, yield_speed, risk_thresh, vehicle_model, operator_model);
+		DSPOMDP* model = new TaskAllocation(planning_horizon, max_speed, yield_speed, risk_thresh, vehicle_model, *operator_model);
 		return model;
 	}
 
 	World* InitializeWorld(std::string& world_type, DSPOMDP* model, option::Option* options) {
         SumoWorld* world = new RasWorld();
         world->operator_model = operator_model;
-        world->sim = SumoSimulation(max_speed, yield_speed, max_accel, max_decel, safety_margin, delta_t, obstacle_density, perception_range);
+        world->sim = new SumoSimulation(max_speed, yield_speed, max_accel, max_decel, safety_margin, delta_t, obstacle_density, perception_range);
         world->connect();
         world->Initialize();
         world_type = "simulator";
@@ -69,8 +69,15 @@ public:
 
         world->sim.step();
         auto targets = world->sim.perception();
-        
-        Belief* belief = model->InitialBelief(world->GetCurrentState(targets), belief_type);
+
+        State* start_state = world->GetCurrentState(targets);
+        model->m_start_state = static_cast<TAState*>(start_state);
+        model->RECOG = start_state->risk_bin.size()+1;
+        world->RECOG = model->RECOG;
+        model->NO_ACTION = start_state->risk_bin.size();
+        world->NO_ACTION = model->NO_ACTION;
+
+        Belief* belief = model->InitialBelief(start_state, belief_type);
         assert(belief != NULL);
         solver->belief(belief);
 
