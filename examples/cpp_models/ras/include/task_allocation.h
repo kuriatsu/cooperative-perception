@@ -93,7 +93,8 @@ public:
 	void Free(State* particle) const;
 	int NumActiveParticles() const;
 
-    std::vector<double> getRiskProb(const Belief& belief); 
+    void updateCurrentState(State* state);
+    std::vector<double> getRiskProb(const Belief* belief); 
 	void PrintState(const State& state, std::ostream& out = std::cout) const;
 	void PrintBelief(const Belief& belief, std::ostream& out = std::cout) const;
 	void PrintObs(const State& state, OBS_TYPE observation, std::ostream& out = std::cout) const;

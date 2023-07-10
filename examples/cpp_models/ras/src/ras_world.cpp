@@ -34,6 +34,9 @@ State* RasWorld::GetCurrentState(const std::vector<std::string>& target_ids) {
         pomdp_state->risk_bin.emplace_back(risk.risk);
     }
 
+    NO_ACTION = pomdp_state->risk_pose.size();
+    RECOG = NO_ACTION+1;
+
     State* out_state = static_cast<State*>(pomdp_state);
     return out_state;
 }
@@ -67,7 +70,7 @@ bool RasWorld::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 }
 
 
-void RasWorld::updateBeliefState(ACT_TYPE action, OBS_TYPE obs, const std::vector<double>& risk_probs) {
+void RasWorld::updateState(ACT_TYPE action, OBS_TYPE obs, const std::vector<double>& risk_probs) {
     for (auto itr = risk_probs.begin(), end = risk_probs.end(); itr != end; itr++) {
         std::string req_target_id = id_idx_list[std::distance(risk_probs.begin(), itr)];
         sim->getRisk(req_target_id)->p_risk = *itr;

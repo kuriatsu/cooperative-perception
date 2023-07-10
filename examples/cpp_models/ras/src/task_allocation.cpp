@@ -352,8 +352,14 @@ int TaskAllocation::NumActiveParticles() const {
 	return memory_pool.num_allocated();
 }
 
-std::vector<double> TaskAllocation::getRiskProb(const Belief& belief) {
-	const vector<State*>& particles = static_cast<const ParticleBelief&>(belief).particles();
+void TaskAllocation::updateCurrentState(State* state) {
+    m_start_state = static_cast<TAState*>(state);
+    NO_ACTION = m_start_state->risk_pose.size();
+    RECOG = NO_ACTION + 1;
+}
+
+std::vector<double> TaskAllocation::getRiskProb(const Belief* belief) {
+	const vector<State*>& particles = static_cast<const ParticleBelief*>(belief)->particles();
 	
 	// double status = 0;
 	vector<double> probs(m_start_state->risk_pose.size());

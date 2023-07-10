@@ -28,25 +28,29 @@ public:
     double delta_t = Globals::config.time_per_move;
 
     // sim model
-    double obstacle_density = 0.1 // 1ppl per 1m
-    std::vector<double> perception_range = {50, 150} // left+right range, forward range
+    double obstacle_density = 0.1; // 1ppl per 1m
+    std::vector<double> perception_range = {50, 150}; // left+right range, forward range
 
-    OperatorModel operator_model = new OperatorModel(min_time, acc_time_min, acc_time_slope);
-    VehicleModel vehicle_model(max_speed, yield_speed, max_accel, max_decel, safety_margin, delta_t);
+    // model parameters
+    string world_type = "simulator";
+    string belief_type = "DEFAULT";
+
+    // models
+    OperatorModel *operator_model = new OperatorModel(min_time, acc_time_min, acc_time_slope);
+    VehicleModel *vehicle_model = new VehicleModel(max_speed, yield_speed, max_accel, max_decel, safety_margin, delta_t);
 
 	DSPOMDP* InitializeModel(option::Option* options) {
-		DSPOMDP* model = new TaskAllocation(planning_horizon, max_speed, yield_speed, risk_thresh, vehicle_model, *operator_model);
+		DSPOMDP* model = new TaskAllocation(planning_horizon, max_speed, yield_speed, risk_thresh, vehicle_model, operator_model);
 		return model;
 	}
 
 	World* InitializeWorld(std::string& world_type, DSPOMDP* model, option::Option* options) {
-        SumoWorld* world = new RasWorld();
-        world->operator_model = operator_model;
-        world->sim = new SumoSimulation(max_speed, yield_speed, max_accel, max_decel, safety_margin, delta_t, obstacle_density, perception_range);
-        world->connect();
-        world->Initialize();
-        world_type = "simulator";
-        return world;
+        RasWorld* ras_world = new RasWorld();
+        ras_world->operator_model = operator_model;
+        ras_world->sim = new SumoInterface(max_speed, yield_speed, max_accel, max_decel, safety_margin, delta_t, obstacle_density, perception_range);
+        ras_world->Connect();
+        ras_world->Initialize();
+        return ras_world;
 	}
 
     void InitializeDefaultParameters() {
@@ -57,27 +61,25 @@ public:
 		return "DESPOT";
 	}
 
-    void PlanningLoop(Solver*& solver, World* world, Logger* logger) {
-        for (int i=0; i < Global::config.sim_len; i++) {
-            bool terminal = RunStep(solver, world, logger);
+    void PlanningLoop(Solver*& solver, World* world, DSPOMDP* model, Logger* logger) {
+        for (int i=0; i < Globals::config.sim_len; i++) {
+            bool terminal = RunStep(solver, world, model, logger);
             if (terminal) break;
         }
     }
 
-    bool RunStep(Solver* solver, World* world, Logger* logger) {
+    bool RunStep(Solver* solver, World* world, DSPOMDP* model, Logger* logger) {
+        RasWorld* ras_world = static_cast<RasWorld*>(world);
+        TaskAllocation* ta_model = static_cast<TaskAllocation*>(model);
         logger->CheckTargetTime();
 
-        world->sim.step();
-        auto targets = world->sim.perception();
+        ras_world->sim->step();
+        auto targets = ras_world->sim->perception();
 
-        State* start_state = world->GetCurrentState(targets);
-        model->m_start_state = static_cast<TAState*>(start_state);
-        model->RECOG = start_state->risk_bin.size()+1;
-        world->RECOG = model->RECOG;
-        model->NO_ACTION = start_state->risk_bin.size();
-        world->NO_ACTION = model->NO_ACTION;
+        State* start_state = ras_world->GetCurrentState(targets);
+        ta_model->updateCurrentState(start_state);
 
-        Belief* belief = model->InitialBelief(start_state, belief_type);
+        Belief* belief = ta_model->InitialBelief(start_state, belief_type);
         assert(belief != NULL);
         solver->belief(belief);
 
@@ -88,22 +90,24 @@ public:
         double search_time = end_t - start_t;
 
         OBS_TYPE obs;
-        double start_t = get_time_second();
-        bool terminal = world->ExecuteAction(action, obs);
-        double end_t = get_time_second();
+        start_t = get_time_second();
+        bool terminal = ras_world->ExecuteAction(action, obs);
+        end_t = get_time_second();
         double execute_time = end_t - start_t;
 
-        double start_t = get_time_second();
+        start_t = get_time_second();
         solver->BeliefUpdate(action, obs);
-        double end_t = get_time_second();
+        end_t = get_time_second();
         double update_time = end_t - start_t;
 
-        world->updateBeliefState(action, obs, model->getRiskProb(solver->belief);
-        world->sim.controlEgoVehicle(targets);
+        ras_world->updateState(action, obs, ta_model->getRiskProb(belief));
+        ras_world->sim->controlEgoVehicle(targets);
+
+        return true;
     }
 
     
-    int Planner::RunPlanning(int argc, char *argv[]) {
+    int RunPlanning(int argc, char *argv[]) {
 
         /* =========================
          * initialize parameters
@@ -111,8 +115,6 @@ public:
         string solver_type = ChooseSolver(); //"DESPOT";
         bool search_solver;
         int num_runs = 1;
-        string world_type = "pomdp";
-        string belief_type = "DEFAULT";
         int time_limit = -1;
 
         option::Option *options = InitializeParamers(argc, argv, solver_type,
@@ -129,7 +131,7 @@ public:
         World *world = InitializeWorld(world_type, model, options);
         assert(world != NULL);
 
-        Belief belief = NULL;
+        Belief *belief = NULL;
         Solver *solver = InitializeSolver(model, belief, solver_type, options);
 
         Logger *logger = NULL;
@@ -140,7 +142,7 @@ public:
 
         logger->InitRound(world->GetCurrentState());
         round_=0; step_=0;
-        PlanningLoop(solver, world, logger);
+        PlanningLoop(solver, world, model, logger);
         logger->EndRound();
 
         PrintResult(1, logger, main_clock_start);
