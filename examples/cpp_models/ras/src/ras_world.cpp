@@ -14,7 +14,10 @@ bool RasWorld::Connect(){
 State* RasWorld::Initialize() {
     sim->spawnPedestrians();
     sim->spawnEgoVehicle();
+    NO_ACTION = sim->getRisk(target_ids).size(); 
     pomdp_state = new TAState();
+    pomdp_state->req_time = 0;
+    pomdp_state->req_target = NO_ACTION;
     return NULL;
 }
 

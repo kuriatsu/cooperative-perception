@@ -246,12 +246,12 @@ bool Logger::SummarizeStep(int step, int round, bool terminal, ACT_TYPE action,
 
 	state_ = world_->GetCurrentState();
 
-	if (state_ != NULL) {
-		if (!Globals::config.silence && out_) {
-			*out_ << "- Belief:\n";
-			model_->PrintBelief(*belief_, *out_);
-		}
-	}
+//	if (state_ != NULL) {
+// 		if (!Globals::config.silence && out_) {
+// 			*out_ << "- Belief:\n";
+// 			model_->PrintBelief(*belief_, *out_);
+// 		}
+// 	}
 	if (state_ != NULL) {
 		if (!Globals::config.silence && out_) {
 			*out_ << "- State:\n";

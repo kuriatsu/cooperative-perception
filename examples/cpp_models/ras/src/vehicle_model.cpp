@@ -40,7 +40,7 @@ double VehicleModel::getAccel(const double speed, const std::vector<bool>& recog
     auto a_itr = std::min_element(acc_list.begin(), acc_list.end());
     double min_acc = *a_itr;
     // int decel_target = target.distanceance(acc_list.begin(), a_itr);
-    std::cout << "speed: " << speed << " acc: " << min_acc << std::endl;
+    // std::cout << "speed: " << speed << " acc: " << min_acc << std::endl;
     
     if (min_acc >= 0.0) {
         min_acc = std::min(min_acc, m_max_accel);

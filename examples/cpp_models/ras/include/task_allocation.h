@@ -19,20 +19,9 @@ public:
 
 	// hidden state
 	std::vector<bool> risk_bin;
-
-    TAState(){
-
-    }
-
-    TAState(int _ego_pose, float _ego_speed, std::vector<bool> _ego_recog, int _req_time, int _req_target, std::vector<bool> _risk_bin, std::vector<int> _risk_pose) :
-		ego_pose(_ego_pose),
-		ego_speed(_ego_speed),
-		ego_recog(_ego_recog),
-		req_time(_req_time),
-		req_target(_req_target),
-		risk_pose(_risk_pose),
-		risk_bin(_risk_bin)	{
-        }
+    
+    TAState();
+    TAState(int _ego_pose, float _ego_speed, std::vector<bool> _ego_recog, int _req_time, int _req_target, std::vector<bool> _risk_bin, std::vector<int> _risk_pose); 
 	~TAState();
 	
 	std::string text() const;
@@ -93,7 +82,7 @@ public:
 	void Free(State* particle) const;
 	int NumActiveParticles() const;
 
-    void updateCurrentState(State* state);
+    void syncCurrentState(State* state);
     std::vector<double> getRiskProb(const Belief* belief); 
 	void PrintState(const State& state, std::ostream& out = std::cout) const;
 	void PrintBelief(const Belief& belief, std::ostream& out = std::cout) const;

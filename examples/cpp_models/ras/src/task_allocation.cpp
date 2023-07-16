@@ -10,15 +10,20 @@ using namespace std;
 namespace despot {
 
 
-// TAState::TAState() {
-// 	ego_pose = 0;
-// 	ego_speed = 11.2;
-// 	vector<bool> ego_recog{TaskAllocation::NO_RISK, TaskAllocation::NO_RISK}; //TODO define based on the given situation
-// 	req_time = 0;
-// 	req_target = TaskAllocation::NO_ACTION;
-//  vector<int> risk_pose{80, 100};
-//  vector<bool> risk_bin{TaskAllocation::RISK, TaskAllocation::NO_RISK}; //TODO define based on the given situation
-//  }
+TAState::TAState() {
+
+}
+
+
+TAState::TAState(int _ego_pose, float _ego_speed, std::vector<bool> _ego_recog, int _req_time, int _req_target, std::vector<bool> _risk_bin, std::vector<int> _risk_pose) :
+		ego_pose(_ego_pose),
+		ego_speed(_ego_speed),
+		ego_recog(_ego_recog),
+		req_time(_req_time),
+		req_target(_req_target),
+		risk_pose(_risk_pose),
+		risk_bin(_risk_bin)	{
+}
 
 TAState::~TAState() {
 }
@@ -310,7 +315,8 @@ Belief* TaskAllocation::InitialBelief(const State* start, string type) const {
 // [[true, true], [true, false], [false, true], [false, false]] for 2 obstacles
 void TaskAllocation::GetBinProduct(vector<vector<bool>>& out_list, std::vector<bool> buf, int row) const {
 
-    cout << "row" << row << "list" << out_list << endl;
+    // check value combination
+    // cout << "row" << row << "list" << out_list << endl;
     if (row == buf.size()) {
         out_list.emplace_back(buf);
         return;
@@ -352,7 +358,7 @@ int TaskAllocation::NumActiveParticles() const {
 	return memory_pool.num_allocated();
 }
 
-void TaskAllocation::updateCurrentState(State* state) {
+void TaskAllocation::syncCurrentState(State* state) {
     m_start_state = static_cast<TAState*>(state);
     NO_ACTION = m_start_state->risk_pose.size();
     RECOG = NO_ACTION + 1;

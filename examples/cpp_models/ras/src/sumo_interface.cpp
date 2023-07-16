@@ -11,7 +11,7 @@ std::vector<std::string> SumoInterface::perception() {
         ego_pose.theta = Vehicle::getAngle(m_ego_name);
     }
     catch (libsumo::TraCIException& error) {
-        std::cout << "no ego_vehicle" << std::endl;
+        // std::cout << "no ego_vehicle" << std::endl;
         Simulation::close();
     }
     // std::vector<std::string> ego_route = Vehicle::getRoute(m_ego_name);
@@ -48,7 +48,7 @@ void SumoInterface::controlEgoVehicle(const std::vector<std::string>& targets){
         speed = Vehicle::getSpeed(m_ego_name);
     }
     catch (libsumo::TraCIException& error) {
-        std::cout << "no ego_vehicle" << std::endl;
+        // std::cout << "no ego_vehicle" << std::endl;
         Simulation::close();
     }
 
@@ -71,7 +71,7 @@ void SumoInterface::controlEgoVehicle(const std::vector<std::string>& targets){
         }
 
         double a = (pow(m_yield_speed, 2.0) - pow(speed, 2.0))/(2.0*(target.distance-m_safety_margin));
-        std::cout << "ped: " << target.id << " dist: "<<  target.distance << " acc: " << a << std::endl;
+        // std::cout << "ped: " << target.id << " dist: "<<  target.distance << " acc: " << a << std::endl;
         acc_list.emplace_back(a);
     }
 
@@ -80,7 +80,7 @@ void SumoInterface::controlEgoVehicle(const std::vector<std::string>& targets){
     auto a_itr = min_element(acc_list.begin(), acc_list.end());
     double min_acc = *a_itr;
     // int decel_target = target.distanceance(acc_list.begin(), a_itr);
-    std::cout << "speed: " << speed << " acc: " << min_acc << std::endl;
+    // std::cout << "speed: " << speed << " acc: " << min_acc << std::endl;
     // speed += min_acc * m_delta_t;
     // if (speed <= m_yield_speed) {
     //     acc = 0.0;
@@ -105,7 +105,7 @@ void SumoInterface::spawnEgoVehicle() {
     auto route_list = Route::getIDList(); 
     if (Route::getIDList().empty()) {
         Route::add("ego_vehicle_route", {"E0"});
-        std::cout << "add new route: " << Route::getIDList()[0] << std::endl;
+        // std::cout << "add new route: " << Route::getIDList()[0] << std::endl;
     }
     
     // for (auto &itr : Route::getIDList()){
@@ -116,12 +116,12 @@ void SumoInterface::spawnEgoVehicle() {
     Vehicle::setColor("ego_vehicle", libsumo::TraCIColor(0, 200, 0));
     Vehicle::setMaxSpeed("ego_vehicle", m_max_speed);
     Vehicle::setAccel("ego_vehicle", m_max_accel);
-    Vehicle::setDecel("ego_vehicle", -m_max_decel);
+    Vehicle::setDecel("ego_vehicle", m_max_decel);
+    // std::cout << m_max_decel << std::endl;
 }
 
 void SumoInterface::spawnPedestrians() {
     double interval = 1/m_density;
-    std::cout << "test" << std::endl;
 
     // Generate random value
     std::mt19937 mt{std::random_device{}()};
@@ -148,6 +148,7 @@ void SumoInterface::spawnPedestrians() {
             m_risks[ped_id] = Risk(ped_id, risk_val(mt)); 
         }
     }
+    std::cout << "spawned pedestrian" << std::endl;
 }
 
 double SumoInterface::getEgoSpeed() {
@@ -175,7 +176,7 @@ void SumoInterface::close() {
 }
 
 void SumoInterface::start() {
-    Simulation::start({"sumo-gui", "-c", "straight.sumocfg"});
+    Simulation::start({"sumo-gui", "-c", "../sumo/straight.sumocfg"});
     // Simulation::start({"sumo-gui", "-r", "./straight.net.xml"});
 }
 

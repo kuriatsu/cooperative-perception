@@ -76,8 +76,8 @@ public:
         ras_world->sim->step();
         auto targets = ras_world->sim->perception();
 
-        State* start_state = ras_world->GetCurrentState(targets);
-        ta_model->updateCurrentState(start_state);
+        TAState* start_state = ras_world->GetCurrentState(targets);
+        ta_model->syncCurrentState(start_state);
 
         Belief* belief = ta_model->InitialBelief(start_state, belief_type);
         assert(belief != NULL);
