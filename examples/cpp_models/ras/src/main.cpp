@@ -45,9 +45,8 @@ public:
 	}
 
 	World* InitializeWorld(std::string& world_type, DSPOMDP* model, option::Option* options) {
-        RasWorld* ras_world = new RasWorld();
+        RasWorld* ras_world = new RasWorld(max_speed, yield_speed, max_accel, max_decel, safety_margin, delta_t, obstacle_density, perception_range);
         ras_world->operator_model = operator_model;
-        ras_world->sim = new SumoInterface(max_speed, yield_speed, max_accel, max_decel, safety_margin, delta_t, obstacle_density, perception_range);
         ras_world->Connect();
         ras_world->Initialize();
         return ras_world;
@@ -73,10 +72,9 @@ public:
         TaskAllocation* ta_model = static_cast<TaskAllocation*>(model);
         logger->CheckTargetTime();
 
-        ras_world->sim->step();
-        auto targets = ras_world->sim->perception();
+        ras_world->Step();
 
-        TAState* start_state = ras_world->GetCurrentState(targets);
+        TAState* start_state = static_cast<TAState*>(ras_world->GetCurrentState());
         ta_model->syncCurrentState(start_state);
 
         Belief* belief = ta_model->InitialBelief(start_state, belief_type);
@@ -100,8 +98,7 @@ public:
         end_t = get_time_second();
         double update_time = end_t - start_t;
 
-        ras_world->updateState(action, obs, ta_model->getRiskProb(belief));
-        ras_world->sim->controlEgoVehicle(targets);
+        ras_world->UpdateState(action, obs, ta_model->getRiskProb(belief));
 
         return true;
     }

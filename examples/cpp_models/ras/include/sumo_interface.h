@@ -51,8 +51,8 @@ public:
     void spawnPedestrians();
     void spawnEgoVehicle();
     double getEgoSpeed();
-    Risk* getRisk(std::string id);
-    std::vector<Risk> getRisk(std::vector<std::string> ids);
+    Risk* getRisk(const std::string& id);
+    std::vector<Risk> getRisk(const std::vector<std::string>& ids);
     void step();
     void start();
     void close();
