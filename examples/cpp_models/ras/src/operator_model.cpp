@@ -17,3 +17,8 @@ double OperatorModel::int_acc(const int time) const {
 	}
 }
 
+int OperatorModel::execIntervention(const int time) const {
+    double prob = Random::RANDOM.NextDouble();
+
+
+

@@ -84,12 +84,14 @@ public:
         double step_start_t = get_time_second();
         double start_t = get_time_second();
         ACT_TYPE action = solver->Search().action;
+        std::cout << "selected action : " << action << std::endl;
         double end_t = get_time_second();
         double search_time = end_t - start_t;
 
         OBS_TYPE obs;
         start_t = get_time_second();
         bool terminal = ras_world->ExecuteAction(action, obs);
+        std::cout << "observation : " << obs << std::endl;
         end_t = get_time_second();
         double execute_time = end_t - start_t;
 

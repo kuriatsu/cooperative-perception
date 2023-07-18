@@ -21,4 +21,7 @@ public:
     ~OperatorModel();
 	
 	double int_acc(const int time) const;
+
+private:
+    enum { NO_RISK = 0, RISK = 1, NONE = 2};
 };

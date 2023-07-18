@@ -45,7 +45,7 @@ State* RasWorld::GetCurrentState() {
         id_idx_list.emplace_back(risk.id);
         pomdp_state->ego_recog.emplace_back(risk.p_risk);
         pomdp_state->risk_pose.emplace_back(risk.distance);
-        pomdp_state->risk_bin.emplace_back(risk.risk);
+        pomdp_state->risk_bin.emplace_back(risk.recog_risk);
     }
 
     NO_ACTION = pomdp_state->risk_pose.size();
@@ -64,14 +64,14 @@ bool RasWorld::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
             pomdp_state->req_time++;
         }
         else {
-            sim->getRisk(req_target_id)->risk = true;
+            sim->getRisk(req_target_id)->risk_pred = true;
             pomdp_state->ego_recog[req_target_idx] = true;
             pomdp_state->req_time = 0;
             pomdp_state->req_target = req_target_idx;
         }
     }
     else if (RECOG < action) {
-        sim->getRisk(req_target_id)->risk = (sim->getRisk(req_target_id)->risk) ? false : true;
+        sim->getRisk(req_target_id)->risk_pred = (sim->getRisk(req_target_id)->recog_risk) ? false : true;
         pomdp_state->ego_recog[req_target_idx] = (pomdp_state->ego_recog[req_target_idx]) ? false : true;
         pomdp_state->req_time = 0;
         pomdp_state->req_target = NONE;
@@ -87,7 +87,7 @@ bool RasWorld::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 void RasWorld::UpdateState(ACT_TYPE action, OBS_TYPE obs, const std::vector<double>& risk_probs) {
     for (auto itr = risk_probs.begin(), end = risk_probs.end(); itr != end; itr++) {
         std::string req_target_id = id_idx_list[std::distance(risk_probs.begin(), itr)];
-        sim->getRisk(req_target_id)->p_risk = *itr;
+        sim->getRisk(req_target_id)->risk_pred = *itr;
     }
 
     sim->controlEgoVehicle(perception_targets);

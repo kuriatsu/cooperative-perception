@@ -34,8 +34,8 @@ string TAState::text() const {
 		   "ego_recog: " + to_string(ego_recog) + "\n" +
 		   "req_time: " + to_string(req_time) + "\n" +
 		   "req_target: " + to_string(req_target) + "\n" +
-		   "risk_bin: " + to_string(risk_bin) + "\n" +
-           "weight:" + to_string(weight) + "\n";
+		   "risk_pose: " + to_string(risk_pose) + "\n" +
+		   "risk_bin: " + to_string(risk_bin) + "\n"; 
 }
 
 TaskAllocation::TaskAllocation(int planning_horizon, double ideal_speed, double yield_speed, double risk_thresh, VehicleModel* vehicle_model, OperatorModel* operator_model){ 
@@ -266,7 +266,7 @@ State* TaskAllocation::CreateStartState(string type) const {
 
 Belief* TaskAllocation::InitialBelief(const State* start, string type) const {
    
-    const TAState *ta_state = static_cast<const TAState*>(start);
+    const TAState *ta_start_state = static_cast<const TAState*>(start);
 
 	if (type != "DEFAULT" && type != "PARTICLE") {
 		cout << "specified type " + type + " is not supported";
@@ -274,7 +274,7 @@ Belief* TaskAllocation::InitialBelief(const State* start, string type) const {
 	}
 
 	// recognition likelihood of the automated system
-    vector<bool> buf(ta_state->risk_pose.size(), false);
+    vector<bool> buf(ta_start_state->risk_pose.size(), false);
 	vector<vector<bool>> risk_bin_list;
 	GetBinProduct(risk_bin_list, buf, 0); 
 	vector<State*> particles;
@@ -285,25 +285,26 @@ Belief* TaskAllocation::InitialBelief(const State* start, string type) const {
 		// set ego_recog and risk_bin based on threshold
 		for (auto col=row.begin(), end=row.end(); col!=end; col++) {
 			int idx = distance(row.begin(), col);
-			_ego_recog.emplace_back((ta_state->ego_recog[idx] < m_risk_thresh) ? NO_RISK : RISK);
+			_ego_recog.emplace_back((ta_start_state->ego_recog[idx] < m_risk_thresh) ? NO_RISK : RISK);
 			if (*col) {
-				prob *= ta_state->ego_recog[idx]; 
+				prob *= ta_start_state->ego_recog[idx]; 
 				_risk_bin.emplace_back(RISK);
 			}
 			else {
-				prob *= 1.0 - ta_state->ego_recog[idx]; 
+				prob *= 1.0 - ta_start_state->ego_recog[idx]; 
 				_risk_bin.emplace_back(NO_RISK);
 			}
 		}
 
         // TODO define based on the given sitiation
 		TAState* p = static_cast<TAState*>(Allocate(-1, prob));  
-		p->ego_pose = ta_state->ego_pose;
-		p->ego_speed = ta_state->ego_speed;
-		p->ego_recog = ta_state->ego_recog;
-		p->req_time = ta_state->req_time;
-	  	p->req_target = ta_state->req_target;
-		p->risk_bin = ta_state->risk_bin;
+		p->ego_pose = ta_start_state->ego_pose;
+		p->ego_speed = ta_start_state->ego_speed;
+		p->ego_recog = ta_start_state->ego_recog;
+		p->req_time = ta_start_state->req_time;
+	  	p->req_target = ta_start_state->req_target;
+	  	p->risk_pose = ta_start_state->risk_pose;
+		p->risk_bin = ta_start_state->risk_bin;
         cout << *p << endl;
 		particles.push_back(p);
 	}

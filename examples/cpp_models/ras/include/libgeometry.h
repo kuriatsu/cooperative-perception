@@ -55,22 +55,25 @@ Pose Pose::transformTo(const Pose& origin) {
 class Risk {
 public:
     std::string id;
-    double p_risk;
-    bool risk;
+    double risk_prob;
+    bool risk_pred;
+    bool risk_hidden;
     Pose pose;
     double distance;
 
 public:
-    Risk(std::string _id, double _p_risk) {
+    Risk(std::string _id, double _risk_p) {
         id = _id;
-        p_risk = _p_risk;
-        risk = p_risk > 0.5;
+        risk_prob = _risk_p;
+        risk_pred = _risk_p >= 0.5;
+        risk_hidden = _risk_p >= 0.5;
     }
 
-    Risk(std::string _id, double _p_risk, Pose _pose) {
+    Risk(std::string _id, double _risk_p, Pose _pose) {
         id = _id;
-        p_risk = _p_risk;
-        risk = p_risk > 0.5;
+        risk_prob = _risk_p;
+        risk_pred = _risk_p >= 0.5;
+        risk_hidden = _risk_p >= 0.5;
         pose = _pose;
     }        
     

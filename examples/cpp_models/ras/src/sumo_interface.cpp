@@ -63,7 +63,7 @@ void SumoInterface::controlEgoVehicle(const std::vector<std::string>& targets){
             is_decel_target = false;
         }
         else {
-            is_decel_target = (target.risk == true);
+            is_decel_target = (target.risk_pred == true);
         }
 
         if (!is_decel_target){
