@@ -176,7 +176,7 @@ void SumoInterface::close() {
 }
 
 void SumoInterface::start() {
-    Simulation::start({"sumo-gui", "-c", "../sumo/straight.sumocfg"});
+    Simulation::start({"sumo-gui", "-c", "../map/straight.sumocfg"});
     // Simulation::start({"sumo-gui", "-r", "./straight.net.xml"});
 }
 
