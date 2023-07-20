@@ -38,7 +38,7 @@ string TAState::text() const {
 		   "risk_bin: " + to_string(risk_bin) + "\n"; 
 }
 
-TaskAllocation::TaskAllocation(int planning_horizon, double ideal_speed, double yield_speed, double risk_thresh, VehicleModel* vehicle_model, OperatorModel* operator_model){ 
+TaskAllocation::TaskAllocation(int planning_horizon, double ideal_speed, double yield_speed, double risk_thresh, VehicleModel vehicle_model, OperatorModel operator_model){ 
     m_planning_horizon = planning_horizon;
     m_max_speed = ideal_speed;
     m_yield_speed = yield_speed;
@@ -57,8 +57,8 @@ TaskAllocation::TaskAllocation() {
     double max_accel = 0.15 * 9.8;
     double max_decel = 0.2 * 9.8;
 
-    m_vehicle_model = new VehicleModel(m_max_speed, m_yield_speed, max_accel, max_decel, safety_margin, Globals::config.time_per_move);
-    m_operator_model = new OperatorModel(3.0, 0.5, 0.25);
+    m_vehicle_model = VehicleModel(m_max_speed, m_yield_speed, max_accel, max_decel, safety_margin, Globals::config.time_per_move);
+    m_operator_model = OperatorModel(3.0, 0.5, 0.25);
 }
 
 int TaskAllocation::NumActions() const {
@@ -72,39 +72,30 @@ bool TaskAllocation::Step(State& state, double rand_num, ACT_TYPE action, double
 
 	// ego state trantion
 	// EgoVehicleTransition(state_curr.ego_pose, state_curr.ego_speed, state_prev.ego_recog, risk_pose, action);
-    m_vehicle_model->getTransition(state_curr.ego_speed, state_curr.ego_pose, state_prev.ego_recog, state_prev.risk_pose);
+    m_vehicle_model.getTransition(state_curr.ego_speed, state_curr.ego_pose, state_prev.ego_recog, state_prev.risk_pose);
 
-	// when action = change recog state 
-	if (RECOG <= action && action < NO_ACTION) {
+	// when action = change recog state or none
+	if (NO_ACTION <= action) {
 		int idx = action - RECOG;
 		state_curr.ego_recog[idx] = !state_prev.ego_recog[idx];
-		obs = NONE;
         state_curr.req_time = 1;
+        obs = m_operator_model.execIntervention(state_prev.req_time, "RECOG", std::to_string(idx), state_curr.risk_bin[idx]);
 	}
 	// when action = request intervention
-	else if (REQUEST <= action && action < RECOG) {
+	else if (REQUEST <= action && action < NO_ACTION) {
 		int idx = action - REQUEST;
-		double acc = m_operator_model->int_acc(state_prev.req_time);
-        state_curr.req_time += 1;
 
 		// request to the same target
 		if (state_prev.req_target == idx) {
-			// observation probability
-            if (rand_num < acc) {
-                obs = (state_prev.risk_bin[idx] == RISK) ? RISK : NO_RISK;
-            }
-            else {
-                obs = (state_prev.risk_bin[idx] == RISK) ? NO_RISK : RISK;
-            }
+            state_curr.req_time += 1;
 		} 
 		// request to new target
 		else {
 			state_curr.req_time = 1;
 			state_curr.req_target = idx;
-			obs = NONE;
 		}
 	}
-
+    obs = m_operator_model.execIntervention(state_prev.req_time, "REQUEST", std::to_string(idx), state_prev.risk_bin[idx]);
 	reward = CalcReward(state_prev, state_curr, action);
 
 	if (state_curr.ego_pose >= m_planning_horizon)
@@ -119,7 +110,7 @@ double TaskAllocation::ObsProb(OBS_TYPE obs, const State& state, ACT_TYPE action
     if (REQUEST <= action && action < RECOG) {
         const TAState& ras_state = static_cast<const TAState&>(state);
         int idx = action - REQUEST;
-        double acc = m_operator_model->int_acc(ras_state.req_time);
+        double acc = m_operator_model.int_acc(ras_state.req_time);
         // std::cout << "obs_prob acc : " << acc << " obs : " << obs << "action : " << action << "\n" << " state : " << ras_state << std::endl;
         return (ras_state.risk_bin[idx] == obs) ? acc : 1.0 - acc;
     }

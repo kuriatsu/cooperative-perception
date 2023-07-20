@@ -55,8 +55,8 @@ public:
 	// recognition likelihood of the ADSbelief(belief);::vector<double> risk_recog;
 	// std::vector<int> m_risk_positions;
 
-    VehicleModel* m_vehicle_model;
-    OperatorModel* m_operator_model;
+    VehicleModel m_vehicle_model;
+    OperatorModel m_operator_model;
     TAState *m_start_state;
 	
     int REQUEST = 0, NO_ACTION, RECOG; // action, request start index

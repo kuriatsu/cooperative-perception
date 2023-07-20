@@ -43,9 +43,9 @@ State* RasWorld::GetCurrentState() {
     pomdp_state->risk_bin.clear();
     for (const auto& risk: sim->getRisk(perception_targets)) {
         id_idx_list.emplace_back(risk.id);
-        pomdp_state->ego_recog.emplace_back(risk.p_risk);
+        pomdp_state->ego_recog.emplace_back(risk.risk_prob);
         pomdp_state->risk_pose.emplace_back(risk.distance);
-        pomdp_state->risk_bin.emplace_back(risk.recog_risk);
+        pomdp_state->risk_bin.emplace_back(risk.risk_pred);
     }
 
     NO_ACTION = pomdp_state->risk_pose.size();
@@ -59,26 +59,33 @@ bool RasWorld::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 
     int req_target_idx = action - REQUEST;
     std::string req_target_id = id_idx_list[req_target_idx];
+    // intervention request
     if (REQUEST <= action && action < NO_ACTION) {
         if (pomdp_state->req_target == req_target_idx) {
             pomdp_state->req_time++;
+            obs = operator_model->execIntervention(pomdp_state->req_time, "REQUEST", sim->getRisk(req_target_id));
         }
         else {
             sim->getRisk(req_target_id)->risk_pred = true;
             pomdp_state->ego_recog[req_target_idx] = true;
             pomdp_state->req_time = 0;
             pomdp_state->req_target = req_target_idx;
+            obs = operator_model->execIntervention(pomdp_state->req_time, "REQUEST", sim->getRisk(req_target_id));
         }
     }
+    // change recog state
     else if (RECOG < action) {
-        sim->getRisk(req_target_id)->risk_pred = (sim->getRisk(req_target_id)->recog_risk) ? false : true;
+        sim->getRisk(req_target_id)->risk_pred = (sim->getRisk(req_target_id)->risk_pred) ? false : true;
         pomdp_state->ego_recog[req_target_idx] = (pomdp_state->ego_recog[req_target_idx]) ? false : true;
         pomdp_state->req_time = 0;
         pomdp_state->req_target = NONE;
+        obs = operator_model->execIntervention(pomdp_state->req_time, "RECOG", sim->getRisk(req_target_id));
     }
+    // NO_ACTION
     else {
         pomdp_state->req_time = 0;
         pomdp_state->req_target = NONE;
+        obs = operator_model->execIntervention(pomdp_state->req_time, "NO_ACTION", sim->getRisk(req_target_id));
     }
     return false;
 }
@@ -87,7 +94,7 @@ bool RasWorld::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 void RasWorld::UpdateState(ACT_TYPE action, OBS_TYPE obs, const std::vector<double>& risk_probs) {
     for (auto itr = risk_probs.begin(), end = risk_probs.end(); itr != end; itr++) {
         std::string req_target_id = id_idx_list[std::distance(risk_probs.begin(), itr)];
-        sim->getRisk(req_target_id)->risk_pred = *itr;
+        sim->getRisk(req_target_id)->risk_prob = *itr;
     }
 
     sim->controlEgoVehicle(perception_targets);

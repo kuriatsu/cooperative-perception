@@ -9,7 +9,7 @@ using namespace despot;
 
 class RasWorld: public World {
 private:
-    TAState* pomdp_state;
+    TAState* pomdp_state; // save previous state
     std::vector<std::string> id_idx_list;
     std::vector<std::string> perception_targets;
 

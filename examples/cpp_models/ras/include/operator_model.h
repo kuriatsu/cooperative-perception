@@ -5,7 +5,7 @@ public:
     double min_time;
     double acc_time_min;
     double acc_time_slope;
-
+    
 public:
     OperatorModel():
         min_time(3.0),
@@ -21,7 +21,9 @@ public:
     ~OperatorModel();
 	
 	double int_acc(const int time) const;
-
+    int execIntervention(const int time, const std::string action, const std::string target, const bool risk);
+    
 private:
     enum { NO_RISK = 0, RISK = 1, NONE = 2};
+    std::string last_target_id = "NONE";
 };

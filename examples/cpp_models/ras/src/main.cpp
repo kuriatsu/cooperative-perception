@@ -40,7 +40,7 @@ public:
     VehicleModel *vehicle_model = new VehicleModel(max_speed, yield_speed, max_accel, max_decel, safety_margin, delta_t);
 
 	DSPOMDP* InitializeModel(option::Option* options) {
-		DSPOMDP* model = new TaskAllocation(planning_horizon, max_speed, yield_speed, risk_thresh, vehicle_model, operator_model);
+		DSPOMDP* model = new TaskAllocation(planning_horizon, max_speed, yield_speed, risk_thresh, *vehicle_model, *operator_model);
 		return model;
 	}
 
@@ -72,6 +72,7 @@ public:
         TaskAllocation* ta_model = static_cast<TaskAllocation*>(model);
         logger->CheckTargetTime();
 
+        // step simulation
         ras_world->Step();
 
         TAState* start_state = static_cast<TAState*>(ras_world->GetCurrentState());
