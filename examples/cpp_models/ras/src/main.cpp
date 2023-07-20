@@ -28,7 +28,7 @@ public:
     double delta_t = Globals::config.time_per_move;
 
     // sim model
-    double obstacle_density = 0.1; // 1ppl per 1m
+    double obstacle_density = 0.01; // 1ppl per 1m
     std::vector<double> perception_range = {50, 150}; // left+right range, forward range
 
     // model parameters
@@ -53,7 +53,8 @@ public:
 	}
 
     void InitializeDefaultParameters() {
-        Globals::config.sim_len = 1;
+        Globals::config.num_scenarios = 500;
+        Globals::config.sim_len = 100;
 	}
 
 	std::string ChooseSolver() {
@@ -78,6 +79,9 @@ public:
         TAState* start_state = static_cast<TAState*>(ras_world->GetCurrentState());
         ta_model->syncCurrentState(start_state);
 
+        for (const auto risk : start_state->risk_bin) {
+            std::cout << risk << "," << std::endl;
+        }
         Belief* belief = ta_model->InitialBelief(start_state, belief_type);
         assert(belief != NULL);
         solver->belief(belief);
@@ -103,7 +107,7 @@ public:
 
         ras_world->UpdateState(action, obs, ta_model->getRiskProb(belief));
 
-        return true;
+        return false;
     }
 
     

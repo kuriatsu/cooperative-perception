@@ -43,7 +43,7 @@ private:
 	int r_request        = -1;
 
 public:
-    TaskAllocation(int planning_horizon, double ideal_speed, double yield_speed, double risk_thresh, VehicleModel* vehicle_model, OperatorModel* operator_model); 
+    TaskAllocation(int planning_horizon, double ideal_speed, double yield_speed, double risk_thresh, VehicleModel vehicle_model, OperatorModel operator_model); 
     TaskAllocation();
 
 	// state transition parameter

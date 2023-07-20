@@ -57,35 +57,38 @@ State* RasWorld::GetCurrentState() {
 
 bool RasWorld::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 
-    int req_target_idx = action - REQUEST;
-    std::string req_target_id = id_idx_list[req_target_idx];
     // intervention request
     if (REQUEST <= action && action < NO_ACTION) {
+        int req_target_idx = action - REQUEST;
+        std::string req_target_id = id_idx_list[req_target_idx];
         if (pomdp_state->req_target == req_target_idx) {
             pomdp_state->req_time++;
-            obs = operator_model->execIntervention(pomdp_state->req_time, "REQUEST", sim->getRisk(req_target_id));
+            obs = operator_model->execIntervention(pomdp_state->req_time, "REQUEST", req_target_id, sim->getRisk(req_target_id)->risk_hidden);
         }
         else {
             sim->getRisk(req_target_id)->risk_pred = true;
             pomdp_state->ego_recog[req_target_idx] = true;
-            pomdp_state->req_time = 0;
+            pomdp_state->req_time = 1;
             pomdp_state->req_target = req_target_idx;
-            obs = operator_model->execIntervention(pomdp_state->req_time, "REQUEST", sim->getRisk(req_target_id));
+            obs = operator_model->execIntervention(pomdp_state->req_time, "REQUEST", req_target_id, sim->getRisk(req_target_id)->risk_hidden);
         }
     }
     // change recog state
     else if (RECOG < action) {
-        sim->getRisk(req_target_id)->risk_pred = (sim->getRisk(req_target_id)->risk_pred) ? false : true;
-        pomdp_state->ego_recog[req_target_idx] = (pomdp_state->ego_recog[req_target_idx]) ? false : true;
-        pomdp_state->req_time = 0;
+        int recog_target_idx = action - RECOG;
+        std::string recog_target_id = id_idx_list[recog_target_idx];
+
+        sim->getRisk(recog_target_id)->risk_pred = (sim->getRisk(recog_target_id)->risk_pred) ? false : true;
+        pomdp_state->ego_recog[recog_target_idx] = (pomdp_state->ego_recog[recog_target_idx]) ? false : true;
+        pomdp_state->req_time = 1;
         pomdp_state->req_target = NONE;
-        obs = operator_model->execIntervention(pomdp_state->req_time, "RECOG", sim->getRisk(req_target_id));
+        obs = operator_model->execIntervention(pomdp_state->req_time, "RECOG", recog_target_id, sim->getRisk(recog_target_id)->risk_hidden);
     }
     // NO_ACTION
     else {
-        pomdp_state->req_time = 0;
+        pomdp_state->req_time = 1;
         pomdp_state->req_target = NONE;
-        obs = operator_model->execIntervention(pomdp_state->req_time, "NO_ACTION", sim->getRisk(req_target_id));
+        obs = operator_model->execIntervention(pomdp_state->req_time, "NO_ACTION", "", false);
     }
     return false;
 }

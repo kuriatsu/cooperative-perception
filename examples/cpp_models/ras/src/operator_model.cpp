@@ -17,14 +17,14 @@ double OperatorModel::int_acc(const int time) const {
 	}
 }
 
-int OperatorModel::execIntervention(const int time, const std::string action, const std::string target, const bool risk) {
+int OperatorModel::execIntervention(const int time, const std::string action, const std::string target, const bool risk) const {
 
     if (action == "RECOG" || action == "NO_ACTION") {
         last_target_id = "NONE";
         return NONE;
     }
     else {
-        double rand_num = Random::RANDOM.NextDouble();
+        double rand_num = despot::Random::RANDOM.NextDouble();
         double acc = int_acc(time);
     
         if (last_target_id == target) {
@@ -38,7 +38,7 @@ int OperatorModel::execIntervention(const int time, const std::string action, co
         }
         else {
             last_target_id = target;
-            return NONE
+            return NONE;
         }
     }
 }

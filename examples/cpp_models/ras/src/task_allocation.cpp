@@ -73,17 +73,24 @@ bool TaskAllocation::Step(State& state, double rand_num, ACT_TYPE action, double
 	// ego state trantion
 	// EgoVehicleTransition(state_curr.ego_pose, state_curr.ego_speed, state_prev.ego_recog, risk_pose, action);
     m_vehicle_model.getTransition(state_curr.ego_speed, state_curr.ego_pose, state_prev.ego_recog, state_prev.risk_pose);
-
-	// when action = change recog state or none
-	if (NO_ACTION <= action) {
+    
+    // when action == no_action
+    if (action == NO_ACTION) {
+        obs = m_operator_model.execIntervention(state_prev.req_time, "NO_ACTION", "", false);
+        state_curr.req_time = 1;
+    }
+	// when action = change recog state
+    else if (NO_ACTION < action) {
 		int idx = action - RECOG;
+        obs = m_operator_model.execIntervention(state_prev.req_time, "RECOG", std::to_string(idx), state_curr.risk_bin[idx]);
+        // std::cout << "idx" << idx << " " << "action" << action << " " << "obs" << obs << std::endl;
 		state_curr.ego_recog[idx] = !state_prev.ego_recog[idx];
         state_curr.req_time = 1;
-        obs = m_operator_model.execIntervention(state_prev.req_time, "RECOG", std::to_string(idx), state_curr.risk_bin[idx]);
 	}
 	// when action = request intervention
 	else if (REQUEST <= action && action < NO_ACTION) {
 		int idx = action - REQUEST;
+        obs = m_operator_model.execIntervention(state_prev.req_time, "REQUEST", std::to_string(idx), state_prev.risk_bin[idx]);
 
 		// request to the same target
 		if (state_prev.req_target == idx) {
@@ -95,7 +102,6 @@ bool TaskAllocation::Step(State& state, double rand_num, ACT_TYPE action, double
 			state_curr.req_target = idx;
 		}
 	}
-    obs = m_operator_model.execIntervention(state_prev.req_time, "REQUEST", std::to_string(idx), state_prev.risk_bin[idx]);
 	reward = CalcReward(state_prev, state_curr, action);
 
 	if (state_curr.ego_pose >= m_planning_horizon)
@@ -259,11 +265,6 @@ Belief* TaskAllocation::InitialBelief(const State* start, string type) const {
    
     const TAState *ta_start_state = static_cast<const TAState*>(start);
 
-	if (type != "DEFAULT" && type != "PARTICLE") {
-		cout << "specified type " + type + " is not supported";
-		exit(1);
-	}
-
 	// recognition likelihood of the automated system
     vector<bool> buf(ta_start_state->risk_pose.size(), false);
 	vector<vector<bool>> risk_bin_list;
@@ -374,13 +375,13 @@ std::vector<double> TaskAllocation::getRiskProb(const Belief* belief) {
 void TaskAllocation::PrintState(const State& state, ostream& out) const {
 	const TAState& ras_state = static_cast<const TAState&>(state);
 	out << "ego_pose : " << ras_state.ego_pose << "\n"
-		<< "ego_speed : " << ras_state.ego_speed << "\n"
-		<< "ego_recog : " << ras_state.ego_recog << "\n"
-		<< "req_time : " << ras_state.req_time << "\n"
-		<< "req_target : " << ras_state.req_target << "\n"
-		<< "risk_bin : " << ras_state.risk_bin << "\n"
+ 		<< "ego_speed : " << ras_state.ego_speed << "\n"
+ 		<< "ego_recog : " << ras_state.ego_recog << "\n"
+ 		<< "req_time : " << ras_state.req_time << "\n"
+ 		<< "req_target : " << ras_state.req_target << "\n"
+ 		<< "risk_bin : " << ras_state.risk_bin << "\n"
         << "weight : " << ras_state.weight << "\n"
-		<< endl;
+	 	<< endl;
 }
 
 void TaskAllocation::PrintObs(const State& state, OBS_TYPE obs, ostream& out) const {

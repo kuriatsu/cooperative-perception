@@ -15,7 +15,7 @@ add_executable("${PROJECT_NAME}"
 	src/main.cpp
 	)
 
-target_include_directories(operator_model PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
+target_include_directories(operator_model PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include ../../../include)
 target_include_directories(vehicle_model PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
 target_include_directories(sumo_interface PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include /usr/include/libsumo)
 target_include_directories(task_allocation PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include ../../../include)
@@ -25,6 +25,7 @@ target_include_directories("${PROJECT_NAME}" PUBLIC ${CMAKE_CURRENT_LIST_DIR}/in
 
 target_link_libraries(task_allocation operator_model vehicle_model ${libdespot})
 target_link_libraries(sumo_interface tracicpp)
+target_link_libraries(operator_model ${libdespot})
 target_link_libraries(ras_world task_allocation sumo_interface operator_model ${libdespot})
 target_link_libraries("${PROJECT_NAME}"
         operator_model
