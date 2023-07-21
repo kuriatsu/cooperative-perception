@@ -6,27 +6,29 @@ using namespace despot;
 
 class MyPlanner: public Planner {
 public:
-  MyPlanner() {
-  }
+    MyPlanner() {
+    }
 
-  DSPOMDP* InitializeModel(option::Option* options) {
-    DSPOMDP* model = new TaskAllocation();
-    return model;
-  }
 
-  World* InitializeWorld(std::string& world_type, DSPOMDP* model, option::Option* options)
-  {
-      return InitializePOMDPWorld(world_type, model, options);
-  }
+    DSPOMDP* InitializeModel(option::Option* options) {
+		DSPOMDP* model = new TaskAllocation();
+        static_cast<TaskAllocation*>(model)->m_start_state = new TAState();
+        return model;
+    }
 
-  void InitializeDefaultParameters() {
-  }
+    World* InitializeWorld(std::string& world_type, DSPOMDP* model, option::Option* options)
+    {
+        return InitializePOMDPWorld(world_type, model, options);
+    }
 
-  std::string ChooseSolver(){
-	  return "DESPOT";
-  }
-};
+    void InitializeDefaultParameters() {
+    }
 
-int main(int argc, char* argv[]) {
-  return MyPlanner().RunEvaluation(argc, argv);
-}
+    std::string ChooseSolver(){
+        return "DESPOT";
+    }
+    };
+
+    int main(int argc, char* argv[]) {
+        return MyPlanner().RunEvaluation(argc, argv);
+    }

@@ -28,7 +28,7 @@ public:
     double delta_t = Globals::config.time_per_move;
 
     // sim model
-    double obstacle_density = 0.01; // 1ppl per 1m
+    double obstacle_density = 0.1; // 1ppl per 1m
     std::vector<double> perception_range = {50, 150}; // left+right range, forward range
 
     // model parameters

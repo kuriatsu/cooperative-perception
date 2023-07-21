@@ -11,6 +11,13 @@ namespace despot {
 
 
 TAState::TAState() {
+    ego_pose = 0;
+    ego_speed = 11.2;
+    ego_recog = {true, true};
+    req_time = 0;
+    req_target = 2;
+    risk_pose = {80, 120};
+    risk_bin = {false, true};
 
 }
 
