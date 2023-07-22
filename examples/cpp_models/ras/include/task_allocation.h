@@ -69,6 +69,7 @@ public:
 	double ObsProb(OBS_TYPE obs, const State& state, ACT_TYPE action) const;
 	State* CreateStartState(std::string type="DEFAULT") const;
 	Belief* InitialBelief(const State* start, std::string type = "DEFAULT") const;
+	Belief* InitialBelief(const State* start, const std::vector<double>& likelihood, std::string type = "DEFAULT") const;
 
 	double GetMaxReward() const;
 	ValuedAction GetBestAction() const;

@@ -25,6 +25,7 @@ public:
     bool Connect();
     State* Initialize();
     State* GetCurrentState();
+    State* GetCurrentState(std::vector<double>& likelihood);
     bool ExecuteAction(ACT_TYPE action, OBS_TYPE& obs);
     void UpdateState(ACT_TYPE action, OBS_TYPE obs, const std::vector<double>& risk_probs);
     void Step();

@@ -286,11 +286,11 @@ Belief* TaskAllocation::InitialBelief(const State* start, string type) const {
 			int idx = distance(row.begin(), col);
 			_ego_recog.emplace_back((ta_start_state->ego_recog[idx] < m_risk_thresh) ? NO_RISK : RISK);
 			if (*col) {
-				prob *= ta_start_state->ego_recog[idx]; 
+				prob *= 1.0 / ta_start_state->risk_pose.size(); 
 				_risk_bin.emplace_back(RISK);
 			}
 			else {
-				prob *= 1.0 - ta_start_state->ego_recog[idx]; 
+				prob *= 1.0 / ta_start_state->risk_pose.size(); 
 				_risk_bin.emplace_back(NO_RISK);
 			}
 		}
@@ -310,6 +310,52 @@ Belief* TaskAllocation::InitialBelief(const State* start, string type) const {
 	return new ParticleBelief(particles, this);
 }
 
+Belief* TaskAllocation::InitialBelief(const State* start, const std::vector<double>& likelihood, std::string type) const {
+   
+    const TAState *ta_start_state = static_cast<const TAState*>(start);
+
+    if (likelihood.size() != ta_start_state->risk_pose.size()) {
+        std::cout << "likelihood and risk have different list size!" << std::endl;
+        exit();
+    }
+
+	// recognition likelihood of the automated system
+    vector<bool> buf(ta_start_state->risk_pose.size(), false);
+	vector<vector<bool>> risk_bin_list;
+	GetBinProduct(risk_bin_list, buf, 0); 
+	vector<State*> particles;
+
+	for (auto row : risk_bin_list) {
+		double prob = 1.0;
+		vector<bool> _ego_recog, _risk_bin;
+		// set ego_recog and risk_bin based on threshold
+		for (auto col=row.begin(), end=row.end(); col!=end; col++) {
+			int idx = distance(row.begin(), col);
+			_ego_recog.emplace_back((ta_start_state->ego_recog[idx] < m_risk_thresh) ? NO_RISK : RISK);
+			if (*col) {
+				prob *= likelihood[idx]; 
+				_risk_bin.emplace_back(RISK);
+			}
+			else {
+				prob *= 1.0 - likelihood[idx]; 
+				_risk_bin.emplace_back(NO_RISK);
+			}
+		}
+
+        // TODO define based on the given sitiation
+		TAState* p = static_cast<TAState*>(Allocate(-1, prob));  
+		p->ego_pose = ta_start_state->ego_pose;
+		p->ego_speed = ta_start_state->ego_speed;
+		p->ego_recog = ta_start_state->ego_recog;
+		p->req_time = ta_start_state->req_time;
+	  	p->req_target = ta_start_state->req_target;
+	  	p->risk_pose = ta_start_state->risk_pose;
+		p->risk_bin = ta_start_state->risk_bin;
+        cout << *p << endl;
+		particles.push_back(p);
+	}
+	return new ParticleBelief(particles, this);
+}
 
 // get every combination of the recognition state.
 // [[true, true], [true, false], [false, true], [false, false]] for 2 obstacles

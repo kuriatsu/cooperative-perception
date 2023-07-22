@@ -55,6 +55,33 @@ State* RasWorld::GetCurrentState() {
     return out_state;
 }
 
+State* RasWorld::GetCurrentState(std::vector<double>& likelihood) {
+
+    perception_targets = sim->perception();
+
+    id_idx_list.clear();
+    likelihood.clear();
+
+    pomdp_state->ego_pose = 0;
+    pomdp_state->ego_speed = sim->getEgoSpeed();
+    pomdp_state->risk_pose.clear();
+    pomdp_state->risk_bin.clear();
+    for (const auto& risk: sim->getRisk(perception_targets)) {
+        id_idx_list.emplace_back(risk.id);
+        likelihood.emplace_back(risk.risk_prob);
+        pomdp_state->risk_pose.emplace_back(risk.distance);
+        pomdp_state->risk_bin.emplace_back(risk.risk_hidden);
+        pomdp_state->ego_recog.emplace_back(risk.risk_pred);
+    }
+
+    NO_ACTION = pomdp_state->risk_pose.size();
+    RECOG = NO_ACTION+1;
+
+    State* out_state = static_cast<State*>(pomdp_state);
+    return out_state;
+}
+
+
 bool RasWorld::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 
     // intervention request
@@ -96,8 +123,11 @@ bool RasWorld::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 
 void RasWorld::UpdateState(ACT_TYPE action, OBS_TYPE obs, const std::vector<double>& risk_probs) {
     for (auto itr = risk_probs.begin(), end = risk_probs.end(); itr != end; itr++) {
-        std::string req_target_id = id_idx_list[std::distance(risk_probs.begin(), itr)];
-        sim->getRisk(req_target_id)->risk_prob = *itr;
+        int idx = std::distance(risk_probs.begin(), itr);
+        std::string req_target_id = id_idx_list[idx];
+        Risk* risk = sim->getRisk(req_target_id);
+        risk->risk_prob = *itr;
+        risk->risk_pred = pomdp_state->ego_recog[idx];
     }
 
     sim->controlEgoVehicle(perception_targets);

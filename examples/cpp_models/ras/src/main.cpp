@@ -76,13 +76,14 @@ public:
         // step simulation
         ras_world->Step();
 
-        TAState* start_state = static_cast<TAState*>(ras_world->GetCurrentState());
+        std::vector<double> likelihood_list;
+        TAState* start_state = static_cast<TAState*>(ras_world->GetCurrentState(likelihood_list));
         ta_model->syncCurrentState(start_state);
 
         for (const auto risk : start_state->risk_bin) {
             std::cout << risk << "," << std::endl;
         }
-        Belief* belief = ta_model->InitialBelief(start_state, belief_type);
+        Belief* belief = ta_model->InitialBelief(start_state, belief_type, likelihood_list);
         assert(belief != NULL);
         solver->belief(belief);
 
