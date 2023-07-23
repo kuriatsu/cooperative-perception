@@ -36,13 +36,14 @@ TAState::~TAState() {
 }
 
 string TAState::text() const {
-	return "ego_pose: " + to_string(ego_pose) + "\n" + 
-		   "ego_speed: " + to_string(ego_speed) + "\n" + 
-		   "ego_recog: " + to_string(ego_recog) + "\n" +
-		   "req_time: " + to_string(req_time) + "\n" +
-		   "req_target: " + to_string(req_target) + "\n" +
-		   "risk_pose: " + to_string(risk_pose) + "\n" +
-		   "risk_bin: " + to_string(risk_bin) + "\n"; 
+	// return "ego_pose: " + to_string(ego_pose) + "\n" + 
+		//    "ego_speed: " + to_string(ego_speed) + "\n" + 
+	// 	   "ego_recog: " + to_string(ego_recog) + "\n" +
+	// 	   "req_time: " + to_string(req_time) + "\n" +
+	// 	   "req_target: " + to_string(req_target) + "\n" +
+	// 	   "risk_pose: " + to_string(risk_pose) + "\n" +
+	// 	   "risk_bin: " + to_string(risk_bin) + "\n"; 
+    return "";
 }
 
 TaskAllocation::TaskAllocation(int planning_horizon, double ideal_speed, double yield_speed, double risk_thresh, VehicleModel vehicle_model, OperatorModel operator_model){ 
@@ -316,7 +317,7 @@ Belief* TaskAllocation::InitialBelief(const State* start, const std::vector<doub
 
     if (likelihood.size() != ta_start_state->risk_pose.size()) {
         std::cout << "likelihood and risk have different list size!" << std::endl;
-        exit();
+        exit(0);
     }
 
 	// recognition likelihood of the automated system
@@ -341,6 +342,7 @@ Belief* TaskAllocation::InitialBelief(const State* start, const std::vector<doub
 				_risk_bin.emplace_back(NO_RISK);
 			}
 		}
+        std::cout << "initial belief weight: " << prob << std::endl;
 
         // TODO define based on the given sitiation
 		TAState* p = static_cast<TAState*>(Allocate(-1, prob));  

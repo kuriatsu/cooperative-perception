@@ -127,6 +127,7 @@ void RasWorld::UpdateState(ACT_TYPE action, OBS_TYPE obs, const std::vector<doub
         std::string req_target_id = id_idx_list[idx];
         Risk* risk = sim->getRisk(req_target_id);
         risk->risk_prob = *itr;
+        std::cout << "risk prob of : " <<  risk->risk_prob << std::endl;
         risk->risk_pred = pomdp_state->ego_recog[idx];
     }
 
