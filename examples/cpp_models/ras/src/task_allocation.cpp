@@ -36,14 +36,14 @@ TAState::~TAState() {
 }
 
 string TAState::text() const {
-	// return "ego_pose: " + to_string(ego_pose) + "\n" + 
-		//    "ego_speed: " + to_string(ego_speed) + "\n" + 
-	// 	   "ego_recog: " + to_string(ego_recog) + "\n" +
-	// 	   "req_time: " + to_string(req_time) + "\n" +
-	// 	   "req_target: " + to_string(req_target) + "\n" +
-	// 	   "risk_pose: " + to_string(risk_pose) + "\n" +
-	// 	   "risk_bin: " + to_string(risk_bin) + "\n"; 
-    return "";
+	return "ego_pose: " + to_string(ego_pose) + "\n" + 
+	       "ego_speed: " + to_string(ego_speed) + "\n" + 
+	 	   "ego_recog: " + to_string(ego_recog) + "\n" +
+	 	   "req_time: " + to_string(req_time) + "\n" +
+	 	   "req_target: " + to_string(req_target) + "\n" +
+	 	   "risk_pose: " + to_string(risk_pose) + "\n" +
+	 	   "risk_bin: " + to_string(risk_bin) + "\n"; 
+    // return "";
 }
 
 TaskAllocation::TaskAllocation(int planning_horizon, double ideal_speed, double yield_speed, double risk_thresh, VehicleModel vehicle_model, OperatorModel operator_model){ 
@@ -328,11 +328,10 @@ Belief* TaskAllocation::InitialBelief(const State* start, const std::vector<doub
 
 	for (auto row : risk_bin_list) {
 		double prob = 1.0;
-		vector<bool> _ego_recog, _risk_bin;
+		vector<bool> _risk_bin;
 		// set ego_recog and risk_bin based on threshold
 		for (auto col=row.begin(), end=row.end(); col!=end; col++) {
 			int idx = distance(row.begin(), col);
-			_ego_recog.emplace_back((ta_start_state->ego_recog[idx] < m_risk_thresh) ? NO_RISK : RISK);
 			if (*col) {
 				prob *= likelihood[idx]; 
 				_risk_bin.emplace_back(RISK);
@@ -352,7 +351,7 @@ Belief* TaskAllocation::InitialBelief(const State* start, const std::vector<doub
 		p->req_time = ta_start_state->req_time;
 	  	p->req_target = ta_start_state->req_target;
 	  	p->risk_pose = ta_start_state->risk_pose;
-		p->risk_bin = ta_start_state->risk_bin;
+		p->risk_bin = _risk_bin;
         cout << *p << endl;
 		particles.push_back(p);
 	}
