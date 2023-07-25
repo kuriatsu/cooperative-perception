@@ -16,8 +16,7 @@ private:
 public:
     SumoInterface* sim;
     OperatorModel* operator_model;
-    int REQUEST = 0, NO_ACTION, RECOG;
-    int NONE = 2;
+    TAValues* ta_values;
 
 public:
     RasWorld();

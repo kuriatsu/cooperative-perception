@@ -40,7 +40,7 @@ public:
     VehicleModel *vehicle_model = new VehicleModel(max_speed, yield_speed, max_accel, max_decel, safety_margin, delta_t);
 
 	DSPOMDP* InitializeModel(option::Option* options) {
-		DSPOMDP* model = new TaskAllocation(planning_horizon, max_speed, yield_speed, risk_thresh, *vehicle_model, *operator_model);
+		DSPOMDP* model = new TaskAllocation(planning_horizon, max_speed, yield_speed, risk_thresh, vehicle_model, operator_model);
 		return model;
 	}
 
@@ -90,6 +90,7 @@ public:
         double step_start_t = get_time_second();
         double start_t = get_time_second();
         ACT_TYPE action = solver->Search().action;
+        std::cout << "num_actions : " << ta_model->NumActions() << std::endl;
         std::cout << "selected action : " << action << std::endl;
         double end_t = get_time_second();
         double search_time = end_t - start_t;

@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <libsumo/libtraci.h>
+#include <math.h>
 
 class Pose {
 public:
@@ -79,4 +80,58 @@ public:
     
     Risk() {
     }
+};
+
+class TAValues {
+private:
+    int request_head = 0;
+    int no_action_head = 1;
+    int change_recog_head = 2;
+    int max_action_num = 2;
+
+public:
+    TAValues() {
+    };
+
+    TAValues(int num_targets){
+        if (num_targets == 0) {
+            request_head = 0;
+            no_action_head = 0;
+            change_recog_head = 0;
+            max_action_num = 1;
+        }
+        request_head = 0;
+        no_action_head = num_targets;
+        change_recog_head = num_targets + 1;
+        max_action_num = 1 + num_targets * 2;
+    };
+
+    enum OBS {NO_RISK, RISK, NONE};
+    enum ACT {REQUEST, NO_ACTION, RECOG};
+
+    int numActions() {
+        return max_action_num;
+    };
+
+    ACT getActionTarget(int action, int& target_index) const {
+        if (request_head <= action && action < no_action_head) {
+            target_index = action - request_head;
+            return REQUEST;
+        }
+        else if (action == no_action_head) {
+            target_index = 0;
+            return NO_ACTION;
+        }
+        else if (change_recog_head <= action) {
+            target_index = action - change_recog_head;
+            return RECOG;
+        }
+        else {
+            std::cout << "action index may be out of range \n" <<
+                "num_action :" << max_action_num << "\n" << 
+                "action :" << action << std::endl;
+            return NO_ACTION;
+        }
+    };
+
 };

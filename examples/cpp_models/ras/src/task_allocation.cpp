@@ -18,7 +18,6 @@ TAState::TAState() {
     req_target = 2;
     risk_pose = {80, 120};
     risk_bin = {false, true};
-
 }
 
 
@@ -46,7 +45,7 @@ string TAState::text() const {
     // return "";
 }
 
-TaskAllocation::TaskAllocation(int planning_horizon, double ideal_speed, double yield_speed, double risk_thresh, VehicleModel vehicle_model, OperatorModel operator_model){ 
+TaskAllocation::TaskAllocation(int planning_horizon, double ideal_speed, double yield_speed, double risk_thresh, VehicleModel* vehicle_model, OperatorModel* operator_model){ 
     m_planning_horizon = planning_horizon;
     m_max_speed = ideal_speed;
     m_yield_speed = yield_speed;
@@ -65,8 +64,8 @@ TaskAllocation::TaskAllocation() {
     double max_accel = 0.15 * 9.8;
     double max_decel = 0.2 * 9.8;
 
-    m_vehicle_model = VehicleModel(m_max_speed, m_yield_speed, max_accel, max_decel, safety_margin, Globals::config.time_per_move);
-    m_operator_model = OperatorModel(3.0, 0.5, 0.25);
+    m_vehicle_model = new VehicleModel(m_max_speed, m_yield_speed, max_accel, max_decel, safety_margin, Globals::config.time_per_move);
+    m_operator_model = new OperatorModel(3.0, 0.5, 0.25);
 }
 
 int TaskAllocation::NumActions() const {
@@ -80,34 +79,35 @@ bool TaskAllocation::Step(State& state, double rand_num, ACT_TYPE action, double
 
 	// ego state trantion
 	// EgoVehicleTransition(state_curr.ego_pose, state_curr.ego_speed, state_prev.ego_recog, risk_pose, action);
-    m_vehicle_model.getTransition(state_curr.ego_speed, state_curr.ego_pose, state_prev.ego_recog, state_prev.risk_pose);
+    m_vehicle_model->getTransition(state_curr.ego_speed, state_curr.ego_pose, state_prev.ego_recog, state_prev.risk_pose);
     
+    int target_idx;
+    TAValues::ACT ta_action = m_ta_values->getActionTarget(action, target_idx);
     // when action == no_action
-    if (action == NO_ACTION) {
-        obs = m_operator_model.execIntervention(state_prev.req_time, "NO_ACTION", "", false);
+    if (ta_action == TAValues::NO_ACTION) {
+        obs = m_operator_model->execIntervention(state_prev.req_time, ta_action, "", false);
         state_curr.req_time = 1;
     }
+    
 	// when action = change recog state
-    else if (NO_ACTION < action) {
-		int idx = action - RECOG;
-        obs = m_operator_model.execIntervention(state_prev.req_time, "RECOG", std::to_string(idx), state_curr.risk_bin[idx]);
-        // std::cout << "idx" << idx << " " << "action" << action << " " << "obs" << obs << std::endl;
-		state_curr.ego_recog[idx] = !state_prev.ego_recog[idx];
+    else if (ta_action == TAValues::RECOG) {
+        obs = m_operator_model->execIntervention(state_prev.req_time, ta_action, std::to_string(target_idx), state_curr.risk_bin[target_idx]);
+		state_curr.ego_recog[target_idx] = !state_prev.ego_recog[target_idx];
         state_curr.req_time = 1;
 	}
+    
 	// when action = request intervention
-	else if (REQUEST <= action && action < NO_ACTION) {
-		int idx = action - REQUEST;
-        obs = m_operator_model.execIntervention(state_prev.req_time, "REQUEST", std::to_string(idx), state_prev.risk_bin[idx]);
+	else if (action == TAValues::REQUEST) {
+        obs = m_operator_model->execIntervention(state_prev.req_time, ta_action, std::to_string(target_idx), state_curr.risk_bin[target_idx]);
 
 		// request to the same target
-		if (state_prev.req_target == idx) {
+		if (state_prev.req_target == target_idx) {
             state_curr.req_time += 1;
 		} 
 		// request to new target
 		else {
 			state_curr.req_time = 1;
-			state_curr.req_target = idx;
+			state_curr.req_target = target_idx;
 		}
 	}
 	reward = CalcReward(state_prev, state_curr, action);
@@ -121,12 +121,16 @@ bool TaskAllocation::Step(State& state, double rand_num, ACT_TYPE action, double
 
 double TaskAllocation::ObsProb(OBS_TYPE obs, const State& state, ACT_TYPE action) const {
 
-    if (REQUEST <= action && action < RECOG) {
+    int target_idx;
+    TAValues::ACT ta_action = m_ta_values->getActionTarget(action, target_idx);
+    if (ta_action == TAValues::REQUEST) {
+        int target_idx;
+        ta_action = m_ta_values->getActionTarget(action, target_idx);
         const TAState& ras_state = static_cast<const TAState&>(state);
-        int idx = action - REQUEST;
-        double acc = m_operator_model.int_acc(ras_state.req_time);
-        // std::cout << "obs_prob acc : " << acc << " obs : " << obs << "action : " << action << "\n" << " state : " << ras_state << std::endl;
-        return (ras_state.risk_bin[idx] == obs) ? acc : 1.0 - acc;
+        double acc = m_operator_model->int_acc(ras_state.req_time);
+
+        if (obs == TAValues::NONE) return 0.0;
+        return (ras_state.risk_bin[target_idx] == obs) ? acc : 1.0 - acc;
     }
     else {
         return 1.0;
@@ -148,11 +152,11 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 				reward += 1 * 1000;
                 // std::cout << "conservative penal: " << reward << "pose: " << state_prev.ego_pose << std::endl;
 			}
-            else if (state_curr.ego_recog[target_index] == RISK && state_curr.risk_bin[target_index] == NO_RISK) {
+            else if (state_curr.ego_recog[target_index] == TAValues::RISK && state_curr.risk_bin[target_index] == TAValues::NO_RISK) {
 				reward += 1 * r_false_positive;
                 // std::cout << "conservative penal: " << reward << "pose: " << state_prev.ego_pose << std::endl;
 			}
-			else if (state_curr.ego_recog[target_index] == NO_RISK && state_curr.risk_bin[target_index] == RISK) {
+			else if (state_curr.ego_recog[target_index] == TAValues::NO_RISK && state_curr.risk_bin[target_index] == TAValues::RISK) {
 				reward += 1 * r_false_negative;
                 // std::cout << "aggressive penal: " << reward << "pose: " << state_prev.ego_pose << "weigt: " << state_prev.weight << std::endl;
 			}
@@ -176,7 +180,7 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 	
 	// int request
 	// if (REQUEST <= action && action < RECOG) {
-	if (action != NO_ACTION) {
+	if (action != TAValues::NO_ACTION) {
         reward += 1 * r_request;
 	}
 
@@ -285,14 +289,14 @@ Belief* TaskAllocation::InitialBelief(const State* start, string type) const {
 		// set ego_recog and risk_bin based on threshold
 		for (auto col=row.begin(), end=row.end(); col!=end; col++) {
 			int idx = distance(row.begin(), col);
-			_ego_recog.emplace_back((ta_start_state->ego_recog[idx] < m_risk_thresh) ? NO_RISK : RISK);
+			_ego_recog.emplace_back((ta_start_state->ego_recog[idx] < m_risk_thresh) ? false : true);
 			if (*col) {
 				prob *= 1.0 / ta_start_state->risk_pose.size(); 
-				_risk_bin.emplace_back(RISK);
+				_risk_bin.emplace_back(true);
 			}
 			else {
 				prob *= 1.0 / ta_start_state->risk_pose.size(); 
-				_risk_bin.emplace_back(NO_RISK);
+				_risk_bin.emplace_back(false);
 			}
 		}
 
@@ -334,11 +338,11 @@ Belief* TaskAllocation::InitialBelief(const State* start, const std::vector<doub
 			int idx = distance(row.begin(), col);
 			if (*col) {
 				prob *= likelihood[idx]; 
-				_risk_bin.emplace_back(RISK);
+				_risk_bin.emplace_back(true);
 			}
 			else {
 				prob *= 1.0 - likelihood[idx]; 
-				_risk_bin.emplace_back(NO_RISK);
+				_risk_bin.emplace_back(false);
 			}
 		}
         std::cout << "initial belief weight: " << prob << std::endl;
@@ -380,7 +384,7 @@ double TaskAllocation::GetMaxReward() const {
 }
 
 ValuedAction TaskAllocation::GetBestAction() const {
-	return ValuedAction(NO_ACTION, 0);
+	return ValuedAction(TAValues::NO_ACTION, 0);
 }
 
 State* TaskAllocation::Allocate(int state_id, double weight) const {
@@ -407,8 +411,7 @@ int TaskAllocation::NumActiveParticles() const {
 
 void TaskAllocation::syncCurrentState(State* state) {
     m_start_state = static_cast<TAState*>(state);
-    NO_ACTION = m_start_state->risk_pose.size();
-    RECOG = NO_ACTION + 1;
+    m_ta_values = new TAValues(m_start_state->risk_pose.size());
 }
 
 std::vector<double> TaskAllocation::getRiskProb(const Belief* belief) {
@@ -440,13 +443,13 @@ void TaskAllocation::PrintState(const State& state, ostream& out) const {
 
 void TaskAllocation::PrintObs(const State& state, OBS_TYPE obs, ostream& out) const {
     switch(obs) {
-        case NONE:
+        case TAValues::NONE:
             out << "NONE" << endl;
             break;
-        case NO_RISK:
+        case TAValues::NO_RISK:
             out << "NO_RISK" << endl;
             break;
-        case RISK:
+        case TAValues::RISK:
             out << "RISK" << endl;
             break;
     }
@@ -471,10 +474,12 @@ void TaskAllocation::PrintBelief(const Belief& belief, ostream& out) const {
 }
 
 void TaskAllocation::PrintAction(ACT_TYPE action, ostream& out) const {
-	if (REQUEST <= action && action < RECOG)
-		out << "request to " << action - REQUEST << endl;
-	else if (RECOG <= action && action < NO_ACTION) 
-		out << "change recog state " << action - RECOG << endl;
+    int target_idx;
+    TAValues::ACT ta_action = m_ta_values->getActionTarget(action, target_idx);
+	if (ta_action == TAValues::REQUEST)
+		out << "request to " << target_idx << endl;
+	else if (ta_action == TAValues::RECOG) 
+		out << "change recog state " << target_idx << endl;
 	else
 		out << "nothing" << endl;
 }
