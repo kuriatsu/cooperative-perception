@@ -25,7 +25,7 @@ State* RasWorld::Initialize() {
     sim->spawnEgoVehicle();
     pomdp_state = new TAState();
     pomdp_state->req_time = 0;
-    pomdp_state->req_target = TAValues::NO_ACTION;
+    pomdp_state->req_target = 0;
     ta_values = new TAValues(); 
     return NULL;
 }
@@ -56,6 +56,7 @@ State* RasWorld::GetCurrentState() {
 
 State* RasWorld::GetCurrentState(std::vector<double>& likelihood) {
 
+    std::cout << "################GetCurrentState##################" << std::endl;
     perception_targets = sim->perception();
 
     id_idx_list.clear();
@@ -91,49 +92,61 @@ bool RasWorld::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 
     int target_idx;
     TAValues::ACT ta_action = ta_values->getActionTarget(action, target_idx);
+     
     
     // intervention request
     if (ta_action == TAValues::REQUEST) {
         std::string req_target_id = id_idx_list[target_idx];
-        obs = operator_model->execIntervention(pomdp_state->req_time, ta_action, req_target_id, sim->getRisk(req_target_id)->risk_hidden);
+        std::cout << "action : REQUEST to " << target_idx << " = " << req_target_id << std::endl;
+
         if (pomdp_state->req_target == target_idx) {
             pomdp_state->req_time++;
         }
         else {
-            sim->getRisk(req_target_id)->risk_pred = true;
-            pomdp_state->ego_recog[target_idx] = true;
+            sim->getRisk(req_target_id)->risk_pred = TAValues::RISK;
+            pomdp_state->ego_recog[target_idx] = TAValues::RISK;
             pomdp_state->req_time = 1;
             pomdp_state->req_target = target_idx;
         }
+
+        obs = operator_model->execIntervention(pomdp_state->req_time, ta_action, req_target_id, sim->getRisk(req_target_id)->risk_hidden);
+        ta_values->printObs(obs);
     }
+    
     // change recog state
     else if (ta_action == TAValues::RECOG) {
         std::string recog_target_id = id_idx_list[target_idx];
-        obs = operator_model->execIntervention(pomdp_state->req_time, ta_action, recog_target_id, sim->getRisk(recog_target_id)->risk_hidden);
+        std::cout << "action : change RECOG of " << target_idx << " = " << recog_target_id << std::endl;
 
-        sim->getRisk(recog_target_id)->risk_pred = (sim->getRisk(recog_target_id)->risk_pred) ? false : true;
-        pomdp_state->ego_recog[target_idx] = (pomdp_state->ego_recog[target_idx]) ? false : true;
-        pomdp_state->req_time = 1;
-        pomdp_state->req_target = TAValues::NONE;
+
+        sim->getRisk(recog_target_id)->risk_pred = (sim->getRisk(recog_target_id)->risk_pred == TAValues::RISK) ? TAValues::NO_RISK : TAValues::RISK;
+        pomdp_state->ego_recog[target_idx] = (pomdp_state->ego_recog[target_idx] == TAValues::RISK) ? TAValues::NO_RISK : TAValues::RISK;
+        pomdp_state->req_time = 0;
+        pomdp_state->req_target = 0;
+
+        obs = operator_model->execIntervention(pomdp_state->req_time, ta_action, "", TAValues::NO_RISK);
+        ta_values->printObs(obs);
     }
+    
     // NO_ACTION
     else {
+        std::cout << "NO_ACTION" << std::endl;
+        pomdp_state->req_time = 0;
+        pomdp_state->req_target = 0;
+
         obs = operator_model->execIntervention(pomdp_state->req_time, ta_action, "", false);
-        pomdp_state->req_time = 1;
-        pomdp_state->req_target = TAValues::NONE;
+        ta_values->printObs(obs);
     }
     return false;
 }
 
 
 void RasWorld::UpdateState(ACT_TYPE action, OBS_TYPE obs, const std::vector<double>& risk_probs) {
-    std::cout << "risk_prob when update " << std::string(risk_probs.begin(), risk_probs.end());
     for (auto itr = risk_probs.begin(), end = risk_probs.end(); itr != end; itr++) {
         int idx = std::distance(risk_probs.begin(), itr);
         std::string req_target_id = id_idx_list[idx];
         Risk* risk = sim->getRisk(req_target_id);
         risk->risk_prob = *itr;
-        std::cout << "risk prob of : " <<  risk->risk_prob << std::endl;
         risk->risk_pred = pomdp_state->ego_recog[idx];
     }
 

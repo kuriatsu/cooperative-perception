@@ -84,10 +84,10 @@ public:
 
 class TAValues {
 private:
-    int request_head = 0;
-    int no_action_head = 1;
+    int no_action_head = 0;
+    int request_head = 1;
     int change_recog_head = 2;
-    int max_action_num = 2;
+    int max_action_num = 3;
 
 public:
     TAValues() {
@@ -95,32 +95,32 @@ public:
 
     TAValues(int num_targets){
         if (num_targets == 0) {
-            request_head = 0;
             no_action_head = 0;
+            request_head = 0;
             change_recog_head = 0;
             max_action_num = 1;
         }
-        request_head = 0;
-        no_action_head = num_targets;
+        no_action_head = 0;
+        request_head = 1;
         change_recog_head = num_targets + 1;
         max_action_num = 1 + num_targets * 2;
     };
 
     enum OBS {NO_RISK, RISK, NONE};
-    enum ACT {REQUEST, NO_ACTION, RECOG};
+    enum ACT {NO_ACTION, REQUEST, RECOG};
 
     int numActions() {
         return max_action_num;
     };
 
     ACT getActionTarget(int action, int& target_index) const {
-        if (request_head <= action && action < no_action_head) {
-            target_index = action - request_head;
-            return REQUEST;
-        }
-        else if (action == no_action_head) {
+        if (action == no_action_head) {
             target_index = 0;
             return NO_ACTION;
+        }
+        else if (request_head <= action && action < change_recog_head) {
+            target_index = action - request_head;
+            return REQUEST;
         }
         else if (change_recog_head <= action) {
             target_index = action - change_recog_head;
@@ -133,5 +133,42 @@ public:
             return NO_ACTION;
         }
     };
+
+    void printAction(int action, int& target_index, std::ostream& out) {
+
+        if (action == no_action_head) {
+            out <<  "NO_ACTION" << std::endl;
+        }
+        else if (request_head <= action && action < change_recog_head) {
+            target_index = action - request_head;
+            out << "REQUEST to " << target_index;
+        }
+        else if (change_recog_head <= action) {
+            target_index = action - change_recog_head;
+            out << "change RECOG of " << target_index;
+        }
+        else {
+            std::cout << "action index may be out of range \n" <<
+                "num_action :" << max_action_num << "\n" << 
+                "action :" << action << std::endl;
+            out << "NO_ACTION" << std::endl;
+        }
+    };
+
+    void printObs(int obs) {
+        if (obs == NO_RISK) {
+            std::cout << "obs : NO_RISK" << std::endl;
+        }
+        else if (obs == RISK) {
+            std::cout << "obs : RISK" << std::endl;
+        }
+        else if (obs == NONE) {
+            std::cout << "obs : NONE" << std::endl;
+        }
+        else {
+            std::cout << "obs value is out of range" << std::endl;
+        }
+    };
+        
 
 };

@@ -27,18 +27,14 @@ int OperatorModel::execIntervention(const int time, const int action, const std:
         double rand_num = despot::Random::RANDOM.NextDouble();
         double acc = int_acc(time);
     
-        if (last_target_id == target) {
-            // TODO: is this output is okay? especially "else" section
-            if (rand_num < acc) {
-                return risk ? TAValues::RISK : TAValues::NO_RISK;    
-            }
-            else {
-                return risk ? TAValues::NO_RISK : TAValues::RISK;
-            }
+        // TODO: is this output is okay? especially "else" section
+        if (rand_num < acc) {
+            return (risk == TAValues::RISK) ? TAValues::RISK : TAValues::NO_RISK;    
         }
         else {
-            last_target_id = target;
-            return TAValues::NONE;
+            return (rand_num < 0.5) ? TAValues::RISK : TAValues::NO_RISK;
         }
+
+        last_target_id = target;
     }
 }

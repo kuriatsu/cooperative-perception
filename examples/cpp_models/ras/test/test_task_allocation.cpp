@@ -12,7 +12,6 @@ public:
 
     DSPOMDP* InitializeModel(option::Option* options) {
 		DSPOMDP* model = new TaskAllocation();
-        static_cast<TaskAllocation*>(model)->m_start_state = new TAState();
         return model;
     }
 

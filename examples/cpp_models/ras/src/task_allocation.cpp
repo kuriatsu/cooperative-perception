@@ -15,7 +15,7 @@ TAState::TAState() {
     ego_speed = 11.2;
     ego_recog = {true, true};
     req_time = 0;
-    req_target = 2;
+    req_target = 0;
     risk_pose = {80, 120};
     risk_bin = {false, true};
 }
@@ -66,6 +66,8 @@ TaskAllocation::TaskAllocation() {
 
     m_vehicle_model = new VehicleModel(m_max_speed, m_yield_speed, max_accel, max_decel, safety_margin, Globals::config.time_per_move);
     m_operator_model = new OperatorModel(3.0, 0.5, 0.25);
+    m_start_state = new TAState();
+    m_ta_values = new TAValues(m_start_state->risk_pose.size());
 }
 
 int TaskAllocation::NumActions() const {
@@ -83,32 +85,39 @@ bool TaskAllocation::Step(State& state, double rand_num, ACT_TYPE action, double
     
     int target_idx;
     TAValues::ACT ta_action = m_ta_values->getActionTarget(action, target_idx);
+    
     // when action == no_action
     if (ta_action == TAValues::NO_ACTION) {
-        obs = m_operator_model->execIntervention(state_prev.req_time, ta_action, "", false);
-        state_curr.req_time = 1;
+        state_curr.req_time = 0;
+        state_curr.req_target = 0;
+        obs = m_operator_model->execIntervention(state_curr.req_time, ta_action, "", TAValues::NO_RISK);
     }
     
 	// when action = change recog state
     else if (ta_action == TAValues::RECOG) {
-        obs = m_operator_model->execIntervention(state_prev.req_time, ta_action, std::to_string(target_idx), state_curr.risk_bin[target_idx]);
-		state_curr.ego_recog[target_idx] = !state_prev.ego_recog[target_idx];
-        state_curr.req_time = 1;
+		state_curr.ego_recog[target_idx] = (state_prev.ego_recog[target_idx] == TAValues::RISK) ? TAValues::NO_RISK : TAValues::RISK;
+        state_curr.req_time = 0;
+        state_curr.req_target = 0;
+        obs = m_operator_model->execIntervention(state_curr.req_time, ta_action, "", TAValues::NO_RISK);
 	}
     
 	// when action = request intervention
 	else if (action == TAValues::REQUEST) {
-        obs = m_operator_model->execIntervention(state_prev.req_time, ta_action, std::to_string(target_idx), state_curr.risk_bin[target_idx]);
+        state_curr.ego_recog[target_idx] = TAValues::RISK;
 
 		// request to the same target
 		if (state_prev.req_target == target_idx) {
-            state_curr.req_time += 1;
+            state_curr.req_time ++;
+			state_curr.req_target = target_idx;
 		} 
 		// request to new target
 		else {
 			state_curr.req_time = 1;
 			state_curr.req_target = target_idx;
 		}
+
+        obs = m_operator_model->execIntervention(state_curr.req_time, ta_action, std::to_string(target_idx), state_curr.risk_bin[target_idx]);
+
 	}
 	reward = CalcReward(state_prev, state_curr, action);
 
@@ -129,7 +138,7 @@ double TaskAllocation::ObsProb(OBS_TYPE obs, const State& state, ACT_TYPE action
         const TAState& ras_state = static_cast<const TAState&>(state);
         double acc = m_operator_model->int_acc(ras_state.req_time);
 
-        if (obs == TAValues::NONE) return 0.0;
+        if (obs == TAValues::NONE) return 1.0;
         return (ras_state.risk_bin[target_idx] == obs) ? acc : 1.0 - acc;
     }
     else {
@@ -345,7 +354,6 @@ Belief* TaskAllocation::InitialBelief(const State* start, const std::vector<doub
 				_risk_bin.emplace_back(false);
 			}
 		}
-        std::cout << "initial belief weight: " << prob << std::endl;
 
         // TODO define based on the given sitiation
 		TAState* p = static_cast<TAState*>(Allocate(-1, prob));  
@@ -418,7 +426,7 @@ std::vector<double> TaskAllocation::getRiskProb(const Belief* belief) {
 	const vector<State*>& particles = static_cast<const ParticleBelief*>(belief)->particles();
 	
 	// double status = 0;
-	vector<double> probs(m_start_state->risk_pose.size());
+	vector<double> probs(m_start_state->risk_pose.size(), 0.0);
 	for (int i = 0; i < particles.size(); i++) {
 		State* particle = particles[i];
 		TAState* state = static_cast<TAState*>(particle);

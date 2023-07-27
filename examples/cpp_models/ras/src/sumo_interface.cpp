@@ -46,6 +46,7 @@ void SumoInterface::controlEgoVehicle(const std::vector<std::string>& targets){
     double speed;
     try {
         speed = Vehicle::getSpeed(m_ego_name);
+        std::cout << "prev accel " << Vehicle::getAcceleration(m_ego_name);
     }
     catch (libsumo::TraCIException& error) {
         // std::cout << "no ego_vehicle" << std::endl;
@@ -58,6 +59,7 @@ void SumoInterface::controlEgoVehicle(const std::vector<std::string>& targets){
 	for (const std::string &it : targets) {
         Risk &target = m_risks[it];
         bool is_decel_target = false; 
+        std::cout << "control vehicle, risk_pred " << target.risk_pred << std::endl;
 
         if (target.distance < 0) {
             is_decel_target = false;
@@ -94,7 +96,7 @@ void SumoInterface::controlEgoVehicle(const std::vector<std::string>& targets){
         Vehicle::setAcceleration(m_ego_name, min_acc, m_delta_t);
     }
     else {
-        min_acc = std::max(min_acc, m_max_decel);
+        min_acc = std::max(min_acc, -m_max_decel);
         Vehicle::setAcceleration(m_ego_name, min_acc, m_delta_t);
     }
 }
