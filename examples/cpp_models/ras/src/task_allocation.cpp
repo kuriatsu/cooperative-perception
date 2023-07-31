@@ -138,11 +138,11 @@ double TaskAllocation::ObsProb(OBS_TYPE obs, const State& state, ACT_TYPE action
         const TAState& ras_state = static_cast<const TAState&>(state);
         double acc = m_operator_model->int_acc(ras_state.req_time);
 
-        if (obs == TAValues::NONE) return 1.0;
+        if (obs == TAValues::NONE) return 0.0;
         return (ras_state.risk_bin[target_idx] == obs) ? acc : 1.0 - acc;
     }
     else {
-        return 1.0;
+        return obs == TAValues::NONE;
     }
 }
 
@@ -152,20 +152,24 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 	const TAState& state_curr = static_cast<const TAState&>(_state_curr);
 	int reward = 0;
 
+    int target_idx;
+    TAValues::ACT ta_action = m_ta_values->getActionTarget(action, target_idx);
+
 	for (auto it=state_curr.risk_pose.begin(), end=state_curr.risk_pose.end(); it != end; ++it) {
 		int target_index = distance(state_curr.risk_pose.begin(), it);
 		if (state_prev.ego_pose <= *it && *it < state_curr.ego_pose) {
 
 			// driving safety
-			if (state_curr.ego_recog[target_index] == state_curr.risk_bin[target_index]) {
+			if (state_prev.ego_recog[target_index] == state_prev.risk_bin[target_index]) {
+                // reward = 0;
 				reward += 1 * 1000;
                 // std::cout << "conservative penal: " << reward << "pose: " << state_prev.ego_pose << std::endl;
 			}
-            else if (state_curr.ego_recog[target_index] == TAValues::RISK && state_curr.risk_bin[target_index] == TAValues::NO_RISK) {
+            else if (state_prev.ego_recog[target_index] == TAValues::RISK && state_prev.risk_bin[target_index] == TAValues::NO_RISK) {
 				reward += 1 * r_false_positive;
                 // std::cout << "conservative penal: " << reward << "pose: " << state_prev.ego_pose << std::endl;
 			}
-			else if (state_curr.ego_recog[target_index] == TAValues::NO_RISK && state_curr.risk_bin[target_index] == TAValues::RISK) {
+			else if (state_prev.ego_recog[target_index] == TAValues::NO_RISK && state_prev.risk_bin[target_index] == TAValues::RISK) {
 				reward += 1 * r_false_negative;
                 // std::cout << "aggressive penal: " << reward << "pose: " << state_prev.ego_pose << "weigt: " << state_prev.weight << std::endl;
 			}
@@ -188,97 +192,16 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 	reward += pow((state_curr.ego_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed), 2.0) * r_comf;
 	
 	// int request
-	// if (REQUEST <= action && action < RECOG) {
-	if (action != TAValues::NO_ACTION) {
+	// if (ta_action == TAValues::) {
+	if (ta_action != TAValues::NO_ACTION) {
         reward += 1 * r_request;
 	}
 
 	return reward;
 }
 
-/*
-void TaskAllocation::EgoVehicleTransition(int& pose, double& speed, const vector<bool>& recog_list, const vector<int>& target_poses, const ACT_TYPE& action) const {
-	vector<double> acc_list;
-
-	if (speed < m_max_speed) {
-		acc_list.emplace_back(ordinary_G);
-	}
-    else if (speed == m_max_speed) {
-        acc_list.emplace_back(0.0);
-	}
-	else {
-		acc_list.emplace_back(-ordinary_G);
-	}
-
-	for (auto it=recog_list.begin(), end=recog_list.end(); it != end; ++it) {
-		int target_position = target_poses[distance(recog_list.begin(), it)];
-        int dist = target_position - pose;
-        bool is_decel_target = false; 
-
-        if (dist < 0) {
-            is_decel_target = false;
-        }
-        else if (REQUEST <= action && action < RECOG) {
-            is_decel_target = (*it == RISK);
-        }
-        else {
-            is_decel_target = (*it == RISK);
-        }
-
-        if (!is_decel_target){
-            continue;
-        }
-
-        double a = 0.0;
-        int decel_distance = (pow(speed, 2.0) - pow(m_yield_speed, 2))/(2.0*9.8*ordinary_G) + safety_margin;
-
-        if (dist > decel_distance) {
-            a = (pow(m_yield_speed, 2.0) - pow(speed, 2.0))/(2.0*(dist-safety_margin));
-        }
-        else {
-            a = 0.0;
-        }
-
-        acc_list.emplace_back(a);
-    }
-
-    auto a_itr = min_element(acc_list.begin(), acc_list.end());
-    double a = *a_itr;
-    int &delta_t = Globals::config.time_per_move;
-    // int decel_target = distance(acc_list.begin(), a_itr);
-    speed += a * delta_t;
-    if (speed <= m_yield_speed) {
-        speed =	m_yield_speed;
-        a = 0.0;
-    }
-    else if (speed >= m_max_speed) {
-        speed = m_max_speed;
-        a = 0.0;
-    }
-
-    pose += speed * delta_t + pow(0.5*a*delta_t, 2.0);
-    return;
-}
-*/
 
 State* TaskAllocation::CreateStartState(string type) const {
-	
-	// set ego_recog and risk_bin based on threshold
-    // std::cout << "create state" << std::endl;
-	// vector<bool> _ego_recog, _risk_bin;
-	// for (auto val : risk_recog) {
-    //     cout << "initial state risk_recog val " << val << "thesh " << m_risk_thresh << endl;
-	//     _ego_recog.emplace_back((val < m_risk_thresh) ? NO_RISK : RISK);
-    //     _risk_bin.emplace_back(RISK);
-	// }
-
-	// return new TAState(
-        // 0, // ego_pose
-        // m_max_speed, // ego_speed
-        // _ego_recog, // ego_recog
-        // 0, // req_time
-        // NO_ACTION, // req_target
-        // _risk_bin); // target_risk
     return m_start_state;
 }
 
@@ -317,7 +240,7 @@ Belief* TaskAllocation::InitialBelief(const State* start, string type) const {
 		p->req_time = ta_start_state->req_time;
 	  	p->req_target = ta_start_state->req_target;
 	  	p->risk_pose = ta_start_state->risk_pose;
-		p->risk_bin = ta_start_state->risk_bin;
+		p->risk_bin = _risk_bin;
         cout << *p << endl;
 		particles.push_back(p);
 	}

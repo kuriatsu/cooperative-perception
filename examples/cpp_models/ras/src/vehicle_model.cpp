@@ -46,7 +46,7 @@ double VehicleModel::getAccel(const double speed, const std::vector<bool>& recog
         min_acc = std::min(min_acc, m_max_accel);
     }
     else {
-        min_acc = std::max(min_acc, m_max_decel);
+        min_acc = std::max(min_acc, -m_max_decel);
     }
 
     return min_acc;
