@@ -97,6 +97,12 @@ bool Ras::Step(State& state, double rand_num, ACT_TYPE action, double& reward, O
 			obs = NONE;
 		}
 	}
+    // added
+    else {
+        obs = NONE;
+        state_curr.req_time = 1;
+        state_curr.req_target = 0;
+    }
 
 	reward = CalcReward(state_prev, state_curr, risk_pose, action);
 
@@ -117,7 +123,8 @@ double Ras::ObsProb(OBS_TYPE obs, const State& state, ACT_TYPE action) const {
         return (ras_state.risk_bin[idx] == obs) ? acc : 1.0 - acc;
     }
     else {
-        return 1.0;
+        // return 1.0;
+        return obs == NONE;
     }
 }
 
