@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(text_task_allocation)
+project(test_ta)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g3 -O0")
 set(CXXFLAGS "${CXXFLAGS} -g3")

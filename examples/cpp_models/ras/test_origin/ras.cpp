@@ -42,13 +42,13 @@ Ras::Ras() {
 	safety_margin = 5;
     delta_t = 1.0;
 
-	vector<double> _risk_recog{0.45, 0.45};
+	vector<double> _risk_recog{0.55, 0.55};
 	vector<int> _risk_pose{80, 100};
 	risk_recog = _risk_recog;
 	risk_pose = _risk_pose;
 	risk_thresh = 0.5;
 
-	r_false_positive = -500;
+	r_false_positive = -1000;
 	r_false_negative = -1000;
 	r_eff = -1000;
 	r_comf = -1;
@@ -79,6 +79,7 @@ bool Ras::Step(State& state, double rand_num, ACT_TYPE action, double& reward, O
 		int idx = action - REQUEST;
 		double acc = operator_model.int_acc(state_prev.req_time);
         state_curr.req_time += 1;
+		// state_curr.ego_recog[idx] = RISK;
 
 		// request to the same target
 		if (state_prev.req_target == idx) {
@@ -237,7 +238,7 @@ void Ras::EgoVehicleTransition(int& pose, double& speed, const vector<bool>& rec
         a = 0.0;
     }
 
-    pose += speed * delta_t + pow(0.5*a*delta_t, 2.0);
+    pose += speed * delta_t + 0.5*a*pow(delta_t, 2.0);
     return;
 }
 

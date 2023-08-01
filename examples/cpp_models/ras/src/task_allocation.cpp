@@ -1,4 +1,4 @@
-#include "task_allocation.h"
+ #include "task_allocation.h"
 
 #include <despot/core/builtin_lower_bounds.h>
 #include <despot/core/builtin_policy.h>
@@ -13,11 +13,11 @@ namespace despot {
 TAState::TAState() {
     ego_pose = 0;
     ego_speed = 11.2;
-    ego_recog = {true, true};
+    ego_recog = {false, true};
     req_time = 0;
     req_target = 0;
     risk_pose = {80, 120};
-    risk_bin = {false, true};
+    risk_bin = {true, false};
 }
 
 
@@ -62,9 +62,10 @@ TaskAllocation::TaskAllocation() {
 
     int safety_margin = 5;
     double max_accel = 0.15 * 9.8;
-    double max_decel = 0.2 * 9.8;
+    double max_decel = 0.3 * 9.8;
+    double min_decel = 0.2 * 9.8;
 
-    m_vehicle_model = new VehicleModel(m_max_speed, m_yield_speed, max_accel, max_decel, safety_margin, Globals::config.time_per_move);
+    m_vehicle_model = new VehicleModel(m_max_speed, m_yield_speed, max_accel, max_decel, min_decel, safety_margin, Globals::config.time_per_move);
     m_operator_model = new OperatorModel(3.0, 0.5, 0.25);
     m_start_state = new TAState();
     m_ta_values = new TAValues(m_start_state->risk_pose.size());
@@ -102,7 +103,7 @@ bool TaskAllocation::Step(State& state, double rand_num, ACT_TYPE action, double
 	}
     
 	// when action = request intervention
-	else if (action == TAValues::REQUEST) {
+	else if (ta_action == TAValues::REQUEST) {
         state_curr.ego_recog[target_idx] = TAValues::RISK;
 
 		// request to the same target
@@ -133,8 +134,6 @@ double TaskAllocation::ObsProb(OBS_TYPE obs, const State& state, ACT_TYPE action
     int target_idx;
     TAValues::ACT ta_action = m_ta_values->getActionTarget(action, target_idx);
     if (ta_action == TAValues::REQUEST) {
-        int target_idx;
-        ta_action = m_ta_values->getActionTarget(action, target_idx);
         const TAState& ras_state = static_cast<const TAState&>(state);
         double acc = m_operator_model->int_acc(ras_state.req_time);
 
@@ -143,6 +142,7 @@ double TaskAllocation::ObsProb(OBS_TYPE obs, const State& state, ACT_TYPE action
     }
     else {
         return obs == TAValues::NONE;
+        // return 1.0;
     }
 }
 
@@ -171,7 +171,8 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 			}
 			else if (state_prev.ego_recog[target_index] == TAValues::NO_RISK && state_prev.risk_bin[target_index] == TAValues::RISK) {
 				reward += 1 * r_false_negative;
-                // std::cout << "aggressive penal: " << reward << "pose: " << state_prev.ego_pose << "weigt: " << state_prev.weight << std::endl;
+                // reward += 0;
+                // std::cout << "aggressive penal: " << reward << "pose: " << state_curr.ego_pose << "weigt: " << state_curr.weight << std::endl;
 			}
 
             else {
@@ -194,7 +195,7 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 	// int request
 	// if (ta_action == TAValues::) {
 	if (ta_action != TAValues::NO_ACTION) {
-        reward += 1 * r_request;
+        reward += -1 ;
 	}
 
 	return reward;
@@ -223,11 +224,11 @@ Belief* TaskAllocation::InitialBelief(const State* start, string type) const {
 			int idx = distance(row.begin(), col);
 			_ego_recog.emplace_back((ta_start_state->ego_recog[idx] < m_risk_thresh) ? false : true);
 			if (*col) {
-				prob *= 1.0 / ta_start_state->risk_pose.size(); 
+				prob *= 0.5 ; 
 				_risk_bin.emplace_back(true);
 			}
 			else {
-				prob *= 1.0 / ta_start_state->risk_pose.size(); 
+				prob *= 0.5; 
 				_risk_bin.emplace_back(false);
 			}
 		}
@@ -290,6 +291,7 @@ Belief* TaskAllocation::InitialBelief(const State* start, const std::vector<doub
         cout << *p << endl;
 		particles.push_back(p);
 	}
+    std::cout << "initial belief" << std::endl;
 	return new ParticleBelief(particles, this);
 }
 
