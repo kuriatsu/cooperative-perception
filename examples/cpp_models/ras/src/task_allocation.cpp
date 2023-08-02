@@ -13,10 +13,13 @@ namespace despot {
 TAState::TAState() {
     ego_pose = 0;
     ego_speed = 11.2;
-    ego_recog = {false, true};
     req_time = 0;
     req_target = 0;
-    risk_pose = {80, 120};
+    // ego_recog = {false, true, true};
+    // risk_pose = {80, 100, 120};
+    // risk_bin = {true, true, false};
+    ego_recog = {false, true};
+    risk_pose = {80, 90};
     risk_bin = {true, false};
 }
 
@@ -162,16 +165,17 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 			// driving safety
 			if (state_prev.ego_recog[target_index] == state_prev.risk_bin[target_index]) {
                 // reward = 0;
-				reward += 1 * 1000;
+				reward += 1 * 100;
                 // std::cout << "conservative penal: " << reward << "pose: " << state_prev.ego_pose << std::endl;
 			}
             else if (state_prev.ego_recog[target_index] == TAValues::RISK && state_prev.risk_bin[target_index] == TAValues::NO_RISK) {
+                // reward = 0;
 				reward += 1 * r_false_positive;
                 // std::cout << "conservative penal: " << reward << "pose: " << state_prev.ego_pose << std::endl;
 			}
 			else if (state_prev.ego_recog[target_index] == TAValues::NO_RISK && state_prev.risk_bin[target_index] == TAValues::RISK) {
+                // reward = 0;
 				reward += 1 * r_false_negative;
-                // reward += 0;
                 // std::cout << "aggressive penal: " << reward << "pose: " << state_curr.ego_pose << "weigt: " << state_curr.weight << std::endl;
 			}
 
@@ -190,12 +194,12 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 	}
 
 	// driving comfort (avoid harsh driving)
-	reward += pow((state_curr.ego_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed), 2.0) * r_comf;
+	// reward += pow((state_curr.ego_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed), 2.0) * r_comf;
 	
 	// int request
 	// if (ta_action == TAValues::) {
-	if (ta_action != TAValues::NO_ACTION) {
-        reward += -1 ;
+	if (ta_action == TAValues::REQUEST) {
+        reward += 1 * r_request ;
 	}
 
 	return reward;
@@ -313,7 +317,7 @@ void TaskAllocation::GetBinProduct(vector<vector<bool>>& out_list, std::vector<b
 }
 
 double TaskAllocation::GetMaxReward() const {
-	return 1000;
+	return 100;
 }
 
 ValuedAction TaskAllocation::GetBestAction() const {
