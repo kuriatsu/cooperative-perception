@@ -1,4 +1,4 @@
- #include "task_allocation.h"
+#include "task_allocation.h"
 
 #include <despot/core/builtin_lower_bounds.h>
 #include <despot/core/builtin_policy.h>
@@ -164,31 +164,30 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 
 			// driving safety
 			if (state_prev.ego_recog[target_index] == state_prev.risk_bin[target_index]) {
-                // reward = 0;
-				reward += 1 * 100;
+                // reward = 0; 
+                reward += 1 * 10;
                 // std::cout << "conservative penal: " << reward << "pose: " << state_prev.ego_pose << std::endl;
 			}
             else if (state_prev.ego_recog[target_index] == TAValues::RISK && state_prev.risk_bin[target_index] == TAValues::NO_RISK) {
-                // reward = 0;
-				reward += 1 * r_false_positive;
+                reward = 0;
+                // reward += 1 * r_false_positive;
                 // std::cout << "conservative penal: " << reward << "pose: " << state_prev.ego_pose << std::endl;
 			}
 			else if (state_prev.ego_recog[target_index] == TAValues::NO_RISK && state_prev.risk_bin[target_index] == TAValues::RISK) {
-                // reward = 0;
-				reward += 1 * r_false_negative;
+                reward = 0;
+				// reward += 1 * r_false_negative;
                 // std::cout << "aggressive penal: " << reward << "pose: " << state_curr.ego_pose << "weigt: " << state_curr.weight << std::endl;
 			}
 
+           
+            // driving efficiency
+            if (state_prev.risk_bin[target_index] == TAValues::NO_RISK) {
+                // when no risk, higher is better
+                reward += (state_prev.ego_speed - m_max_speed)/(m_max_speed - m_yield_speed) * r_eff;
+            }
             else {
-                // driving efficiency
-                // if (state_curr.risk_bin[target_index] == NO_RISK) {
-                    // when no risk, higher is better
-                //     reward += (m_max_speed - state_curr.ego_speed)/(m_max_speed - m_yield_speed) * r_eff;
-                // }
-                // else {
-                    // when risk, lower is better
-                //     reward += (state_curr.ego_speed - m_yield_speed)/(m_max_speed - m_yield_speed) * r_eff;
-                // }
+                // when risk, lower is better
+                reward += (m_yield_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed) * r_eff;
             }
 		}
 	}

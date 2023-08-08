@@ -38,7 +38,7 @@ private:
 	// reward
 	int r_false_positive = -50;
 	int r_false_negative = -100;
-	int r_eff            = -1000;
+	int r_eff            = 10;
 	int r_comf           = -1;
 	int r_request        = -1;
 
