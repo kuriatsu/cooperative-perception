@@ -5,7 +5,7 @@ VehicleModel::VehicleModel() :
         m_yield_speed(2.8),
         m_max_accel(0.15*9.8),
         m_max_decel(0.2*9.8),
-        m_safety_margin(5),
+        m_safety_margin(15),
         m_delta_t(1.0) {
         }
 
@@ -51,14 +51,8 @@ double VehicleModel::getAccel(const double speed, const int pose, const std::vec
     // double min_acc = *a_itr;
     // std::cout << "min_acc : " << min_acc << std::endl;
     // int decel_target = target.distanceance(acc_list.begin(), a_itr);
-    // std::cout << "speed: " << speed << " acc: " << min_acc << std::endl;
+    // std::cout << "pose: " << pose << " speed: " << speed << " acc: " << min_acc << std::endl;
     
-    if (min_acc >= 0.0) {
-        min_acc = (min_acc < m_max_accel) ? min_acc : m_max_accel;
-    }
-    else {
-        min_acc = (min_acc > -m_max_decel) ? min_acc : -m_max_decel;
-    }
 
     return min_acc;
 }
@@ -68,6 +62,16 @@ void VehicleModel::getTransition(double& speed, int& pose, const std::vector<boo
 
     double a = getAccel(speed, pose, recog_list, target_poses);
     // int decel_target = distance(acc_list.begin(), a_itr);
+    if (a >= 0.0) {
+        a = (a < m_max_accel) ? a : m_max_accel;
+    }
+    else {
+        a = (a > -m_max_decel) ? a : -m_max_decel;
+    }
+
+    // std::cout << pose << "," << speed << std::endl;
+    pose += speed * m_delta_t + 0.5*a*std::pow(m_delta_t, 2.0);
+
     speed += a * m_delta_t;
     if (a < 0.0 && speed < m_yield_speed) {
         speed =	m_yield_speed;
@@ -77,7 +81,6 @@ void VehicleModel::getTransition(double& speed, int& pose, const std::vector<boo
         speed = m_max_speed;
         // a = 0.0;
     }
-    // std::cout << pose << "," << speed << std::endl;
-    pose += speed * m_delta_t + 0.5*a*std::pow(m_delta_t, 2.0);
+
     return;
 }

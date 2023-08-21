@@ -19,8 +19,8 @@ TAState::TAState() {
     // risk_pose = {80, 100, 120};
     // risk_bin = {true, true, false};
     ego_recog = {false, true};
-    risk_pose = {80, 90};
-    risk_bin = {true, false};
+    risk_pose = {100, 120};
+    risk_bin = {false, true};
 }
 
 
@@ -107,7 +107,7 @@ bool TaskAllocation::Step(State& state, double rand_num, ACT_TYPE action, double
     
 	// when action = request intervention
 	else if (ta_action == TAValues::REQUEST) {
-        state_curr.ego_recog[target_idx] = TAValues::RISK;
+        // state_curr.ego_recog[target_idx] = TAValues::RISK;
 
 		// request to the same target
 		if (state_prev.req_target == target_idx) {
@@ -163,45 +163,47 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 		if (state_prev.ego_pose <= *it && *it < state_curr.ego_pose) {
 
 			// driving safety
-			if (state_prev.ego_recog[target_index] == state_prev.risk_bin[target_index]) {
-                // reward = 0; 
-                reward += 1 * 10;
-                // std::cout << "conservative penal: " << reward << "pose: " << state_prev.ego_pose << std::endl;
-			}
-            else if (state_prev.ego_recog[target_index] == TAValues::RISK && state_prev.risk_bin[target_index] == TAValues::NO_RISK) {
-                reward = 0;
-                // reward += 1 * r_false_positive;
-                // std::cout << "conservative penal: " << reward << "pose: " << state_prev.ego_pose << std::endl;
-			}
-			else if (state_prev.ego_recog[target_index] == TAValues::NO_RISK && state_prev.risk_bin[target_index] == TAValues::RISK) {
-                reward = 0;
-				// reward += 1 * r_false_negative;
-                // std::cout << "aggressive penal: " << reward << "pose: " << state_curr.ego_pose << "weigt: " << state_curr.weight << std::endl;
-			}
+            reward += (state_prev.ego_recog[target_index] == state_prev.risk_bin[target_index]) ? 100 : -100;
 
-           
-            // driving efficiency
-            if (state_prev.risk_bin[target_index] == TAValues::NO_RISK) {
-                // when no risk, higher is better
-                reward += (state_prev.ego_speed - m_max_speed)/(m_max_speed - m_yield_speed) * r_eff;
-            }
-            else {
+// request intervention (same with recog==risk reward ?)
+            if (state_prev.risk_bin[target_index] == TAValues::RISK)
+                reward += (state_prev.ego_speed == m_yield_speed) ? 100 : -100;
+//            else
+//                reward += (state_prev.ego_speed > m_yield_speed) ? 100 : -100;
+
+// try to keep mid speed
+            if (state_prev.risk_bin[target_index] == TAValues::NO_RISK)
                 // when risk, lower is better
-                reward += (m_yield_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed) * r_eff;
-            }
+                reward += (state_prev.ego_speed - m_yield_speed)/(m_max_speed - m_yield_speed) * 10;
+//            else
+//                // when no risk, higher is better
+//                reward += (m_max_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed) * 10;
 		}
 	}
 
-	// driving comfort (avoid harsh driving)
-	// reward += pow((state_curr.ego_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed), 2.0) * r_comf;
+	// driving comfort (avoid unnecessary speed change)
+    // if (state_curr.ego_speed > state_prev.ego_speed) {
+        // reward += -1;
+        // reward += (state_curr.ego_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed) * -1;
+    // }
 	
+    // driving efficiency
+    reward += -1;
+
 	// int request
-	// if (ta_action == TAValues::) {
 	if (ta_action == TAValues::REQUEST) {
         reward += 1 * r_request ;
 	}
 
 	return reward;
+}
+
+double TaskAllocation::GetMaxReward() const {
+	return 200;
+}
+
+ValuedAction TaskAllocation::GetBestAction() const {
+	return ValuedAction(TAValues::NO_ACTION, 0);
 }
 
 
@@ -315,13 +317,6 @@ void TaskAllocation::GetBinProduct(vector<vector<bool>>& out_list, std::vector<b
     }
 }
 
-double TaskAllocation::GetMaxReward() const {
-	return 100;
-}
-
-ValuedAction TaskAllocation::GetBestAction() const {
-	return ValuedAction(TAValues::NO_ACTION, 0);
-}
 
 State* TaskAllocation::Allocate(int state_id, double weight) const {
 	TAState* ras_state = memory_pool.Allocate();

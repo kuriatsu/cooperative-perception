@@ -21,6 +21,8 @@ public:
     }
 
     void InitializeDefaultParameters() {
+        Globals::config.num_scenarios = 500;
+        Globals::config.sim_len = 150;
     }
 
     std::string ChooseSolver(){
