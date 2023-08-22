@@ -18,9 +18,9 @@ TAState::TAState() {
     // ego_recog = {false, true, true};
     // risk_pose = {80, 100, 120};
     // risk_bin = {true, true, false};
-    ego_recog = {false, true};
+    ego_recog = {false, false};
     risk_pose = {100, 120};
-    risk_bin = {false, true};
+    risk_bin = {true, true};
 }
 
 
@@ -92,6 +92,7 @@ bool TaskAllocation::Step(State& state, double rand_num, ACT_TYPE action, double
     
     // when action == no_action
     if (ta_action == TAValues::NO_ACTION) {
+        // std::cout << "action : NO_ACTION" << std::endl;
         state_curr.req_time = 0;
         state_curr.req_target = 0;
         obs = m_operator_model->execIntervention(state_curr.req_time, ta_action, "", TAValues::NO_RISK);
@@ -99,6 +100,7 @@ bool TaskAllocation::Step(State& state, double rand_num, ACT_TYPE action, double
     
 	// when action = change recog state
     else if (ta_action == TAValues::RECOG) {
+        // std::cout << "action : RECOG" << std::endl;
 		state_curr.ego_recog[target_idx] = (state_prev.ego_recog[target_idx] == TAValues::RISK) ? TAValues::NO_RISK : TAValues::RISK;
         state_curr.req_time = 0;
         state_curr.req_target = 0;
@@ -107,16 +109,17 @@ bool TaskAllocation::Step(State& state, double rand_num, ACT_TYPE action, double
     
 	// when action = request intervention
 	else if (ta_action == TAValues::REQUEST) {
+        // std::cout << "action : REQUEST" << std::endl;
         // state_curr.ego_recog[target_idx] = TAValues::RISK;
 
 		// request to the same target
 		if (state_prev.req_target == target_idx) {
-            state_curr.req_time ++;
+            state_curr.req_time += Globals::config.time_per_move;
 			state_curr.req_target = target_idx;
 		} 
 		// request to new target
 		else {
-			state_curr.req_time = 1;
+			state_curr.req_time = Globals::config.time_per_move;
 			state_curr.req_target = target_idx;
 		}
 
@@ -163,7 +166,7 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 		if (state_prev.ego_pose <= *it && *it < state_curr.ego_pose) {
 
 			// driving safety
-            reward += (state_prev.ego_recog[target_index] == state_prev.risk_bin[target_index]) ? 100 : -100;
+//             reward += (state_prev.ego_recog[target_index] == state_prev.risk_bin[target_index]) ? 100 : -100;
 
 // request intervention (same with recog==risk reward ?)
             if (state_prev.risk_bin[target_index] == TAValues::RISK)
@@ -174,7 +177,7 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 // try to keep mid speed
             if (state_prev.risk_bin[target_index] == TAValues::NO_RISK)
                 // when risk, lower is better
-                reward += (state_prev.ego_speed - m_yield_speed)/(m_max_speed - m_yield_speed) * 10;
+                reward += (state_prev.ego_speed - m_yield_speed)/(m_max_speed - m_yield_speed) * 100;
 //            else
 //                // when no risk, higher is better
 //                reward += (m_max_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed) * 10;
@@ -188,10 +191,10 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
     // }
 	
     // driving efficiency
-    reward += -1;
+    // reward += -1;
 
 	// int request
-	if (ta_action == TAValues::REQUEST) {
+	if (ta_action == TAValues::REQUEST && state_curr.req_time == Globals::config.time_per_move) {
         reward += 1 * r_request ;
 	}
 
@@ -199,11 +202,11 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 }
 
 double TaskAllocation::GetMaxReward() const {
-	return 200;
+	return 100;
 }
 
 ValuedAction TaskAllocation::GetBestAction() const {
-	return ValuedAction(TAValues::NO_ACTION, 0);
+	return ValuedAction(TAValues::NO_ACTION, -1);
 }
 
 

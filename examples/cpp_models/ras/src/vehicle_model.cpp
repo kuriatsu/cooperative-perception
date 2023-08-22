@@ -4,7 +4,8 @@ VehicleModel::VehicleModel() :
         m_max_speed(11.2),
         m_yield_speed(2.8),
         m_max_accel(0.15*9.8),
-        m_max_decel(0.2*9.8),
+        m_max_decel(0.3*9.8),
+        m_min_decel(0.2*9.8),
         m_safety_margin(15),
         m_delta_t(1.0) {
         }
@@ -26,12 +27,13 @@ double VehicleModel::getAccel(const double speed, const int pose, const std::vec
     std::vector<double> acc_list;
 	for (auto itr=recog_list.begin(), end=recog_list.end(); itr!=end; itr++) {
         int distance = target_poses[std::distance(recog_list.begin(), itr)] - pose;
+        double max_decel_dist = m_safety_margin + (std::pow(m_yield_speed, 2.0) - std::pow(m_max_speed, 2.0))/(2.0*-m_min_decel);
 
-        if (distance < 0 || *itr == false) continue;
+        if (distance < 0 || max_decel_dist < distance || *itr == false) continue;
 
         double a = (std::pow(m_yield_speed, 2.0) - std::pow(speed, 2.0))/(2.0*(distance-m_safety_margin));
-        // std::cout << recog_list[1] << "," << distance << "," << pose << ", " << speed << ","  << m_min_decel << ", " << a << "," << m_max_decel << std::endl;
-        if (-m_min_decel < a && a < 0.0) continue;
+        // std::cout << "distance: " << distance << ", accel : " << a << std::endl;
+        // if (-m_min_decel < a && a < 0.0) continue;
 
         acc_list.emplace_back(a);
     }
@@ -60,7 +62,9 @@ double VehicleModel::getAccel(const double speed, const int pose, const std::vec
 
 void VehicleModel::getTransition(double& speed, int& pose, const std::vector<bool>& recog_list, const std::vector<int>& target_poses) const {
 
+    double v0 = speed;
     double a = getAccel(speed, pose, recog_list, target_poses);
+    
     // int decel_target = distance(acc_list.begin(), a_itr);
     if (a >= 0.0) {
         a = (a < m_max_accel) ? a : m_max_accel;
@@ -69,18 +73,18 @@ void VehicleModel::getTransition(double& speed, int& pose, const std::vector<boo
         a = (a > -m_max_decel) ? a : -m_max_decel;
     }
 
-    // std::cout << pose << "," << speed << std::endl;
-    pose += speed * m_delta_t + 0.5*a*std::pow(m_delta_t, 2.0);
-
     speed += a * m_delta_t;
     if (a < 0.0 && speed < m_yield_speed) {
         speed =	m_yield_speed;
-        // a = 0.0;
+        a = m_yield_speed - v0;
     }
     else if (a > 0.0 && speed > m_max_speed) {
         speed = m_max_speed;
-        // a = 0.0;
+        a = m_max_speed - v0;
     }
+    
+    // std::cout << pose << "," << speed << std::endl;
+    pose += v0 * m_delta_t + 0.5*a*std::pow(m_delta_t, 2.0);
 
     return;
 }
