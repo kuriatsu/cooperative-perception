@@ -18,9 +18,9 @@ TAState::TAState() {
     // ego_recog = {false, true, true};
     // risk_pose = {80, 100, 120};
     // risk_bin = {true, true, false};
-    ego_recog = {false, false};
-    risk_pose = {100, 120};
-    risk_bin = {true, true};
+    ego_recog = {false, true, false};
+    risk_pose = {80, 110, 120};
+    risk_bin = {true, false, true};
 }
 
 
@@ -110,7 +110,7 @@ bool TaskAllocation::Step(State& state, double rand_num, ACT_TYPE action, double
 	// when action = request intervention
 	else if (ta_action == TAValues::REQUEST) {
         // std::cout << "action : REQUEST" << std::endl;
-        // state_curr.ego_recog[target_idx] = TAValues::RISK;
+        state_curr.ego_recog[target_idx] = TAValues::RISK;
 
 		// request to the same target
 		if (state_prev.req_target == target_idx) {
@@ -195,14 +195,14 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 
 	// int request
 	if (ta_action == TAValues::REQUEST && state_curr.req_time == Globals::config.time_per_move) {
-        reward += 1 * r_request ;
+        reward += 1 * -1 ;
 	}
 
 	return reward;
 }
 
 double TaskAllocation::GetMaxReward() const {
-	return 100;
+	return 1000;
 }
 
 ValuedAction TaskAllocation::GetBestAction() const {
