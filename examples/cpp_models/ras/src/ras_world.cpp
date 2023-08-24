@@ -100,12 +100,12 @@ bool RasWorld::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
         std::cout << "action : REQUEST to " << target_idx << " = " << req_target_id << std::endl;
 
         if (pomdp_state->req_target == target_idx) {
-            pomdp_state->req_time++;
+            pomdp_state->req_time += Globals::config.time_per_move;
         }
         else {
             sim->getRisk(req_target_id)->risk_pred = TAValues::RISK;
             pomdp_state->ego_recog[target_idx] = TAValues::RISK;
-            pomdp_state->req_time = 1;
+            pomdp_state->req_time = Globals::config.time_per_move;
             pomdp_state->req_target = target_idx;
         }
 
