@@ -23,7 +23,8 @@ public:
     double max_speed = 11.2;
     double yield_speed = 2.8;
     double max_accel = 0.15 * 9.8;
-    double max_decel = 0.2 * 9.8;
+    double max_decel = 0.3 * 9.8;
+    double min_decel = 0.2 * 9.8;
     int safety_margin = 5;
     double delta_t = Globals::config.time_per_move;
 
@@ -37,7 +38,7 @@ public:
 
     // models
     OperatorModel *operator_model = new OperatorModel(min_time, acc_time_min, acc_time_slope);
-    VehicleModel *vehicle_model = new VehicleModel(max_speed, yield_speed, max_accel, max_decel, safety_margin, delta_t);
+    VehicleModel *vehicle_model = new VehicleModel(max_speed, yield_speed, max_accel, max_decel, min_decel, safety_margin, delta_t);
 
 	DSPOMDP* InitializeModel(option::Option* options) {
 		DSPOMDP* model = new TaskAllocation(planning_horizon, max_speed, yield_speed, risk_thresh, vehicle_model, operator_model);
