@@ -48,30 +48,28 @@ string TAState::text() const {
     // return "";
 }
 
-TaskAllocation::TaskAllocation(int planning_horizon, double ideal_speed, double yield_speed, double risk_thresh, VehicleModel* vehicle_model, OperatorModel* operator_model){ 
+TaskAllocation::TaskAllocation(int planning_horizon, int max_perception_num, double risk_thresh, VehicleModel* vehicle_model, OperatorModel* operator_model){ 
     m_planning_horizon = planning_horizon;
-    m_max_speed = ideal_speed;
-    m_yield_speed = yield_speed;
+    m_max_perception_num = max_perception_num;
     m_risk_thresh = risk_thresh; 
     m_vehicle_model = vehicle_model;
     m_operator_model = operator_model;
+    m_max_speed = m_vehicle_model->m_max_speed;
+    m_yield_speed = m_vehicle_model->m_yield_speed;
 }
 
 TaskAllocation::TaskAllocation() {
     m_planning_horizon = 150;
-    m_max_speed = 11.2;
-    m_yield_speed = 2.8;
+    m_max_perception_num = 3;
     m_risk_thresh = 0.5; 
 
-    int safety_margin = 5;
-    double max_accel = 0.15 * 9.8;
-    double max_decel = 0.3 * 9.8;
-    double min_decel = 0.2 * 9.8;
-
-    m_vehicle_model = new VehicleModel(m_max_speed, m_yield_speed, max_accel, max_decel, min_decel, safety_margin, Globals::config.time_per_move);
-    m_operator_model = new OperatorModel(3.0, 0.5, 0.25);
+    m_vehicle_model = new VehicleModel();
+    m_operator_model = new OperatorModel();
     m_start_state = new TAState();
     m_ta_values = new TAValues(m_start_state->risk_pose.size());
+
+    m_max_speed = m_vehicle_model->m_max_speed;
+    m_yield_speed = m_vehicle_model->m_yield_speed;
 }
 
 int TaskAllocation::NumActions() const {
@@ -343,8 +341,35 @@ int TaskAllocation::NumActiveParticles() const {
 	return memory_pool.num_allocated();
 }
 
-void TaskAllocation::syncCurrentState(State* state) {
+void TaskAllocation::syncCurrentState(State* state, std::vector<double>& likelihood_list) {
     m_start_state = static_cast<TAState*>(state);
+    
+    // target number up to 3
+    if (m_start_state->risk_pose.size() > m_max_perception_num) {
+        std::vector<double> pose_list;
+        for (const auto pose : m_start_state->risk_pose) {
+            pose_list.emplace_back(pose);
+        }
+        std::sort(pose_list.begin(), pose_list.end());
+        
+        // remove targets farther than the 4th target
+        m_planning_horizon = pose_list[m_max_perception_num];
+        for (auto i=0; i<m_start_state->risk_pose.size();) {
+            if (m_start_state->risk_pose[i] >= m_planning_horizon) {
+                m_start_state->risk_pose.erase(m_start_state->risk_pose.begin() + i);
+                m_start_state->risk_bin.erase(m_start_state->risk_bin.begin() + i);
+                m_start_state->ego_recog.erase(m_start_state->ego_recog.begin() + i);
+                likelihood_list.erase(likelihood_list.begin() + i);
+            }
+            else {
+                ++i;
+            }
+        }
+    }
+    else {
+        m_planning_horizon = 150;
+    }
+
     m_ta_values = new TAValues(m_start_state->risk_pose.size());
 }
 

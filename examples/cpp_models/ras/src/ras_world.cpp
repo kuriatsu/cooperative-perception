@@ -6,9 +6,9 @@ RasWorld::RasWorld() {
 
 }
 
-RasWorld::RasWorld(double max_speed, double yield_speed, double max_accel, double max_decel, int safety_margin, double delta_t, double obstacle_density, std::vector<double> perception_range) {
+RasWorld::RasWorld(VehicleModel *vehicle_model, double delta_t, double obstacle_density, std::vector<double> perception_range) {
 
-    sim = new SumoInterface(max_speed, yield_speed, max_accel, max_decel, safety_margin, delta_t, obstacle_density, perception_range);
+    sim = new SumoInterface(vehicle_model, delta_t, obstacle_density, perception_range);
 }
 
 RasWorld::~RasWorld() {
@@ -41,7 +41,7 @@ State* RasWorld::GetCurrentState() {
     pomdp_state->ego_recog.clear();
     pomdp_state->risk_pose.clear();
     pomdp_state->risk_bin.clear();
-    for (const auto& risk: sim->getRisk(perception_targets)) {
+    for (const auto& risk: perception_targets) {
         id_idx_list.emplace_back(risk.id);
         pomdp_state->ego_recog.emplace_back(risk.risk_pred);
         pomdp_state->risk_pose.emplace_back(risk.distance);
@@ -67,7 +67,7 @@ State* RasWorld::GetCurrentState(std::vector<double>& likelihood) {
     pomdp_state->ego_recog.clear();
     pomdp_state->risk_pose.clear();
     pomdp_state->risk_bin.clear();
-    for (const auto& risk: sim->getRisk(perception_targets)) {
+    for (const auto& risk: perception_targets) {
         id_idx_list.emplace_back(risk.id);
         likelihood.emplace_back(risk.risk_prob);
         pomdp_state->ego_recog.emplace_back(risk.risk_pred);

@@ -4,6 +4,7 @@
 #include "sumo_interface.h"
 #include "operator_model.h"
 #include "libgeometry.h"
+#include "vehicle_model.h"
 
 using namespace despot;
 
@@ -11,7 +12,7 @@ class RasWorld: public World {
 private:
     TAState* pomdp_state; // save previous state
     std::vector<std::string> id_idx_list;
-    std::vector<std::string> perception_targets;
+    std::vector<Risk> perception_targets;
 
 public:
     SumoInterface* sim;
@@ -20,7 +21,7 @@ public:
 
 public:
     RasWorld();
-    RasWorld(double max_speed, double yield_speed, double max_accel, double max_decel, int safety_margin, double delta_t, double obstacle_density, std::vector<double> perception_range); 
+    RasWorld(VehicleModel *vehicle_model, double delta_t, double obstacle_density, std::vector<double> perception_range); 
     bool Connect();
     State* Initialize();
     State* GetCurrentState();

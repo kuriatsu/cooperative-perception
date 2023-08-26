@@ -43,11 +43,12 @@ private:
 	int r_request        = -1;
 
 public:
-    TaskAllocation(int planning_horizon, double ideal_speed, double yield_speed, double risk_thresh, VehicleModel* vehicle_model, OperatorModel* operator_model); 
+    TaskAllocation(int planning_horizon, int max_perception_num, double risk_thresh, VehicleModel* vehicle_model, OperatorModel* operator_model); 
     TaskAllocation();
 
 	// state transition parameter
 	int    m_planning_horizon;
+    int    m_max_perception_num;
 	double m_yield_speed;
 	double m_max_speed;
 	double m_risk_thresh;
@@ -81,7 +82,7 @@ public:
 	void Free(State* particle) const;
 	int NumActiveParticles() const;
 
-    void syncCurrentState(State* state);
+    void syncCurrentState(State* state, std::vector<double>& likelihood_list);
     std::vector<double> getRiskProb(const Belief* belief); 
 	void PrintState(const State& state, std::ostream& out = std::cout) const;
 	void PrintBelief(const Belief& belief, std::ostream& out = std::cout) const;

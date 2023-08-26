@@ -2,8 +2,21 @@
 
 using namespace libtraci;
 
+SumoInterface::SumoInterface() {
+    m_delta_t = 1.0;
+    m_density = 0.1;
+    m_perception_range = {50, 150};
+    m_vehicle_model = new VehicleModel();
+}
 
-std::vector<std::string> SumoInterface::perception() {
+SumoInterface::SumoInterface(VehicleModel *vehicle_model, double delta_t, double density, std::vector<double> perception_range) {
+    m_vehicle_model = vehicle_model;
+    m_density = density;
+    m_delta_t = delta_t;
+    m_perception_range = perception_range;
+}
+
+std::vector<Risk> SumoInterface::perception() {
 
     Pose ego_pose;
     try { 
@@ -16,7 +29,7 @@ std::vector<std::string> SumoInterface::perception() {
     }
     // std::vector<std::string> ego_route = Vehicle::getRoute(m_ego_name);
     
-    std::vector<std::string> targets;
+    std::vector<Risk> targets;
 
     for (std::string& ped_id : Person::getIDList()) {
         std::string ped_edge = Person::getRoadID(ped_id);
@@ -30,18 +43,16 @@ std::vector<std::string> SumoInterface::perception() {
         m_risks[ped_id].distance = rel_risk_pose.y;
         if (fabs(rel_risk_pose.x) < m_perception_range[0]/2 && 0 < rel_risk_pose.y && rel_risk_pose.y < m_perception_range[1]) {
             Person::setColor(ped_id, libsumo::TraCIColor(200, 0, 0));
-            targets.emplace_back(ped_id);
+            targets.emplace_back(m_risks[ped_id]);
         }
         else {
             Person::setColor(ped_id, libsumo::TraCIColor(0, 0, 200));
         }
     }
-
     return targets;
 }
 
-
-void SumoInterface::controlEgoVehicle(const std::vector<std::string>& targets){
+void SumoInterface::controlEgoVehicle(const std::vector<Risk>& targets){
 
     double speed;
     try {
@@ -53,52 +64,62 @@ void SumoInterface::controlEgoVehicle(const std::vector<std::string>& targets){
         Simulation::close();
     }
 
-    if (speed < m_yield_speed) return;
-
-    std::vector<double> acc_list;
-	for (const std::string &it : targets) {
-        Risk &target = m_risks[it];
-        bool is_decel_target = false; 
-        std::cout << "control vehicle, risk_pred " << target.risk_pred << std::endl;
-
-        if (target.distance < 0) {
-            is_decel_target = false;
-        }
-        else {
-            is_decel_target = (target.risk_pred == true);
-        }
-
-        if (!is_decel_target){
-            continue;
-        }
-
-        double a = (pow(m_yield_speed, 2.0) - pow(speed, 2.0))/(2.0*(target.distance-m_safety_margin));
-        // std::cout << "ped: " << target.id << " dist: "<<  target.distance << " acc: " << a << std::endl;
-        acc_list.emplace_back(a);
+    std::vector<bool> recog_list;
+    std::vector<int> target_poses;
+    for (const auto& target : targets) {
+        recog_list.emplace_back(target.risk_pred);
+        target_poses.emplace_back(target.distance);
     }
+    double a = m_vehicle_model->getAccel(speed, 0, recog_list, target_poses);
+    a = m_vehicle_model->clipSpeed(a, speed);
+    Vehicle::setAcceleration(m_ego_name, a, m_delta_t);
 
-    if (acc_list.empty()) return;
-
-    auto a_itr = min_element(acc_list.begin(), acc_list.end());
-    double min_acc = *a_itr;
-    // int decel_target = target.distanceance(acc_list.begin(), a_itr);
-    // std::cout << "speed: " << speed << " acc: " << min_acc << std::endl;
-    // speed += min_acc * m_delta_t;
-    // if (speed <= m_yield_speed) {
-    //     acc = 0.0;
-    //  }
-    // else if (speed >= m_max_speed) {
-    //     acc = 0.0;
-    // }
+//    if (speed < m_yield_speed) return;
+//
+//    std::vector<double> acc_list;
+//	for (const auto &target : targets) {
+//        bool is_decel_target = false; 
+//        std::cout << "control vehicle, risk_pred " << target.risk_pred << std::endl;
+//
+//        if (target.distance < 0) {
+//            is_decel_target = false;
+//        }
+//        else {
+//            is_decel_target = (target.risk_pred == true);
+//        }
+//
+//        if (!is_decel_target){
+//            continue;
+//        }
+//
+//        double a = (pow(m_yield_speed, 2.0) - pow(speed, 2.0))/(2.0*(target.distance-m_safety_margin));
+//        // std::cout << "ped: " << target.id << " dist: "<<  target.distance << " acc: " << a << std::endl;
+//        acc_list.emplace_back(a);
+//    }
+//
+//    if (acc_list.empty()) return;
+//
+//    auto a_itr = min_element(acc_list.begin(), acc_list.end());
+//    double min_acc = *a_itr;
+//    // int decel_target = target.distanceance(acc_list.begin(), a_itr);
+//    // std::cout << "speed: " << speed << " acc: " << min_acc << std::endl;
+//    // speed += min_acc * m_delta_t;
+//    // if (speed <= m_yield_speed) {
+//    //     acc = 0.0;
+//    //  }
+//    // else if (speed >= m_max_speed) {
+//    //     acc = 0.0;
+//    // }
     
-    if (min_acc >= 0.0) {
-        min_acc = std::min(min_acc, m_max_accel);
-        Vehicle::setAcceleration(m_ego_name, min_acc, m_delta_t);
-    }
-    else {
-        min_acc = std::max(min_acc, -m_max_decel);
-        Vehicle::setAcceleration(m_ego_name, min_acc, m_delta_t);
-    }
+//    if (a >= 0.0) {
+//        a = std::min(a, m_max_accel);
+//        Vehicle::setAcceleration(m_ego_name, a, m_delta_t);
+//    }
+//    else {
+//        a = std::max(a, -m_max_decel);
+//        Vehicle::setAcceleration(m_ego_name, a, m_delta_t);
+//    }
+
 }
 
 
@@ -116,9 +137,9 @@ void SumoInterface::spawnEgoVehicle() {
 
     Vehicle::add("ego_vehicle", Route::getIDList()[0]);
     Vehicle::setColor("ego_vehicle", libsumo::TraCIColor(0, 200, 0));
-    Vehicle::setMaxSpeed("ego_vehicle", m_max_speed);
-    Vehicle::setAccel("ego_vehicle", m_max_accel);
-    Vehicle::setDecel("ego_vehicle", m_max_decel);
+    Vehicle::setMaxSpeed("ego_vehicle", m_vehicle_model->m_max_speed);
+    Vehicle::setAccel("ego_vehicle", m_vehicle_model->m_max_accel);
+    Vehicle::setDecel("ego_vehicle", m_vehicle_model->m_max_decel);
     // std::cout << m_max_decel << std::endl;
 }
 
@@ -169,6 +190,9 @@ std::vector<Risk> SumoInterface::getRisk(const std::vector<std::string>& ids){
     return out_list;
 }
 
+void SumoInterface::saveData() {
+// TODO : ambiguity, travel time, fuel?, 
+    
 void SumoInterface::step() {
     Simulation::step();
 }

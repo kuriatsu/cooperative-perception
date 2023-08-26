@@ -14,6 +14,7 @@ public:
     // params
     int planning_horizon = 150;
     double risk_thresh = 0.5;
+    int max_perception_num = 3;
     // operator_model
     double min_time = 3.0;
     double acc_time_min = 0.5;
@@ -29,7 +30,7 @@ public:
     double delta_t = Globals::config.time_per_move;
 
     // sim model
-    double obstacle_density = 0.01; // 1ppl per 1m
+    double obstacle_density = 0.1; // 1ppl per 1m
     std::vector<double> perception_range = {50, 150}; // left+right range, forward range
 
     // model parameters
@@ -41,12 +42,12 @@ public:
     VehicleModel *vehicle_model = new VehicleModel(max_speed, yield_speed, max_accel, max_decel, min_decel, safety_margin, delta_t);
 
 	DSPOMDP* InitializeModel(option::Option* options) {
-		DSPOMDP* model = new TaskAllocation(planning_horizon, max_speed, yield_speed, risk_thresh, vehicle_model, operator_model);
+		DSPOMDP* model = new TaskAllocation(planning_horizon, max_perception_num, risk_thresh, vehicle_model, operator_model);
 		return model;
 	}
 
 	World* InitializeWorld(std::string& world_type, DSPOMDP* model, option::Option* options) {
-        RasWorld* ras_world = new RasWorld(max_speed, yield_speed, max_accel, max_decel, safety_margin, delta_t, obstacle_density, perception_range);
+        RasWorld* ras_world = new RasWorld(vehicle_model, delta_t, obstacle_density, perception_range);
         ras_world->operator_model = operator_model;
         ras_world->Connect();
         ras_world->Initialize();
@@ -74,13 +75,12 @@ public:
         RasWorld* ras_world = static_cast<RasWorld*>(world);
         TaskAllocation* ta_model = static_cast<TaskAllocation*>(model);
         logger->CheckTargetTime();
-
         // step simulation
         ras_world->Step();
 
         std::vector<double> likelihood_list;
         TAState* start_state = static_cast<TAState*>(ras_world->GetCurrentState(likelihood_list));
-        ta_model->syncCurrentState(start_state);
+        ta_model->syncCurrentState(start_state, likelihood_list);
 
         Belief* belief = ta_model->InitialBelief(start_state, likelihood_list, belief_type);
         assert(belief != NULL);
