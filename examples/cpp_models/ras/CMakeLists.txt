@@ -19,7 +19,7 @@ target_include_directories(operator_model PUBLIC ${CMAKE_CURRENT_LIST_DIR}/inclu
 target_include_directories(vehicle_model PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
 target_include_directories(sumo_interface PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include /usr/include/libsumo)
 target_include_directories(task_allocation PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include ../../../include)
-target_include_directories(ras_world PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include ../../../include)
+target_include_directories(ras_world PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include ../../../include json/include)
 target_include_directories("${PROJECT_NAME}" PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include ../../../include /usr/share/sumo/src)
 
 

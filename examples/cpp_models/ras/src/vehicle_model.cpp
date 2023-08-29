@@ -6,8 +6,8 @@ VehicleModel::VehicleModel() :
         m_max_accel(0.15*9.8),
         m_max_decel(0.3*9.8),
         m_min_decel(0.2*9.8),
-        m_safety_margin(15),
-        m_delta_t(1.0) {
+        m_safety_margin(5),
+        m_delta_t(2.0) {
         }
 
 VehicleModel::VehicleModel(double max_speed, double yield_speed, double max_accel, double max_decel, double min_decel, double safety_margin, double delta_t) :
@@ -27,7 +27,7 @@ double VehicleModel::getAccel(const double speed, const int pose, const std::vec
     std::vector<double> acc_list;
 	for (auto itr=recog_list.begin(), end=recog_list.end(); itr!=end; itr++) {
         int distance = target_poses[std::distance(recog_list.begin(), itr)] - pose;
-        double max_decel_dist = m_safety_margin + (std::pow(m_yield_speed, 2.0) - std::pow(m_max_speed, 2.0))/(2.0*-m_min_decel);
+        double max_decel_dist = m_safety_margin + m_delta_t*(std::pow(m_yield_speed, 2.0) - std::pow(m_max_speed, 2.0))/(2.0*-m_min_decel);
 
         if (distance < 0 || max_decel_dist < distance || *itr == false) continue;
 
@@ -60,21 +60,26 @@ double VehicleModel::getAccel(const double speed, const int pose, const std::vec
 }
 
 
-double VehicleModel::clipSpeed(const double acc, const double v0) {
+double VehicleModel::clipSpeed(const double acc, const double v0) const{
 
     double speed = v0 + acc * m_delta_t;
 
+    // std::cout << "acc : " << acc << " : max_decel : " << m_max_decel << " v0 : " << v0 << " yield: " << m_yield_speed << std::endl;
     if (acc >= 0.0) {
-        if (speed > m_max_speed)
-            return m_max_speed - v0;
+        if (v0 > m_max_speed)
+            return (m_max_speed - v0)/m_delta_t;
         else
             return (acc < m_max_accel) ? acc : m_max_accel;
     }
     else {
-        if (speed < m_yield_speed)
-            return m_yield_speed - v0;
-        else
+        if (v0 < m_yield_speed) {
+            // std::cout << "3" << std::endl;
+            return (m_yield_speed - v0)/m_delta_t;
+        }
+        else {
+            // std::cout << "4" << std::endl;
             return (acc > -m_max_decel) ? acc : -m_max_decel;
+        }
     }
 }
 
@@ -82,9 +87,11 @@ void VehicleModel::getTransition(double& speed, int& pose, const std::vector<boo
 
     double v0 = speed;
     double a = getAccel(speed, pose, recog_list, target_poses);
+    double clipped_a = clipSpeed(a, v0);
+    // std::cout << "clipped : " << clipped_a << std::endl;
 
-    speed = v0 + a * m_delta_t;
-    pose += v0 * m_delta_t + 0.5*a*std::pow(m_delta_t, 2.0);
+    speed = v0 + clipped_a * m_delta_t;
+    pose += v0 * m_delta_t + 0.5*clipped_a*std::pow(m_delta_t, 2.0);
 
     return;
 }

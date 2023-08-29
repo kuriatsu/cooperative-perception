@@ -68,6 +68,7 @@ public:
         risk_prob = _risk_p;
         risk_pred = _risk_p >= 0.5;
         risk_hidden = _risk_p >= 0.5;
+        distance = -100;
     }
 
     Risk(std::string _id, double _risk_p, Pose _pose) {
@@ -76,6 +77,7 @@ public:
         risk_pred = _risk_p >= 0.5;
         risk_hidden = _risk_p >= 0.5;
         pose = _pose;
+        distance = -100;
     }        
     
     Risk() {
@@ -169,6 +171,4 @@ public:
             std::cout << "obs value is out of range" << std::endl;
         }
     };
-        
-
 };

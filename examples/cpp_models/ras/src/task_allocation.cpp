@@ -48,20 +48,21 @@ string TAState::text() const {
     // return "";
 }
 
-TaskAllocation::TaskAllocation(int planning_horizon, int max_perception_num, double risk_thresh, VehicleModel* vehicle_model, OperatorModel* operator_model){ 
+TaskAllocation::TaskAllocation(int planning_horizon, double risk_thresh, VehicleModel* vehicle_model, OperatorModel* operator_model, double delta_t){ 
     m_planning_horizon = planning_horizon;
-    m_max_perception_num = max_perception_num;
     m_risk_thresh = risk_thresh; 
     m_vehicle_model = vehicle_model;
     m_operator_model = operator_model;
     m_max_speed = m_vehicle_model->m_max_speed;
     m_yield_speed = m_vehicle_model->m_yield_speed;
+    m_delta_t = delta_t;
 }
 
 TaskAllocation::TaskAllocation() {
     m_planning_horizon = 150;
-    m_max_perception_num = 3;
     m_risk_thresh = 0.5; 
+    // m_delta_t = Globals::config.time_per_move;
+    m_delta_t = 2.0;
 
     m_vehicle_model = new VehicleModel();
     m_operator_model = new OperatorModel();
@@ -112,12 +113,12 @@ bool TaskAllocation::Step(State& state, double rand_num, ACT_TYPE action, double
 
 		// request to the same target
 		if (state_prev.req_target == target_idx) {
-            state_curr.req_time += Globals::config.time_per_move;
+            state_curr.req_time += m_delta_t;
 			state_curr.req_target = target_idx;
 		} 
 		// request to new target
 		else {
-			state_curr.req_time = Globals::config.time_per_move;
+			state_curr.req_time = m_delta_t;
 			state_curr.req_target = target_idx;
 		}
 
@@ -192,7 +193,7 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
     // reward += -1;
 
 	// int request
-	if (ta_action == TAValues::REQUEST && state_curr.req_time == Globals::config.time_per_move) {
+	if (ta_action == TAValues::REQUEST && state_curr.req_time == m_delta_t) {
         reward += 1 * -1 ;
 	}
 
@@ -344,31 +345,31 @@ int TaskAllocation::NumActiveParticles() const {
 void TaskAllocation::syncCurrentState(State* state, std::vector<double>& likelihood_list) {
     m_start_state = static_cast<TAState*>(state);
     
-    // target number up to 3
-    if (m_start_state->risk_pose.size() > m_max_perception_num) {
-        std::vector<double> pose_list;
-        for (const auto pose : m_start_state->risk_pose) {
-            pose_list.emplace_back(pose);
-        }
-        std::sort(pose_list.begin(), pose_list.end());
-        
-        // remove targets farther than the 4th target
-        m_planning_horizon = pose_list[m_max_perception_num];
-        for (auto i=0; i<m_start_state->risk_pose.size();) {
-            if (m_start_state->risk_pose[i] >= m_planning_horizon) {
-                m_start_state->risk_pose.erase(m_start_state->risk_pose.begin() + i);
-                m_start_state->risk_bin.erase(m_start_state->risk_bin.begin() + i);
-                m_start_state->ego_recog.erase(m_start_state->ego_recog.begin() + i);
-                likelihood_list.erase(likelihood_list.begin() + i);
-            }
-            else {
-                ++i;
-            }
-        }
-    }
-    else {
-        m_planning_horizon = 150;
-    }
+//    // target number up to 3
+//    if (m_start_state->risk_pose.size() > m_max_perception_num) {
+//        std::vector<double> pose_list;
+//        for (const auto pose : m_start_state->risk_pose) {
+//            pose_list.emplace_back(pose);
+//        }
+//        std::sort(pose_list.begin(), pose_list.end());
+//        
+//        // remove targets farther than the 4th target
+//        m_planning_horizon = pose_list[m_max_perception_num];
+//        for (auto i=0; i<m_start_state->risk_pose.size();) {
+//            if (m_start_state->risk_pose[i] >= m_planning_horizon) {
+//                m_start_state->risk_pose.erase(m_start_state->risk_pose.begin() + i);
+//                m_start_state->risk_bin.erase(m_start_state->risk_bin.begin() + i);
+//                m_start_state->ego_recog.erase(m_start_state->ego_recog.begin() + i);
+//                likelihood_list.erase(likelihood_list.begin() + i);
+//            }
+//            else {
+//                ++i;
+//            }
+//        }
+//    }
+//    else {
+//        m_planning_horizon = 150;
+//    }
 
     m_ta_values = new TAValues(m_start_state->risk_pose.size());
 }

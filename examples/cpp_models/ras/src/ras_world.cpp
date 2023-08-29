@@ -13,6 +13,8 @@ RasWorld::RasWorld(VehicleModel *vehicle_model, double delta_t, double obstacle_
 
 RasWorld::~RasWorld() {
     sim->close();
+    std::ofstream o("log.json");
+    o << std::setw(4) << m_log << std::endl;
 }
 
 bool RasWorld::Connect(){
@@ -142,6 +144,31 @@ bool RasWorld::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 
 
 void RasWorld::UpdateState(ACT_TYPE action, OBS_TYPE obs, const std::vector<double>& risk_probs) {
+    double time;
+    std::vector<double> vehicle_info;
+    std::vector<Risk> passed_risks;
+    sim->log(time, vehicle_info, passed_risks);
+    nlohmann::json step_log = {
+        {"time", time},
+        {"pose", vehicle_info[0]},
+        {"speed", vehicle_info[1]}, 
+        {"accel", vehicle_info[2]},
+        {"fuel_consumption", vehicle_info[3]},
+        {"passed_risks", {}}
+    };
+
+    for (const auto& risk : passed_risks) {
+        nlohmann::json buf = {
+            {"prob", risk.risk_prob},
+            {"pred", risk.risk_pred},
+            {"hidden", risk.risk_hidden}
+        };
+        step_log["passed_risks"].emplace_back(buf);
+    }
+
+    m_log.emplace_back(step_log);
+    
+
     for (auto itr = risk_probs.begin(), end = risk_probs.end(); itr != end; itr++) {
         int idx = std::distance(risk_probs.begin(), itr);
         std::string req_target_id = id_idx_list[idx];
@@ -153,7 +180,11 @@ void RasWorld::UpdateState(ACT_TYPE action, OBS_TYPE obs, const std::vector<doub
     sim->controlEgoVehicle(perception_targets);
 }
      
+bool RasWorld::isTerminate() {
+    return sim->isTerminate();
+}
 
 void RasWorld::Step() {
     sim->step();
 }
+

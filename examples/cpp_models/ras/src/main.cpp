@@ -14,7 +14,6 @@ public:
     // params
     int planning_horizon = 150;
     double risk_thresh = 0.5;
-    int max_perception_num = 3;
     // operator_model
     double min_time = 3.0;
     double acc_time_min = 0.5;
@@ -42,7 +41,7 @@ public:
     VehicleModel *vehicle_model = new VehicleModel(max_speed, yield_speed, max_accel, max_decel, min_decel, safety_margin, delta_t);
 
 	DSPOMDP* InitializeModel(option::Option* options) {
-		DSPOMDP* model = new TaskAllocation(planning_horizon, max_perception_num, risk_thresh, vehicle_model, operator_model);
+		DSPOMDP* model = new TaskAllocation(planning_horizon, risk_thresh, vehicle_model, operator_model);
 		return model;
 	}
 
@@ -65,10 +64,14 @@ public:
 	}
 
     void PlanningLoop(Solver*& solver, World* world, DSPOMDP* model, Logger* logger) {
-        for (int i=0; i < Globals::config.sim_len; i++) {
-            bool terminal = RunStep(solver, world, model, logger);
-            if (terminal) break;
+        bool terminal = false;
+        while (!terminal) {
+            terminal = RunStep(solver, world, model, logger);
         }
+//        for (int i=0; i < Globals::config.sim_len; i++) {
+//            bool terminal = RunStep(solver, world, model, logger);
+//            if (terminal) break;
+//        }
     }
 
     bool RunStep(Solver* solver, World* world, DSPOMDP* model, Logger* logger) {
@@ -77,6 +80,9 @@ public:
         logger->CheckTargetTime();
         // step simulation
         ras_world->Step();
+        if (ras_world->isTerminate()) {
+            return true;
+        }
 
         std::vector<double> likelihood_list;
         TAState* start_state = static_cast<TAState*>(ras_world->GetCurrentState(likelihood_list));

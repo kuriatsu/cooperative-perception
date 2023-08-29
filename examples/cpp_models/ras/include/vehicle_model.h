@@ -21,7 +21,7 @@ public:
 
     double getAccel(const double speed, const int pose, const std::vector<bool>& recog_list, const std::vector<int>& target_poses) const;
 
-    double clipSpeed(const double acc, const double v0);
+    double clipSpeed(const double acc, const double v0) const;
 
     void getTransition(double& speed, int& pose, const std::vector<bool>& recog_list, const std::vector<int>& target_poses) const; 
 };

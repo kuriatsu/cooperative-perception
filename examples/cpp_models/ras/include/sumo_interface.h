@@ -34,8 +34,13 @@ public:
     void step();
     void start();
     void close();
+    void log(double& time, std::vector<double>& vehicle_info, std::vector<Risk>& passed_risks);
+    bool isTerminate();
     
 private:
     std::unordered_map<std::string, Risk> m_risks;
+
+    // for logging
+    std::vector<std::string> m_passed_targets;
 
 };
