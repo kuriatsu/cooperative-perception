@@ -19,7 +19,7 @@ TAState::TAState() {
     // risk_pose = {80, 100, 120};
     // risk_bin = {true, true, false};
     ego_recog = {false, true, false};
-    risk_pose = {80, 110, 120};
+    risk_pose = {60, 120, 140};
     risk_bin = {true, false, true};
 }
 
@@ -62,13 +62,14 @@ TaskAllocation::TaskAllocation() {
     m_planning_horizon = 150;
     m_risk_thresh = 0.5; 
     // m_delta_t = Globals::config.time_per_move;
-    m_delta_t = 2.0;
+    m_delta_t = 1.0;
 
     m_vehicle_model = new VehicleModel();
     m_operator_model = new OperatorModel();
     m_start_state = new TAState();
     m_ta_values = new TAValues(m_start_state->risk_pose.size());
 
+    m_vehicle_model->m_delta_t = m_delta_t;
     m_max_speed = m_vehicle_model->m_max_speed;
     m_yield_speed = m_vehicle_model->m_yield_speed;
 }
@@ -169,7 +170,7 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 
 // request intervention (same with recog==risk reward ?)
             if (state_prev.risk_bin[target_index] == TAValues::RISK)
-                reward += (state_prev.ego_speed == m_yield_speed) ? 100 : -100;
+                reward += (state_prev.ego_speed <= m_yield_speed) ? 100 : -100;
 //            else
 //                reward += (state_prev.ego_speed > m_yield_speed) ? 100 : -100;
 
