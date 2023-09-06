@@ -18,7 +18,7 @@ TAState::TAState() {
     // ego_recog = {false, true, true};
     // risk_pose = {80, 100, 120};
     // risk_bin = {true, true, false};
-    ego_recog = {false, true, false};
+    ego_recog = {false, false, false};
     risk_pose = {60, 120, 140};
     risk_bin = {true, false, true};
 }
@@ -48,6 +48,27 @@ string TAState::text() const {
     // return "";
 }
 
+ScenarioUpperBound* TaskAllocation::CreateScenarioUpperBound(std::string name, std::string particle_bound_name) const {
+    if (name == "TRIVIAL") {
+        return new TrivialParticleUpperBound(this);
+    }
+    else if (name == "SMART" || name == "DEFAULT") {
+        return new TASmartParticleUpperBound(this);
+    }
+    else {
+        std::cerr << "Unsupported base upper bound: " << name << std::endl;
+        exit(1);
+        return NULL;
+    }
+}
+
+ScenarioLowerBound* TaskAllocation::CreateScenarioLowerBound(std::string name, std::string particle_bound_name) const {
+
+    if (name == "TRIVIAL") {
+        return new TrivialParticleLowerBound(this);
+    }
+    else if (name == "SMART" || neme == "DEFAULT") {
+        return new 
 TaskAllocation::TaskAllocation(int planning_horizon, double risk_thresh, VehicleModel* vehicle_model, OperatorModel* operator_model, double delta_t){ 
     m_planning_horizon = planning_horizon;
     m_risk_thresh = risk_thresh; 
@@ -62,7 +83,7 @@ TaskAllocation::TaskAllocation() {
     m_planning_horizon = 150;
     m_risk_thresh = 0.5; 
     // m_delta_t = Globals::config.time_per_move;
-    m_delta_t = 1.0;
+    m_delta_t = 2.0;
 
     m_vehicle_model = new VehicleModel();
     m_operator_model = new OperatorModel();
@@ -166,21 +187,29 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 		if (state_prev.ego_pose <= *it && *it < state_curr.ego_pose) {
 
 			// driving safety
-//             reward += (state_prev.ego_recog[target_index] == state_prev.risk_bin[target_index]) ? 100 : -100;
+            if (state_prev.ego_recog[target_index] == TAValues::NO_RISK)
+                reward += (state_prev.risk_bin[target_index] == TAValues::NO_RISK) ? 100 : -100;
 
 // request intervention (same with recog==risk reward ?)
-            if (state_prev.risk_bin[target_index] == TAValues::RISK)
-                reward += (state_prev.ego_speed <= m_yield_speed) ? 100 : -100;
+//            if (state_prev.ego_speed > m_yield_speed) {
+//                reward += (state_prev.risk_bin[target_index] == TAValues::RISK) ? -100 : 100;
+//            }
+//            else {
+//                reward += (state_prev.risk_bin[target_index] == TAValues::RISK) ? 100 : -100;
+//            }
+
+//            if (state_prev.risk_bin[target_index] == TAValues::RISK)
+//                reward += (state_prev.ego_speed <= m_yield_speed) ? 1000 : -1000;
 //            else
 //                reward += (state_prev.ego_speed > m_yield_speed) ? 100 : -100;
 
 // try to keep mid speed
-            if (state_prev.risk_bin[target_index] == TAValues::NO_RISK)
+            if (state_prev.ego_recog[target_index] == TAValues::RISK)
+                reward += (m_max_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed) * 10;
                 // when risk, lower is better
-                reward += (state_prev.ego_speed - m_yield_speed)/(m_max_speed - m_yield_speed) * 100;
-//            else
+            else
 //                // when no risk, higher is better
-//                reward += (m_max_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed) * 10;
+                reward += (state_prev.ego_speed - m_yield_speed)/(m_max_speed - m_yield_speed) * 10;
 		}
 	}
 
@@ -191,18 +220,19 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
     // }
 	
     // driving efficiency
-    // reward += -1;
+    reward += -1;
 
 	// int request
+	// if (ta_action == TAValues::REQUEST) {
 	if (ta_action == TAValues::REQUEST && state_curr.req_time == m_delta_t) {
-        reward += 1 * -1 ;
+        reward += 10 * -1 ;
 	}
 
 	return reward;
 }
 
 double TaskAllocation::GetMaxReward() const {
-	return 1000;
+	return 110;
 }
 
 ValuedAction TaskAllocation::GetBestAction() const {

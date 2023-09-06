@@ -21,9 +21,10 @@ public:
     }
 
     void InitializeDefaultParameters() {
-        Globals::config.num_scenarios = 10000;
+        Globals::config.num_scenarios = 500;
         Globals::config.sim_len = 150;
-        Globals::config.time_per_move = 300;
+        Globals::config.search_depth = 50;
+        Globals::config.time_per_move = 2;
     }
 
     std::string ChooseSolver(){
