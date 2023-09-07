@@ -48,12 +48,24 @@ string TAState::text() const {
     // return "";
 }
 
+class TAParticleUpperBound: public ParticleUpperBound {
+protected:
+    const TaskAllocation* task_allocation;
+public:
+    TAUpperBound(const TaskAllocation* model) : 
+        task_allocation(model) {
+    }
+
+    double Value(const State& state) const {
+        const TAState& ta_state = static_cast<const TAState&>(state);
+        
+
 ScenarioUpperBound* TaskAllocation::CreateScenarioUpperBound(std::string name, std::string particle_bound_name) const {
     if (name == "TRIVIAL") {
         return new TrivialParticleUpperBound(this);
     }
     else if (name == "SMART" || name == "DEFAULT") {
-        return new TASmartParticleUpperBound(this);
+        return new TAParticleUpperBound(this);
     }
     else {
         std::cerr << "Unsupported base upper bound: " << name << std::endl;
@@ -68,7 +80,16 @@ ScenarioLowerBound* TaskAllocation::CreateScenarioLowerBound(std::string name, s
         return new TrivialParticleLowerBound(this);
     }
     else if (name == "SMART" || neme == "DEFAULT") {
-        return new 
+        return new TADefaultPolicy(this, TAParticleLowerBound(this));
+    }
+    else {
+        std::cerr << "Unsupported lower bound: " << name << std::endl;
+        exit(0);
+        return NULL;
+    }
+}
+
+
 TaskAllocation::TaskAllocation(int planning_horizon, double risk_thresh, VehicleModel* vehicle_model, OperatorModel* operator_model, double delta_t){ 
     m_planning_horizon = planning_horizon;
     m_risk_thresh = risk_thresh; 
