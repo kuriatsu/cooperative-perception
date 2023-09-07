@@ -115,26 +115,60 @@ public:
         return max_action_num;
     };
 
-    ACT getActionTarget(int action, int& target_index) const {
+    int getActionTarget(int action) const {
         if (action == no_action_head) {
-            target_index = 0;
+            return 0;
+        }
+        else if (request_head <= action && action < change_recog_head) {
+            return action - request_head;
+        }
+        else if (change_recog_head <= action) {
+            return action - change_recog_head;
+        }
+        else {
+            std::cerr << "action index may be out of range \n" <<
+                "num_action :" << max_action_num << "\n" << 
+                "action :" << action << std::endl;
+            return 0;
+        }
+    };
+
+    ACT getActionAttrib(int action) const {
+        if (action == no_action_head) {
             return NO_ACTION;
         }
         else if (request_head <= action && action < change_recog_head) {
-            target_index = action - request_head;
             return REQUEST;
         }
         else if (change_recog_head <= action) {
-            target_index = action - change_recog_head;
             return RECOG;
         }
         else {
-            std::cout << "action index may be out of range \n" <<
+            std::cerr << "action index may be out of range \n" <<
                 "num_action :" << max_action_num << "\n" << 
                 "action :" << action << std::endl;
             return NO_ACTION;
         }
     };
+
+    int getAction(ACT attrib, int target) const {
+        if (attrib == NO_ACTION) {
+            return no_action_head;
+        }
+        else if (attrib == REQUEST) {
+            return request_head + target;
+        }
+        else if (attrib == RECOG) {
+            return change_recog_head + target;
+        }
+        else {
+            std::cerr << "action attrib may be out of range \n" <<
+                "num_action :" << attrib << 
+                "target :" << target << std::endl;
+            return no_action_head;
+        }
+    };
+
 
     void printAction(int action, int& target_index, std::ostream& out) {
 
@@ -150,7 +184,7 @@ public:
             out << "change RECOG of " << target_index;
         }
         else {
-            std::cout << "action index may be out of range \n" <<
+            std::cerr << "action index may be out of range \n" <<
                 "num_action :" << max_action_num << "\n" << 
                 "action :" << action << std::endl;
             out << "NO_ACTION" << std::endl;

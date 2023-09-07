@@ -48,16 +48,52 @@ string TAState::text() const {
     // return "";
 }
 
-class TAParticleUpperBound: public ParticleUpperBound {
+
+class TADefaultPolicy: public DefaultPolicy {
 protected:
     const TaskAllocation* task_allocation;
+    
 public:
-    TAUpperBound(const TaskAllocation* model) : 
+    TADefaultPolicy(const TaskAllocation* model, ParticleLowerBound* bound) : 
+        DefaultPolicy(model, bound),
         task_allocation(model) {
-    }
+        }
 
-    double Value(const State& state) const {
-        const TAState& ta_state = static_cast<const TAState&>(state);
+    ACT_TYPE Action(const vector<State*>& particles, RandomStreams& streams, History& history) const {
+        const TAState& ta_state = static_cast<const TAState&>(*particles[0]);
+
+        if (history.Size()) {
+            ACT_TYPE action = history.LastAction();
+            OBS_TYPE obs = history.LastObservation();
+
+            if (ta_state.req_time > 0) { 
+
+                if (task_allocation->m_operator_model->int_acc(ta_state.req_time) <= 0.5) {
+                    return action;
+                }
+                else if (task_allocation->m_operator_model->int_acc(ta_state.req_time) == 1.0) {
+                    if (obs != ta_state.ego_recog[ta_state.req_target]) {
+                        return task_allocation->m_ta_values->getAction(TAValues::REQUEST, ta_state.req_target);
+                    }
+                }
+            }
+        }
+
+        return task_allocation->m_ta_values->getAction(TAValues::NO_ACTION, 0);
+    }
+};
+
+
+// class TAParticleUpperBound: public ParticleUpperBound {
+// protected:
+//     const TaskAllocation* task_allocation;
+// public:
+//     TAUpperBound(const TaskAllocation* model) : 
+//         task_allocation(model) {
+//     }
+// 
+//     double Value(const State& state) const {
+//         const TAState& ta_state = static_cast<const TAState&>(state);
         
 
 ScenarioUpperBound* TaskAllocation::CreateScenarioUpperBound(std::string name, std::string particle_bound_name) const {
@@ -65,7 +101,7 @@ ScenarioUpperBound* TaskAllocation::CreateScenarioUpperBound(std::string name, s
         return new TrivialParticleUpperBound(this);
     }
     else if (name == "SMART" || name == "DEFAULT") {
-        return new TAParticleUpperBound(this);
+        return new TrivialParticleUpperBound(this);
     }
     else {
         std::cerr << "Unsupported base upper bound: " << name << std::endl;
@@ -79,8 +115,8 @@ ScenarioLowerBound* TaskAllocation::CreateScenarioLowerBound(std::string name, s
     if (name == "TRIVIAL") {
         return new TrivialParticleLowerBound(this);
     }
-    else if (name == "SMART" || neme == "DEFAULT") {
-        return new TADefaultPolicy(this, TAParticleLowerBound(this));
+    else if (name == "SMART" || name == "DEFAULT") {
+        return new TADefaultPolicy(this, CreateParticleLowerBound(particle_bound_name));
     }
     else {
         std::cerr << "Unsupported lower bound: " << name << std::endl;
@@ -104,7 +140,7 @@ TaskAllocation::TaskAllocation() {
     m_planning_horizon = 150;
     m_risk_thresh = 0.5; 
     // m_delta_t = Globals::config.time_per_move;
-    m_delta_t = 2.0;
+    m_delta_t = 1.0;
 
     m_vehicle_model = new VehicleModel();
     m_operator_model = new OperatorModel();
@@ -129,8 +165,8 @@ bool TaskAllocation::Step(State& state, double rand_num, ACT_TYPE action, double
 	// EgoVehicleTransition(state_curr.ego_pose, state_curr.ego_speed, state_prev.ego_recog, risk_pose, action);
     m_vehicle_model->getTransition(state_curr.ego_speed, state_curr.ego_pose, state_prev.ego_recog, state_prev.risk_pose);
     
-    int target_idx;
-    TAValues::ACT ta_action = m_ta_values->getActionTarget(action, target_idx);
+    int target_idx = m_ta_values->getActionTarget(action);
+    TAValues::ACT ta_action = m_ta_values->getActionAttrib(action);
     
     // when action == no_action
     if (ta_action == TAValues::NO_ACTION) {
@@ -179,8 +215,9 @@ bool TaskAllocation::Step(State& state, double rand_num, ACT_TYPE action, double
 
 double TaskAllocation::ObsProb(OBS_TYPE obs, const State& state, ACT_TYPE action) const {
 
-    int target_idx;
-    TAValues::ACT ta_action = m_ta_values->getActionTarget(action, target_idx);
+    int target_idx = m_ta_values->getActionTarget(action);
+    TAValues::ACT ta_action = m_ta_values->getActionAttrib(action);
+
     if (ta_action == TAValues::REQUEST) {
         const TAState& ras_state = static_cast<const TAState&>(state);
         double acc = m_operator_model->int_acc(ras_state.req_time);
@@ -200,8 +237,8 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 	const TAState& state_curr = static_cast<const TAState&>(_state_curr);
 	int reward = 0;
 
-    int target_idx;
-    TAValues::ACT ta_action = m_ta_values->getActionTarget(action, target_idx);
+    int target_idx = m_ta_values->getActionTarget(action);
+    TAValues::ACT ta_action = m_ta_values->getActionAttrib(action);
 
 	for (auto it=state_curr.risk_pose.begin(), end=state_curr.risk_pose.end(); it != end; ++it) {
 		int target_index = distance(state_curr.risk_pose.begin(), it);
@@ -486,8 +523,9 @@ void TaskAllocation::PrintBelief(const Belief& belief, ostream& out) const {
 }
 
 void TaskAllocation::PrintAction(ACT_TYPE action, ostream& out) const {
-    int target_idx;
-    TAValues::ACT ta_action = m_ta_values->getActionTarget(action, target_idx);
+    int target_idx = m_ta_values->getActionTarget(action);
+    TAValues::ACT ta_action = m_ta_values->getActionAttrib(action);
+
 	if (ta_action == TAValues::REQUEST)
 		out << "request to " << target_idx << endl;
 	else if (ta_action == TAValues::RECOG) 
