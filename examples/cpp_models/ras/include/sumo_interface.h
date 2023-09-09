@@ -31,10 +31,10 @@ public:
     double getEgoSpeed();
     Risk* getRisk(const std::string& id);
     std::vector<Risk> getRisk(const std::vector<std::string>& ids);
-    void step();
+    void step(int delta_t = 0);
     void start();
     void close();
-    void log(double& time, std::vector<double>& vehicle_info, std::vector<Risk>& passed_risks);
+    void log(double& time, std::vector<double>& vehicle_info, std::vector<Risk>& log_risks);
     bool isTerminate();
     
 private:

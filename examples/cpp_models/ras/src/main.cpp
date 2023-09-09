@@ -26,10 +26,11 @@ public:
     double max_decel = 0.3 * 9.8;
     double min_decel = 0.2 * 9.8;
     int safety_margin = 5;
-    double delta_t = Globals::config.time_per_move;
+
+    double delta_t = 1.0;
 
     // sim model
-    double obstacle_density = 0.1; // 1ppl per 1m
+    double obstacle_density = 0.01; // density 1ppl/m, 0.1=1ppl per 10m, 0.01=1ppl per 100m
     std::vector<double> perception_range = {50, 150}; // left+right range, forward range
 
     // model parameters
@@ -41,7 +42,7 @@ public:
     VehicleModel *vehicle_model = new VehicleModel(max_speed, yield_speed, max_accel, max_decel, min_decel, safety_margin, delta_t);
 
 	DSPOMDP* InitializeModel(option::Option* options) {
-		DSPOMDP* model = new TaskAllocation(planning_horizon, risk_thresh, vehicle_model, operator_model);
+		DSPOMDP* model = new TaskAllocation(planning_horizon, risk_thresh, vehicle_model, operator_model, delta_t);
 		return model;
 	}
 
@@ -56,7 +57,7 @@ public:
     void InitializeDefaultParameters() {
         Globals::config.num_scenarios = 100;
         Globals::config.sim_len = 90;
-        Globals::config.time_per_move = 2.0;
+        Globals::config.time_per_move = 1.0; 
 	}
 
 	std::string ChooseSolver() {
@@ -78,8 +79,12 @@ public:
         RasWorld* ras_world = static_cast<RasWorld*>(world);
         TaskAllocation* ta_model = static_cast<TaskAllocation*>(model);
         logger->CheckTargetTime();
+        
         // step simulation
-        ras_world->Step();
+        for (int i=0; i<delta_t; i++) {
+            ras_world->Step(0.0);
+        }
+
         if (ras_world->isTerminate()) {
             return true;
         }
@@ -154,7 +159,8 @@ public:
         logger->EndRound();
 
         PrintResult(1, logger, main_clock_start);
-
+        
+        delete world;
         return 0;
     }
 };

@@ -33,7 +33,7 @@ public:
     State* GetCurrentState(std::vector<double>& likelihood);
     bool ExecuteAction(ACT_TYPE action, OBS_TYPE& obs);
     void UpdateState(ACT_TYPE action, OBS_TYPE obs, const std::vector<double>& risk_probs);
-    void Step();
+    void Step(int delta_t = 0);
     bool isTerminate();
     ~RasWorld();
 }; 

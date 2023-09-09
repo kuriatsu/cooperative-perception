@@ -92,8 +92,8 @@ State* RasWorld::GetCurrentState(std::vector<double>& likelihood) {
 
 bool RasWorld::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 
-    int target_idx;
-    TAValues::ACT ta_action = ta_values->getActionTarget(action, target_idx);
+    TAValues::ACT ta_action = ta_values->getActionAttrib(action);
+    int target_idx = ta_values->getActionTarget(action);
      
     
     // intervention request
@@ -151,19 +151,21 @@ void RasWorld::UpdateState(ACT_TYPE action, OBS_TYPE obs, const std::vector<doub
     nlohmann::json step_log = {
         {"time", time},
         {"pose", vehicle_info[0]},
-        {"speed", vehicle_info[1]}, 
-        {"accel", vehicle_info[2]},
-        {"fuel_consumption", vehicle_info[3]},
+        {"speed", vehicle_info[2]}, 
+        {"accel", vehicle_info[3]},
+        {"fuel_consumption", vehicle_info[4]},
         {"passed_risks", {}}
     };
 
     for (const auto& risk : passed_risks) {
         nlohmann::json buf = {
+            {"id", risk.id},
+            {"pose", risk.pose.x},
             {"prob", risk.risk_prob},
             {"pred", risk.risk_pred},
             {"hidden", risk.risk_hidden}
         };
-        step_log["passed_risks"].emplace_back(buf);
+        step_log["risks"].emplace_back(buf);
     }
 
     m_log.emplace_back(step_log);
@@ -184,7 +186,7 @@ bool RasWorld::isTerminate() {
     return sim->isTerminate();
 }
 
-void RasWorld::Step() {
-    sim->step();
+void RasWorld::Step(int delta_t) {
+    sim->step(delta_t);
 }
 

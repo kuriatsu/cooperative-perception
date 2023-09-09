@@ -30,13 +30,25 @@ std::vector<Risk> SumoInterface::perception() {
     // std::vector<std::string> ego_route = Vehicle::getRoute(m_ego_name);
     
     std::vector<Risk> targets;
-    m_passed_targets.clear();
+    // m_passed_targets.clear();
 
     for (std::string& ped_id : Person::getIDList()) {
         std::string ped_edge = Person::getRoadID(ped_id);
         
         // get obstacles along to the ego vehicle route
         // if (std::find(ego_route.begin(), ego_route.end(), ped_id_edge) == ego_route.end()) continue;
+
+        // remove peds which is on the edge of the lane
+        std::string ped_lane_id;
+        for (const auto& lane_id : Lane::getIDList()) {
+            if (Lane::getEdgeID(lane_id) == ped_edge) { 
+                ped_lane_id = lane_id;
+            }
+        }
+        if (Person::getLanePosition(ped_id) == Lane::getLength(ped_lane_id) || Person::getLanePosition(ped_id) == 0.0) {
+            continue;
+        }
+
 
         // get risk position
         Pose risk_pose(Person::getPosition(ped_id));
@@ -45,9 +57,9 @@ std::vector<Risk> SumoInterface::perception() {
         m_risks[ped_id].distance = rel_risk_pose.y;
 
         // for logging
-        if (fabs(rel_risk_pose.x) < m_perception_range[0]/2 && prev_distance >= 0 && rel_risk_pose.y < 0) {
-            m_passed_targets.emplace_back(ped_id);
-        }
+        // if (fabs(rel_risk_pose.x) < m_perception_range[0]/2 && prev_distance >= 0 && rel_risk_pose.y < 0) {
+        //     m_passed_targets.emplace_back(ped_id);
+        // }
 
         if (fabs(rel_risk_pose.x) < m_perception_range[0]/2 && 0 < rel_risk_pose.y && rel_risk_pose.y < m_perception_range[1]) {
             Person::setColor(ped_id, libsumo::TraCIColor(200, 0, 0));
@@ -199,7 +211,7 @@ std::vector<Risk> SumoInterface::getRisk(const std::vector<std::string>& ids){
 }
 
 
-void SumoInterface::log(double& time, std::vector<double>& vehicle_info, std::vector<Risk>& passed_risks) {
+void SumoInterface::log(double& time, std::vector<double>& vehicle_info, std::vector<Risk>& log_risks) {
 // NOTE : vehicle_info = [pose x, pose y, speed, accel, fuel_consumption]
 // NOTE : passed_risks = [likelihood, risk_pred, risk_hidden, likelihood, ...]
     vehicle_info.emplace_back(Vehicle::getPosition(m_ego_name).x);
@@ -208,13 +220,14 @@ void SumoInterface::log(double& time, std::vector<double>& vehicle_info, std::ve
     vehicle_info.emplace_back(Vehicle::getAcceleration(m_ego_name));
     vehicle_info.emplace_back(Vehicle::getFuelConsumption(m_ego_name));
     
-    for (const auto id : m_passed_targets) {
-        std::cout << "passed target id : " << id << " prob : " << m_risks[id].risk_prob << std::endl;
-        passed_risks.emplace_back(m_risks[id]);
+    for (const auto risk : m_risks) {
+    // for (const auto id : m_passed_targets) {
+    //    passed_risks.emplace_back(m_risks[id]);
+        passed_risks.emplace_back(risk);
     }
 }
 
-bool SumoInterface::step(int delta_t = 0) {
+void SumoInterface::step(int delta_t) {
 
     Simulation::step(delta_t);
 }

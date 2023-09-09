@@ -33,7 +33,8 @@ int OperatorModel::execIntervention(const int time, const int action, const std:
             return (risk == TAValues::RISK) ? TAValues::RISK : TAValues::NO_RISK;    
         }
         else {
-            return (rand_num < 0.5) ? TAValues::RISK : TAValues::NO_RISK;
+            return (risk == TAValues::RISK) ? TAValues::NO_RISK : TAValues::RISK;    
+            // return (rand_num < 0.5) ? TAValues::RISK : TAValues::NO_RISK;
         }
 
     }
