@@ -146,8 +146,8 @@ bool RasWorld::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 void RasWorld::UpdateState(ACT_TYPE action, OBS_TYPE obs, const std::vector<double>& risk_probs) {
     double time;
     std::vector<double> vehicle_info;
-    std::vector<Risk> passed_risks;
-    sim->log(time, vehicle_info, passed_risks);
+    std::vector<Risk> log_risks;
+    sim->log(time, vehicle_info, log_risks);
     nlohmann::json step_log = {
         {"time", time},
         {"pose", vehicle_info[0]},
@@ -157,7 +157,7 @@ void RasWorld::UpdateState(ACT_TYPE action, OBS_TYPE obs, const std::vector<doub
         {"passed_risks", {}}
     };
 
-    for (const auto& risk : passed_risks) {
+    for (const auto& risk : log_risks) {
         nlohmann::json buf = {
             {"id", risk.id},
             {"pose", risk.pose.x},

@@ -144,6 +144,7 @@ void SumoInterface::controlEgoVehicle(const std::vector<Risk>& targets){
 
 
 void SumoInterface::spawnEgoVehicle() {
+    std::cout << "spawn ego vehicle" << std::endl;
     auto edge_list = Edge::getIDList();
     auto route_list = Route::getIDList(); 
     if (Route::getIDList().empty()) {
@@ -160,10 +161,11 @@ void SumoInterface::spawnEgoVehicle() {
     Vehicle::setMaxSpeed("ego_vehicle", m_vehicle_model->m_max_speed);
     Vehicle::setAccel("ego_vehicle", m_vehicle_model->m_max_accel);
     Vehicle::setDecel("ego_vehicle", m_vehicle_model->m_max_decel);
-    // std::cout << m_max_decel << std::endl;
+    std::cout << "spawned ego vehicle" << std::endl;
 }
 
 void SumoInterface::spawnPedestrians() {
+    std::cout << "spawn pedestrians" << std::endl;
     double interval = 1/m_density;
 
     // Generate random value
@@ -183,6 +185,7 @@ void SumoInterface::spawnPedestrians() {
         // add peds
         for (int i=0; i<lane_length; i+=(int)interval) {
             double position = i + position_noise(mt);
+            if (std::abs(position) > lane_length) continue;
             std::string ped_id = lane_id + "-" + std::to_string(i);
             Person::add(ped_id, edge, position);
             Person::setColor(ped_id, libsumo::TraCIColor(0, 0, 200));
@@ -223,7 +226,7 @@ void SumoInterface::log(double& time, std::vector<double>& vehicle_info, std::ve
     for (const auto risk : m_risks) {
     // for (const auto id : m_passed_targets) {
     //    passed_risks.emplace_back(m_risks[id]);
-        passed_risks.emplace_back(risk);
+        log_risks.emplace_back(risk.second);
     }
 }
 

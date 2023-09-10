@@ -18,6 +18,7 @@ public:
     VehicleModel(); 
 
     VehicleModel(double max_speed, double yield_speed, double max_accel, double max_decel, double min_decel, double safety_margin, double delta_t); 
+    double getDecelDistance(const double speed, const double acc, const double safety_margin) const;
 
     double getAccel(const double speed, const int pose, const std::vector<bool>& recog_list, const std::vector<int>& target_poses) const;
 

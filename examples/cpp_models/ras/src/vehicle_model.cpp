@@ -20,6 +20,12 @@ VehicleModel::VehicleModel(double max_speed, double yield_speed, double max_acce
         m_delta_t(delta_t) {
         }
 
+
+double VehicleModel::getDecelDistance(const double speed, const double acc, const double safety_margin) const {
+    double decel = (acc > 0.0) ? -acc : acc;
+    return safety_margin + (std::pow(m_yield_speed, 2.0) - std::pow(speed, 2.0))/(2.0*decel);
+}
+
 double VehicleModel::getAccel(const double speed, const int pose, const std::vector<bool>& recog_list, const std::vector<int>& target_poses) const {
 
     // if (speed <= m_yield_speed) return 0.0;
@@ -27,9 +33,9 @@ double VehicleModel::getAccel(const double speed, const int pose, const std::vec
     std::vector<double> acc_list;
 	for (auto itr=recog_list.begin(), end=recog_list.end(); itr!=end; itr++) {
         int distance = target_poses[std::distance(recog_list.begin(), itr)] - pose;
-        double max_decel_dist = m_safety_margin + m_delta_t*(std::pow(m_yield_speed, 2.0) - std::pow(m_max_speed, 2.0))/(2.0*-m_min_decel);
+        double min_decel_dist = getDecelDistance(speed, m_max_decel, 0.0);
 
-        if (distance < 0 || max_decel_dist < distance || *itr == false) continue;
+        if (distance < 0 || min_decel_dist < distance || *itr == false) continue;
 
         double a = (std::pow(m_yield_speed, 2.0) - std::pow(speed, 2.0))/(2.0*(distance-m_safety_margin));
         // std::cout << "distance: " << distance << ", accel : " << a << std::endl;
@@ -38,10 +44,8 @@ double VehicleModel::getAccel(const double speed, const int pose, const std::vec
         acc_list.emplace_back(a);
     }
 
-    if (acc_list.empty()) { 
-        double a = (m_max_speed - speed)/m_delta_t;
-        acc_list.emplace_back(a);
-    }
+    if (speed < m_max_speed || speed < m_yield_speed) 
+        acc_list.emplace_back(m_max_accel);
 
     double min_acc = 1000.0;
     for (const auto itr : acc_list) {

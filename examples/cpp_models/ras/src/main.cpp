@@ -27,10 +27,10 @@ public:
     double min_decel = 0.2 * 9.8;
     int safety_margin = 5;
 
-    double delta_t = 1.0;
+    double delta_t = 2.0;
 
     // sim model
-    double obstacle_density = 0.01; // density 1ppl/m, 0.1=1ppl per 10m, 0.01=1ppl per 100m
+    double obstacle_density = 0.001; // density 1ppl/m, 0.1=1ppl per 10m, 0.01=1ppl per 100m
     std::vector<double> perception_range = {50, 150}; // left+right range, forward range
 
     // model parameters
@@ -57,7 +57,7 @@ public:
     void InitializeDefaultParameters() {
         Globals::config.num_scenarios = 100;
         Globals::config.sim_len = 90;
-        Globals::config.time_per_move = 1.0; 
+        Globals::config.time_per_move = 2.0; 
 	}
 
 	std::string ChooseSolver() {

@@ -56,6 +56,7 @@ public:
     double m_delta_t;
 
 	// recognition likelihood of the ADSbelief(belief);::vector<double> risk_recog;
+    std::vector<double> recog_likelihood;
 	// std::vector<int> m_risk_positions;
 
     VehicleModel* m_vehicle_model;
