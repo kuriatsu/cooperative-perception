@@ -20,8 +20,7 @@ std::vector<Risk> SumoInterface::perception() {
 
     Pose ego_pose;
     try { 
-        ego_pose = Pose(Vehicle::getPosition(m_ego_name));
-        ego_pose.theta = Vehicle::getAngle(m_ego_name);
+        ego_pose = Pose(m_ego_name, "v");
     }
     catch (libsumo::TraCIException& error) {
         std::cout << "no ego_vehicle" << std::endl;
@@ -33,12 +32,12 @@ std::vector<Risk> SumoInterface::perception() {
     // m_passed_targets.clear();
 
     for (std::string& ped_id : Person::getIDList()) {
-        std::string ped_edge = Person::getRoadID(ped_id);
         
         // get obstacles along to the ego vehicle route
         // if (std::find(ego_route.begin(), ego_route.end(), ped_id_edge) == ego_route.end()) continue;
 
         // remove peds which is on the edge of the lane
+        std::string ped_edge = Person::getRoadID(ped_id);
         std::string ped_lane_id;
         for (const auto& lane_id : Lane::getIDList()) {
             if (Lane::getEdgeID(lane_id) == ped_edge) { 
@@ -51,8 +50,8 @@ std::vector<Risk> SumoInterface::perception() {
 
 
         // get risk position
-        Pose risk_pose(Person::getPosition(ped_id));
-        Pose rel_risk_pose = risk_pose.transformTo(ego_pose);
+        m_risks[ped_id].pose = Pose(ped_id, "p");
+        Pose rel_risk_pose = m_risks[ped_id].pose.transformTo(ego_pose);
         double prev_distance = m_risks[ped_id].distance;
         m_risks[ped_id].distance = rel_risk_pose.y;
 
@@ -62,7 +61,7 @@ std::vector<Risk> SumoInterface::perception() {
         // }
 
         if (fabs(rel_risk_pose.x) < m_perception_range[0]/2 && 0 < rel_risk_pose.y && rel_risk_pose.y < m_perception_range[1]) {
-            Person::setColor(ped_id, libsumo::TraCIColor(200, 0, 0));
+            Person::setColor(ped_id, libsumo::TraCIColor(200, 200, 0));
             targets.emplace_back(m_risks[ped_id]);
         }
         else {
@@ -70,6 +69,20 @@ std::vector<Risk> SumoInterface::perception() {
         }
     }
     return targets;
+}
+
+void SumoInterface::setColor(const std::string id, const std::vector<int> color, const std::string attrib) const {
+    if (color.size() < 3) {
+        std::cerr << "color size" << sizeof(color)/sizeof(int) << " is less than 3" << std::endl;
+        return;
+    }
+
+    if (attrib == "v" || attrib == "vehicle") {
+        Vehicle::setColor(id, libsumo::TraCIColor(color[0], color[1], color[2]));
+    }
+    else if (attrib == "p" || attrib == "person") {
+        Person::setColor(id, libsumo::TraCIColor(color[0], color[1], color[2]));
+    }
 }
 
 void SumoInterface::controlEgoVehicle(const std::vector<Risk>& targets){
@@ -162,6 +175,8 @@ void SumoInterface::spawnEgoVehicle() {
     Vehicle::setAccel("ego_vehicle", m_vehicle_model->m_max_accel);
     Vehicle::setDecel("ego_vehicle", m_vehicle_model->m_max_decel);
     std::cout << "spawned ego vehicle" << std::endl;
+
+    // GUI::track(m_ego_name, "View #0");
 }
 
 void SumoInterface::spawnPedestrians() {
@@ -214,14 +229,13 @@ std::vector<Risk> SumoInterface::getRisk(const std::vector<std::string>& ids){
 }
 
 
-void SumoInterface::log(double& time, std::vector<double>& vehicle_info, std::vector<Risk>& log_risks) {
+void SumoInterface::log(double& time, Pose& ego_pose, std::vector<double>& other_ego_info, std::vector<Risk>& log_risks) {
 // NOTE : vehicle_info = [pose x, pose y, speed, accel, fuel_consumption]
 // NOTE : passed_risks = [likelihood, risk_pred, risk_hidden, likelihood, ...]
-    vehicle_info.emplace_back(Vehicle::getPosition(m_ego_name).x);
-    vehicle_info.emplace_back(Vehicle::getPosition(m_ego_name).y);
-    vehicle_info.emplace_back(Vehicle::getSpeed(m_ego_name));
-    vehicle_info.emplace_back(Vehicle::getAcceleration(m_ego_name));
-    vehicle_info.emplace_back(Vehicle::getFuelConsumption(m_ego_name));
+    ego_pose = Pose(m_ego_name, "v");
+    other_ego_info.emplace_back(Vehicle::getSpeed(m_ego_name));
+    other_ego_info.emplace_back(Vehicle::getAcceleration(m_ego_name));
+    other_ego_info.emplace_back(Vehicle::getFuelConsumption(m_ego_name));
     
     for (const auto risk : m_risks) {
     // for (const auto id : m_passed_targets) {
@@ -240,8 +254,13 @@ void SumoInterface::close() {
 }
 
 void SumoInterface::start() {
-    Simulation::start({"sumo-gui", "-c", "../map/straight.sumocfg"});
-    // Simulation::start({"sumo-gui", "-r", "./straight.net.xml"});
+    if (Simulation::hasGUI()) {
+        Simulation::load({"-c", "../map/straight.sumocfg"});
+    }
+    else {
+        Simulation::start({"sumo-gui", "-c", "../map/straight.sumocfg"});
+        // Simulation::start({"sumo-gui", "-r", "./straight.net.xml"});
+    }
 }
 
 bool SumoInterface::isTerminate() {

@@ -30,9 +30,10 @@ public:
     bool Connect();
     State* Initialize();
     State* GetCurrentState();
-    State* GetCurrentState(std::vector<double>& likelihood);
+    std::vector<double> GetPerceptionLikelihood();
     bool ExecuteAction(ACT_TYPE action, OBS_TYPE& obs);
     void UpdateState(ACT_TYPE action, OBS_TYPE obs, const std::vector<double>& risk_probs);
+    void Log(ACT_TYPE action, OBS_TYPE obs);
     void Step(int delta_t = 0);
     bool isTerminate();
     ~RasWorld();

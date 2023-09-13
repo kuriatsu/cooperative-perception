@@ -34,7 +34,8 @@ public:
     void step(int delta_t = 0);
     void start();
     void close();
-    void log(double& time, std::vector<double>& vehicle_info, std::vector<Risk>& log_risks);
+    void setColor(const std::string id, const std::vector<int> color, const std::string attrib) const;
+    void log(double& time, Pose& ego_pose, std::vector<double>& other_ego_info, std::vector<Risk>& log_risks);
     bool isTerminate();
     
 private:

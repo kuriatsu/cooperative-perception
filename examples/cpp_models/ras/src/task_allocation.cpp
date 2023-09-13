@@ -18,9 +18,9 @@ TAState::TAState() {
     // ego_recog = {false, true, true};
     // risk_pose = {80, 100, 120};
     // risk_bin = {true, true, false};
-    ego_recog = {true, true};
-    risk_pose = {100, 120};
-    risk_bin = {true, true};
+    ego_recog = {false, false, true};
+    risk_pose = {60, 100, 120};
+    risk_bin = {false, false, true};
 }
 
 
@@ -59,10 +59,10 @@ protected:
 public:
     TADefaultPolicy(const TaskAllocation* model, ParticleLowerBound* bound) : 
         DefaultPolicy(model, bound),
-        task_allocation(model) {
-        vehicle_model = task_allocation->m_vehicle_model;
-        operator_model = task_allocation->m_operator_model;
-        ta_values = task_allocation->m_ta_values;
+        task_allocation(model), 
+        vehicle_model(model->m_vehicle_model),
+        operator_model(model->m_operator_model),
+        ta_values(model->m_ta_values) {
         }
 
     ACT_TYPE Action(const vector<State*>& particles, RandomStreams& streams, History& history) const {
@@ -75,7 +75,6 @@ public:
             if (ta_values->getActionAttrib(action) == TAValues::REQUEST) { 
 
                 if (task_allocation->m_operator_model->int_acc(ta_state.req_time) <= 0.5) {
-                    // std::cout << "keep recog" << std::endl;
                     return action;
                 }
                 else if (task_allocation->m_operator_model->int_acc(ta_state.req_time) == 1.0) {
@@ -86,65 +85,65 @@ public:
                 }
             }
             
-            else {
-                double comf_stop_dist = vehicle_model->getDecelDistance(ta_state.ego_speed, vehicle_model->m_min_decel, vehicle_model->m_safety_margin);
-                double harsh_stop_dist = vehicle_model->getDecelDistance(ta_state.ego_speed, vehicle_model->m_max_decel, 0.0);
-
-                // std::cout << "create list" << "comf_stop_dist : " << comf_stop_dist << " harsh_stop_dist : " << harsh_stop_dist << std::endl;
-                std::vector<int> recog_target_list, request_target_list;
-                for (int i=0; i<ta_state.risk_pose.size(); ++i) {
-
-                    // if (ta_state.ego_recog[i] == ta_state.risk_bin[i] || ta_state.risk_pose[i] - ta_state.ego_pose < harsh_stop_dist)
-                    if (ta_state.risk_pose[i] - ta_state.ego_pose < harsh_stop_dist)
-                        continue;
-
-//                    else if (ta_state.risk_pose[i] - ta_state.ego_pose < comf_stop_dist) {
+//            else {
+//                double comf_stop_dist = vehicle_model->getDecelDistance(ta_state.ego_speed, vehicle_model->m_min_decel, vehicle_model->m_safety_margin);
+//                double harsh_stop_dist = vehicle_model->getDecelDistance(ta_state.ego_speed, vehicle_model->m_max_decel, 0.0);
+//
+//                // std::cout << "create list" << "comf_stop_dist : " << comf_stop_dist << " harsh_stop_dist : " << harsh_stop_dist << std::endl;
+//                std::vector<int> recog_target_list, request_target_list;
+//                for (int i=0; i<ta_state.risk_pose.size(); ++i) {
+//
+//                    // if (ta_state.ego_recog[i] == ta_state.risk_bin[i] || ta_state.risk_pose[i] - ta_state.ego_pose < harsh_stop_dist)
+//                    if (ta_state.risk_pose[i] - ta_state.ego_pose < harsh_stop_dist)
+//                        continue;
+//
+////                    else if (ta_state.risk_pose[i] - ta_state.ego_pose < comf_stop_dist) {
+////                        bool in_history = false;
+////                        for (int j = history.Size()-1; j >= 0; j--) {
+////                            if (history.Action(j) == ta_values->getAction(TAValues::RECOG, i)) {
+////                                in_history = true;
+////                                break;
+////                            }
+////                        }
+////                        if (!in_history)
+////                            recog_target_list.emplace_back(i);
+////                    }
+////                    else {
+//
+//
+//
+//                    if (ta_state.risk_pose[i] - ta_state.ego_pose >= comf_stop_dist) {
 //                        bool in_history = false;
 //                        for (int j = history.Size()-1; j >= 0; j--) {
-//                            if (history.Action(j) == ta_values->getAction(TAValues::RECOG, i)) {
+//                            if (history.Action(j) == ta_values->getAction(TAValues::REQUEST, i)) {
+//                                // std::cout << "already in hist : " << i << std::endl;
 //                                in_history = true;
 //                                break;
 //                            }
 //                        }
 //                        if (!in_history)
-//                            recog_target_list.emplace_back(i);
+//                            request_target_list.emplace_back(i); 
 //                    }
-//                    else {
-
-
-
-                    if (ta_state.risk_pose[i] - ta_state.ego_pose >= comf_stop_dist) {
-                        bool in_history = false;
-                        for (int j = history.Size()-1; j >= 0; j--) {
-                            if (history.Action(j) == ta_values->getAction(TAValues::REQUEST, i)) {
-                                // std::cout << "already in hist : " << i << std::endl;
-                                in_history = true;
-                                break;
-                            }
-                        }
-                        if (!in_history)
-                            request_target_list.emplace_back(i); 
-                    }
-                    if (ta_state.ego_recog[i] == TAValues::NO_RISK) {
-                        recog_target_list.emplace_back(i);
-                    }
-                }
-
-                int recog_target = 1000, request_target = 1000, min_dist;
-                min_dist = 1000;
-                for(const auto idx : recog_target_list) {
-                    if (min_dist > ta_state.risk_pose[idx]) {
-                        min_dist = ta_state.risk_pose[idx];
-                        recog_target = idx;
-                    }
-                }
-                min_dist = 1000;
-                for(const auto idx : request_target_list) {
-                    if (min_dist > ta_state.risk_pose[idx]) {
-                        min_dist = ta_state.risk_pose[idx];
-                        request_target = idx;
-                    }
-                }
+//                    if (ta_state.ego_recog[i] == TAValues::NO_RISK) {
+//                        recog_target_list.emplace_back(i);
+//                    }
+//                }
+//
+//                int recog_target = 1000, request_target = 1000, min_dist;
+//                min_dist = 1000;
+//                for(const auto idx : recog_target_list) {
+//                    if (min_dist > ta_state.risk_pose[idx]) {
+//                        min_dist = ta_state.risk_pose[idx];
+//                        recog_target = idx;
+//                    }
+//                }
+//                min_dist = 1000;
+//                for(const auto idx : request_target_list) {
+//                    if (min_dist > ta_state.risk_pose[idx]) {
+//                        min_dist = ta_state.risk_pose[idx];
+//                        request_target = idx;
+//                    }
+//                }
 
                 // std::cout << "#########" << std::endl;
                 // std::cout << ta_state.ego_pose << "," << harsh_stop_dist << "," << comf_stop_dist << ta_state.risk_bin << ta_state.ego_recog << request_target_list << recog_target_list << std::endl;
@@ -172,10 +171,9 @@ public:
 //                    // std::cout <<  "recog selected : " << recog_target << std::endl;
 //                    return ta_values->getAction(TAValues::RECOG, recog_target);
 //                }
-            }
+//            }
 
         }
-        // std::cout << "no action selected" << std::endl;
         return task_allocation->m_ta_values->getAction(TAValues::NO_ACTION, 0);
     }
 };
@@ -248,7 +246,7 @@ TaskAllocation::TaskAllocation() {
     m_max_speed = m_vehicle_model->m_max_speed;
     m_yield_speed = m_vehicle_model->m_yield_speed;
 
-    recog_likelihood = {0.5, 0.9};
+    recog_likelihood = {0.4, 0.4, 0.6};
 }
 
 int TaskAllocation::NumActions() const {
@@ -344,6 +342,7 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
             int passed_index = distance(state_curr.risk_pose.begin(), it);
 
 			// driving safety
+            reward += (state_prev.risk_bin[passed_index] == state_prev.ego_recog[passed_index]) ? 10 : -10;
             // if (state_prev.ego_recog[target_index] == TAValues::NO_RISK)
             //    reward += (state_prev.risk_bin[target_index] == TAValues::NO_RISK) ? 100 : -100;
             // else 
@@ -360,11 +359,13 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
             // if (state_prev.ego_speed > m_yield_speed && state_curr.ego_speed > m_yield_speed) {
                 // reward += (state_prev.risk_bin[passed_index] == TAValues::RISK) ? -100 : 100;
             if (state_prev.risk_bin[passed_index] == TAValues::RISK) {
-                reward += (state_prev.ego_speed - m_yield_speed)/(m_max_speed - m_yield_speed) * -100;
+                // reward += (state_prev.ego_speed - m_yield_speed)/(m_max_speed - m_yield_speed) * -100;
+                reward += (m_max_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed) * 100;
                 // reward += (m_max_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed) * 1000;
             }
             else {
-                reward += (state_prev.ego_speed - m_yield_speed)/(m_max_speed - m_yield_speed) * 100;
+                reward += (m_max_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed) * -100;
+                // reward += (state_prev.ego_speed - m_yield_speed)/(m_max_speed - m_yield_speed) * 100;
             }
             // }
             // if (state_prev.ego_speed <= m_yield_speed) {
@@ -401,6 +402,11 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 	// int request
 	// if (ta_action == TAValues::REQUEST) {
 
+    if (ta_action == TAValues::RECOG) {
+        if (state_curr.risk_bin[action_target_idx] != state_curr.ego_recog[action_target_idx])
+            reward += -1;
+    }
+
 	if (ta_action == TAValues::REQUEST && state_curr.req_time == m_delta_t) {
         reward += 1 * -1 ;
 	}
@@ -409,7 +415,7 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 }
 
 double TaskAllocation::GetMaxReward() const {
-	return 200;
+	return 300;
 }
 
 ValuedAction TaskAllocation::GetBestAction() const {
@@ -553,6 +559,7 @@ int TaskAllocation::NumActiveParticles() const {
 }
 
 void TaskAllocation::syncCurrentState(State* state, std::vector<double>& likelihood_list) {
+    std::cout << "sync current state" << std::endl;
     m_start_state = static_cast<TAState*>(state);
     
 //    // target number up to 3

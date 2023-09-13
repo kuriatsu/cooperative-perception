@@ -30,12 +30,13 @@ public:
     double delta_t = 2.0;
 
     // sim model
-    double obstacle_density = 0.001; // density 1ppl/m, 0.1=1ppl per 10m, 0.01=1ppl per 100m
+    double obstacle_density = 0.01; // density 1ppl/m, 0.1=1ppl per 10m, 0.01=1ppl per 100m
     std::vector<double> perception_range = {50, 150}; // left+right range, forward range
 
     // model parameters
     string world_type = "simulator";
     string belief_type = "DEFAULT";
+    option::Option *options;
 
     // models
     OperatorModel *operator_model = new OperatorModel(min_time, acc_time_min, acc_time_slope);
@@ -80,22 +81,23 @@ public:
         TaskAllocation* ta_model = static_cast<TaskAllocation*>(model);
         logger->CheckTargetTime();
         
-        // step simulation
         for (int i=0; i<delta_t; i++) {
-            ras_world->Step(0.0);
+            ras_world->Step(0);
         }
 
         if (ras_world->isTerminate()) {
             return true;
         }
 
-        std::vector<double> likelihood_list;
-        TAState* start_state = static_cast<TAState*>(ras_world->GetCurrentState(likelihood_list));
+        TAState* start_state = static_cast<TAState*>(ras_world->GetCurrentState();
+        std::vector<double> likelihood_list = ras_world->GetPerceptionLikelihood();
         ta_model->syncCurrentState(start_state, likelihood_list);
 
         Belief* belief = ta_model->InitialBelief(start_state, likelihood_list, belief_type);
         assert(belief != NULL);
-        solver->belief(belief);
+        // solver->belief(belief);
+
+        solver = InitializeSolver(model, belief, ChooseSolver(), options);
 
         double step_start_t = get_time_second();
         double start_t = get_time_second();
@@ -125,13 +127,13 @@ public:
         /* =========================
          * initialize parameters
          * =========================*/
-        string solver_type = ChooseSolver(); //"DESPOT";
         bool search_solver;
         int num_runs = 1;
         int time_limit = -1;
 
-        option::Option *options = InitializeParamers(argc, argv, solver_type,
-                search_solver, num_runs, world_type, belief_type, time_limit);
+        string solver_type = ChooseSolver(); //"DESPOT";
+        options = InitializeParamers(argc, argv, solver_type,
+                    search_solver, num_runs, world_type, belief_type, time_limit);
         if(options==NULL)
             return 0;
         clock_t main_clock_start = clock();
@@ -145,7 +147,7 @@ public:
         assert(world != NULL);
 
         Belief *belief = NULL;
-        Solver *solver = InitializeSolver(model, belief, solver_type, options);
+        Solver *solver = NULL;
 
         Logger *logger = NULL;
         InitializeLogger(logger, options, model, belief, solver, num_runs,
@@ -158,9 +160,9 @@ public:
         PlanningLoop(solver, world, model, logger);
         logger->EndRound();
 
+        delete world;
         PrintResult(1, logger, main_clock_start);
         
-        delete world;
         return 0;
     }
 };

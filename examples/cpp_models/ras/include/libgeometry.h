@@ -4,10 +4,14 @@
 #include <libsumo/libtraci.h>
 #include <math.h>
 
+using namespace libtraci;
+
 class Pose {
 public:
     double x, y;
     double theta;
+    double lane_position;
+    std::string lane;
 
 public:
     Pose(double _x, double _y, double _theta) {
@@ -32,6 +36,27 @@ public:
         x = position.x;
         y = position.y;
         theta = 0.0;
+    }
+
+    Pose(std::string id, std::string attrib) {
+        libsumo::TraCIPosition position;
+        double angle;
+
+        if (attrib == "v" || attrib == "vehicle") {
+            position = Vehicle::getPosition(id);
+            angle = Vehicle::getAngle(id);
+            lane = Vehicle::getRoadID(id);
+            lane_position = Vehicle::getLanePosition(id);
+        }
+        else if (attrib == "p" || attrib == "person") {
+            position = Person::getPosition(id);
+            angle = Person::getAngle(id);
+            lane = Person::getRoadID(id);
+            lane_position = Person::getLanePosition(id); 
+        }
+        x = position.x;
+        y = position.y;
+        theta = angle;
     }
 
     Pose() {
