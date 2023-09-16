@@ -100,7 +100,7 @@ public:
         solver = InitializeSolver(model, belief, ChooseSolver(), options);
 
         double step_start_t = get_time_second();
-        double start_t = get_time_second();
+        double start_t = get_time_second(:vs);
         ACT_TYPE action = solver->Search().action;
         double end_t = get_time_second();
         double search_time = end_t - start_t;
@@ -138,10 +138,8 @@ public:
             return 0;
         clock_t main_clock_start = clock();
 
-
         DSPOMDP *model = InitializeModel(options);
         assert(model != NULL);
-
 
         World *world = InitializeWorld(world_type, model, options);
         assert(world != NULL);

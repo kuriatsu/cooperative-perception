@@ -55,22 +55,38 @@ State* RasWorld::GetCurrentState() {
 
     id_idx_list.clear();
 
+    bool is_last_req_target = false;
+
     pomdp_state->ego_pose = 0;
     pomdp_state->ego_speed = sim->getEgoSpeed();
     pomdp_state->ego_recog.clear();
     pomdp_state->risk_pose.clear();
     pomdp_state->risk_bin.clear();
-    for (const auto& risk: perception_targets) {
+    for (int i=0; i<perception_targets.size(); i++) {
+        Risk &risk = perception_targets[i];
         id_idx_list.emplace_back(risk.id);
         pomdp_state->ego_recog.emplace_back(risk.risk_pred);
         pomdp_state->risk_pose.emplace_back(risk.distance);
         pomdp_state->risk_bin.emplace_back(risk.risk_hidden);
+        
+        if (last_req_target_id == risk.id) {
+            is_last_req_target = true;
+            pomdp_state->req_target = i; 
+        }
+
         std::cout << 
             "id :" << risk.id << "\n" <<
             "distance :" << risk.distance << "\n" <<
             "pred :" << risk.risk_pred << "\n" <<
             "prob :" << risk.risk_prob << "\n" <<
             std::endl;
+    }
+
+    if (!is_last_req_target) {
+        pomdp_state->req_time = 0;
+    }
+    else {
+        std::cout << "req target found again, id: " << last_req_target_id << ", idx: " << pomdp_state->req_target << std::endl;
     }
 
     ta_values = new TAValues(pomdp_state->risk_pose.size());
@@ -100,7 +116,7 @@ bool RasWorld::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
         std::vector<int> red_color = {200, 0, 0};
         sim->setColor(req_target_id, red_color, "p");
 
-        if (pomdp_state->req_target == target_idx) {
+        if (last_req_target_id == req_target_id) {
             pomdp_state->req_time += Globals::config.time_per_move;
         }
         else {
@@ -108,6 +124,7 @@ bool RasWorld::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
             pomdp_state->ego_recog[target_idx] = TAValues::RISK;
             pomdp_state->req_time = Globals::config.time_per_move;
             pomdp_state->req_target = target_idx;
+            last_req_target_id = req_target_id;
         }
 
         obs = operator_model->execIntervention(pomdp_state->req_time, ta_action, req_target_id, sim->getRisk(req_target_id)->risk_hidden);
@@ -124,6 +141,7 @@ bool RasWorld::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
         pomdp_state->ego_recog[target_idx] = (pomdp_state->ego_recog[target_idx] == TAValues::RISK) ? TAValues::NO_RISK : TAValues::RISK;
         pomdp_state->req_time = 0;
         pomdp_state->req_target = 0;
+        last_req_target_id = "none";
 
         obs = operator_model->execIntervention(pomdp_state->req_time, ta_action, "", TAValues::NO_RISK);
         ta_values->printObs(obs);
@@ -134,6 +152,7 @@ bool RasWorld::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
         std::cout << "NO_ACTION" << std::endl;
         pomdp_state->req_time = 0;
         pomdp_state->req_target = 0;
+        last_req_target_id = "none";
 
         obs = operator_model->execIntervention(pomdp_state->req_time, ta_action, "", false);
         ta_values->printObs(obs);
@@ -205,4 +224,21 @@ bool RasWorld::isTerminate() {
 void RasWorld::Step(int delta_t) {
     sim->step(delta_t);
 }
+
+ACT_TYPE MyopicAction() {
+    int closest_target, max_dist = 100000;
+    
+    if (pomdp_state->req_time > 0) {
+        if (operator_model->int_acc(pomdp_state->req_time) < 1.0) {
+            return ta_values->getAction(
+
+    for (int i=0; i<pomdp_state->risk_pose.size(); i++) {
+        if (!std::count(req_target_history.begin(), req_target_history.end(), id_idx_list[i])) {
+           if (pomdp_state->risk_pose[i] < max_dist) {
+               max_dist = pomdp_state->risk_pose[i];
+               closest_target = i;
+           }
+        }
+    }
+
 

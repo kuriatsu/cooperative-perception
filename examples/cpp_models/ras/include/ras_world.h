@@ -13,11 +13,15 @@ using namespace despot;
 class RasWorld: public World {
 private:
     TAState* pomdp_state; // save previous state
+    std::string last_req_target_id == "none";
     std::vector<std::string> id_idx_list;
     std::vector<Risk> perception_targets;
 
     // log data
     nlohmann::json m_log = nlohmann::json::array();
+
+    // for myopic action
+    std::vector<std::string> req_target_history;
 
 public:
     SumoInterface* sim;
@@ -36,6 +40,8 @@ public:
     void Log(ACT_TYPE action, OBS_TYPE obs);
     void Step(int delta_t = 0);
     bool isTerminate();
+
+    ACT_TYPE MyopicAction();
     ~RasWorld();
 }; 
 
