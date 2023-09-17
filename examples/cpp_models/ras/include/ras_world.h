@@ -13,7 +13,6 @@ using namespace despot;
 class RasWorld: public World {
 private:
     TAState* pomdp_state; // save previous state
-    std::string last_req_target_id == "none";
     std::vector<std::string> id_idx_list;
     std::vector<Risk> perception_targets;
 
@@ -22,7 +21,7 @@ private:
 
     // for myopic action
     std::vector<std::string> req_target_history;
-    std::vector<OBS_TYPE> 
+    std::vector<TAValues::OBS> obs_history;
 
 public:
     SumoInterface* sim;

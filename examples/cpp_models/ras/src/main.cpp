@@ -36,6 +36,7 @@ public:
     // model parameters
     string world_type = "simulator";
     string belief_type = "DEFAULT";
+    string policy_type = "DESPOT"; // DESPOT, MYOPIC, EGOISTIC
     option::Option *options;
 
     // models
@@ -101,7 +102,14 @@ public:
 
         double step_start_t = get_time_second();
         double start_t = get_time_second(:vs);
-        ACT_TYPE action = solver->Search().action;
+
+        if (policy_type == "MYOPIC")
+            ACT_TYPE action = world->MyopicAction();
+        else if (policy_type == "EGOISTIC")
+            ACT_TYPE action = world->EgoisticAction();
+        else
+            ACT_TYPE action = solver->Search().action;
+
         double end_t = get_time_second();
         double search_time = end_t - start_t;
 
