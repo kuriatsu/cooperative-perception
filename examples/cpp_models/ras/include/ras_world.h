@@ -22,6 +22,7 @@ private:
 
     // for myopic action
     std::vector<std::string> req_target_history;
+    std::vector<OBS_TYPE> 
 
 public:
     SumoInterface* sim;

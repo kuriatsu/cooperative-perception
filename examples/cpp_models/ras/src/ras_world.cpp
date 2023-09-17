@@ -226,19 +226,36 @@ void RasWorld::Step(int delta_t) {
 }
 
 ACT_TYPE MyopicAction() {
-    int closest_target, max_dist = 100000;
-    
-    if (pomdp_state->req_time > 0) {
-        if (operator_model->int_acc(pomdp_state->req_time) < 1.0) {
-            return ta_values->getAction(
 
+    // if intervention requested to the target and can request more
+    if (0 < pomdp_state->req_time && pomdp_state < 6 && pomdp_state->risk_pose[pomdp_state.req_target] > vehicle_model->getDecelDistance(pomdp_state->ego_speed, vehicle_model->m_max_decel, 0.0)) {
+        return ta_values->getAction(TAValues::REQUEST, pomdp_state->req_target);
+    }
+    // finish request and change state 
+    else if (0 < pomdp_state->req_time && pomdp_state->ego_recog[pomdp_state->req_target] != last_obs) {
+        return ta_values->getAction(TAValues::RECOG, pomdp_satate->req_target);
+    }
+
+    // find request target
+    int closest_target = -1, min_dist = 100000;
     for (int i=0; i<pomdp_state->risk_pose.size(); i++) {
-        if (!std::count(req_target_history.begin(), req_target_history.end(), id_idx_list[i])) {
-           if (pomdp_state->risk_pose[i] < max_dist) {
-               max_dist = pomdp_state->risk_pose[i];
+        bool is_in_history = std::count(req_target_history.begin(), req_target_history.end(), id_idx_list[i]);
+        double request_distance = vehicle_model->getDecelDistance(pomdp_state->ego_pose, vehicle_model->m_min_decel, vehicle_model->m_safety_margin) + vehicle_model->m_yield_speed * (6.0 - vehicle_model->getDecelTime(pomdp_state->ego_speed, vehicle_model->m_min_decel); 
+       if (!is_in_history && pomdp_state->risk_pose[pomdp_state.req_target] > request_distance) {
+            if (pomdp_state->risk_pose[i] < min_dist) {
+               min_dist = pomdp_state->risk_pose[i];
                closest_target = i;
-           }
+            }
         }
     }
 
+    if (closest_target != -1)
+        return ta_values->getAction(TAValues::REQUEST, closest_target);
+    else
+        return ta_values->getAction(TAValues::NO_ACTION, 0);
+}
+
+ACT_TYPE EgoisticAction() {
+    return ta_values->getAction(TAValues::NO_ACTION, 0);
+}
 

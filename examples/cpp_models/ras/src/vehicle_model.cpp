@@ -26,6 +26,11 @@ double VehicleModel::getDecelDistance(const double speed, const double acc, cons
     return safety_margin + (std::pow(m_yield_speed, 2.0) - std::pow(speed, 2.0))/(2.0*decel);
 }
 
+double VehicleModel::getDecelTime(const double speed, const double acc) const {
+    double decel = (acc > 0.0) ? -acc : acc;
+    return speed / decel;
+}
+
 double VehicleModel::getAccel(const double speed, const int pose, const std::vector<bool>& recog_list, const std::vector<int>& target_poses) const {
 
     // if (speed <= m_yield_speed) return 0.0;
