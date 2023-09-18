@@ -78,6 +78,7 @@ public:
                     return action;
                 }
                 else if (task_allocation->m_operator_model->int_acc(ta_state.req_time) == 1.0) {
+                    // if ((obs == TAValues::RISK && ta_state.ego_recog[ta_state.req_target] == TAValues::NO_RISK) || (obs == TAValues::NO_RISK && ta_state.ego_recog[ta_state.req_target] == TAValues::RISK)) {
                     if (obs != ta_state.ego_recog[ta_state.req_target]) {
                         // std::cout << "recog after request" << std::endl;
                         return ta_values->getAction(TAValues::REQUEST, ta_state.req_target);

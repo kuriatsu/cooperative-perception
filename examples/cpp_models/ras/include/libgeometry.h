@@ -194,6 +194,39 @@ public:
         }
     };
 
+    std::string getActionName(int action) const {
+        if (action == no_action_head) {
+            return "NO_ACTION";
+        }
+        else if (request_head <= action && action < change_recog_head) {
+            return "REQUEST";
+        }
+        else if (change_recog_head <= action) {
+            return "RECOG";
+        }
+        else {
+            std::cerr << "action index may be out of range \n" <<
+                "num_action :" << max_action_num << "\n" << 
+                "action :" << action << std::endl;
+            return "ERR";
+        }
+    };
+
+    std::string getObsName(int obs) {
+        if (obs == NO_RISK) {
+            return "NO_RISK";
+        }
+        else if (obs == RISK) {
+            return "RISK";
+        }
+        else if (obs == NONE) {
+            return "NONE";
+        }
+        else {
+            std::cerr << "obs value is out of range" << std::endl;
+            return "ERR";
+        }
+    };
 
     void printAction(int action, int& target_index, std::ostream& out) {
 

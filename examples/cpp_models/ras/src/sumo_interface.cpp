@@ -254,13 +254,14 @@ void SumoInterface::close() {
 }
 
 void SumoInterface::start() {
-    if (Simulation::hasGUI()) {
-        Simulation::load({"-c", "../map/straight.sumocfg"});
-    }
-    else {
-        Simulation::start({"sumo-gui", "-c", "../map/straight.sumocfg"});
-        // Simulation::start({"sumo-gui", "-r", "./straight.net.xml"});
-    }
+    Simulation::start({"sumo-gui", "-c", "../map/straight.sumocfg"});
+//    if (Simulation::hasGUI()) {
+//        Simulation::load({"-c", "../map/straight.sumocfg"});
+//    }
+//    else {
+//        Simulation::start({"sumo-gui", "-c", "../map/straight.sumocfg"});
+//        // Simulation::start({"sumo-gui", "-r", "./straight.net.xml"});
+//    }
 }
 
 bool SumoInterface::isTerminate() {
