@@ -32,6 +32,7 @@ public:
     Risk* getRisk(const std::string& id);
     std::vector<Risk> getRisk(const std::vector<std::string>& ids);
     void step(int delta_t = 0);
+    void Run();
     void start();
     void close();
     void setColor(const std::string id, const std::vector<int> color, const std::string attrib) const;

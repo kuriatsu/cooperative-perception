@@ -36,7 +36,7 @@ public:
     // model parameters
     string world_type = "simulator";
     string belief_type = "DEFAULT";
-    string policy_type = "MYOPIC"; // DESPOT, MYOPIC, EGOISTIC
+    string policy_type = "DESPOT"; // DESPOT, MYOPIC, EGOISTIC
     option::Option *options;
 
     // models
@@ -140,7 +140,17 @@ public:
         int num_runs = 1;
         int time_limit = -1;
 
-        string solver_type = ChooseSolver(); //"DESPOT";
+        if (argc >= 3) {
+            policy_type = std::string(argv[1]);
+            obstacle_density = std::stod(std::string(argv[2]));
+            // for (int i=3; i<argc; i++) {
+            //     argv[i-2] = argv[i];
+            // }
+            // argc -= 2;
+            // std::cout << obstacle_density << argv[2] << std::endl;
+        }
+
+        std::string solver_type = ChooseSolver();
         options = InitializeParamers(argc, argv, solver_type,
                     search_solver, num_runs, world_type, belief_type, time_limit);
         if(options==NULL)

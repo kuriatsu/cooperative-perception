@@ -44,13 +44,13 @@ public:
 
         if (attrib == "v" || attrib == "vehicle") {
             position = Vehicle::getPosition(id);
-            angle = Vehicle::getAngle(id);
+            angle = M_PI*Vehicle::getAngle(id)/180.0;
             lane = Vehicle::getRoadID(id);
             lane_position = Vehicle::getLanePosition(id);
         }
         else if (attrib == "p" || attrib == "person") {
             position = Person::getPosition(id);
-            angle = Person::getAngle(id);
+            angle = M_PI*Person::getAngle(id)/180.0;
             lane = Person::getRoadID(id);
             lane_position = Person::getLanePosition(id); 
         }

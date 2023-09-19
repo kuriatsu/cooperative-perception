@@ -59,7 +59,7 @@ std::vector<Risk> SumoInterface::perception() {
         // if (fabs(rel_risk_pose.x) < m_perception_range[0]/2 && prev_distance >= 0 && rel_risk_pose.y < 0) {
         //     m_passed_targets.emplace_back(ped_id);
         // }
-
+        // std::cout << rel_risk_pose.x << ", " << rel_risk_pose.y << ", " << m_perception_range[1] << std::endl;
         if (fabs(rel_risk_pose.x) < m_perception_range[0]/2 && 0 < rel_risk_pose.y && rel_risk_pose.y < m_perception_range[1]) {
             Person::setColor(ped_id, libsumo::TraCIColor(200, 200, 0));
             targets.emplace_back(m_risks[ped_id]);
@@ -180,7 +180,7 @@ void SumoInterface::spawnEgoVehicle() {
 }
 
 void SumoInterface::spawnPedestrians() {
-    std::cout << "spawn pedestrians" << std::endl;
+    std::cout << "spawn pedestrians" << m_density << std::endl;
     double interval = 1/m_density;
 
     // Generate random value
@@ -209,7 +209,7 @@ void SumoInterface::spawnPedestrians() {
             m_risks[ped_id] = Risk(ped_id, risk_val(mt)); 
         }
     }
-    std::cout << "spawned pedestrian" << std::endl;
+    std::cout << "spawned pedestrian" << m_risks.size() << std::endl;
 }
 
 double SumoInterface::getEgoSpeed() {
@@ -254,7 +254,16 @@ void SumoInterface::close() {
 }
 
 void SumoInterface::start() {
-    Simulation::start({"sumo-gui", "-c", "../map/straight.sumocfg"});
+    try {
+        Simulation::load({"-c", "../map/straight.sumocfg"});
+    }
+    catch (libsumo::TraCIException& error) {
+        Simulation::start({"sumo-gui", "-c", "../map/straight.sumocfg"});
+    }
+    catch (libsumo::FatalTraCIError& error) {
+        Simulation::start({"sumo", "-c", "../map/straight.sumocfg"});
+    }
+    // Simulation::executeMove();
 //    if (Simulation::hasGUI()) {
 //        Simulation::load({"-c", "../map/straight.sumocfg"});
 //    }
@@ -263,6 +272,11 @@ void SumoInterface::start() {
 //        // Simulation::start({"sumo-gui", "-r", "./straight.net.xml"});
 //    }
 }
+
+void SumoInterface::Run() {
+    Simulation::executeMove();
+}
+
 
 bool SumoInterface::isTerminate() {
     try { 

@@ -86,7 +86,7 @@ State* RasWorld::GetCurrentState() {
             std::endl;
     }
 
-    std::cout << req_target_history << std::endl;
+    // std::cout << req_target_history << std::endl;
     if (!is_last_req_target) {
         pomdp_state->req_time = 0;
     }
@@ -129,9 +129,9 @@ bool RasWorld::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
             pomdp_state->ego_recog[target_idx] = TAValues::RISK;
             pomdp_state->req_time = Globals::config.time_per_move;
             pomdp_state->req_target = target_idx;
-            req_target_history.emplace_back(req_target_id);
         }
 
+        req_target_history.emplace_back(req_target_id);
         obs = operator_model->execIntervention(pomdp_state->req_time, ta_action, req_target_id, sim->getRisk(req_target_id)->risk_hidden);
         obs_history.emplace_back(obs);
         ta_values->printObs(obs);
