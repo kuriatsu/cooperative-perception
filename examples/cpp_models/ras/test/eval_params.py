@@ -10,7 +10,7 @@ for file in sys.argv[1:]:
         data = json.load(f)
 
     for log in data.get("log"):
-        buf = df.DataFrame([[len(data.get("risk_pose")), data.get("time_per_move"), data.get("delta_t"), log.get("total discount reward")]], columns = df.columns)
+        buf = df.DataFrame([[len(log.get("risk_pose")), log.get("time_per_move"), log.get("delta_t"), log.get("total discount reward")]], columns = df.columns)
         df = pd.concat([df, buf], ignore_index=True)
 
 

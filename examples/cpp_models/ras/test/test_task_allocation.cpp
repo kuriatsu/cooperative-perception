@@ -9,7 +9,10 @@ using namespace despot;
 class MyPlanner: public Planner {
 private:
     std::string log_filename;
-    nlohmann::json params; 
+    double delta_t;
+    double time_per_move;
+    std::vector<int> risk_pose;
+    std::vector<double> risk_likelihood;
 
 public:
     MyPlanner() {
@@ -18,20 +21,24 @@ public:
     MyPlanner(const std::string filename) {
         log_filename = filename;
         std::ifstream f(filename);
-        params = nlohmann::json::parse(f);
-
+        nlohmann::json params = nlohmann::json::parse(f);
+        delta_t = params["delta_t"];
+        time_per_move = params["time_per_move"];
+        risk_pose = static_cast<std::vector<int>>(params["risk_pose"]);
+        risk_likelihood = static_cast<std::vector<double>>(params["risk_likelihood"]);
     }
 
     MyPlanner(const std::string filename, const double delta_t_, const std::vector<int> risk_pose_, const std::vector<double>risk_likelihood_) {
         log_filename = filename;
-        params["delta_t"] = delta_t_;
-        params["time_per_move"] = delta_t_;
-        params["risk_pose"] = risk_pose_;
-        params["risk_likelihood"] = risk_likelihood_;
+        delta_t = delta_t_;
+        time_per_move = delta_t_;
+        risk_pose = risk_pose_;
+        risk_likelihood = risk_likelihood_;
     }
 
     DSPOMDP* InitializeModel(option::Option* options) {
-		DSPOMDP* model = new TaskAllocation(params["delta_t"], params["risk_pose"], params["risk_likelihood"]);
+		DSPOMDP* model = new TaskAllocation(delta_t, risk_pose, risk_likelihood);
+		// DSPOMDP* model = new TaskAllocation(params["delta_t"], params["risk_pose"], params["risk_likelihood"]);
         return model;
     }
 
@@ -44,7 +51,7 @@ public:
         Globals::config.num_scenarios = 500;
         Globals::config.sim_len = 100;
         Globals::config.search_depth = 100;
-        Globals::config.time_per_move = params["time_per_move"];
+        Globals::config.time_per_move = time_per_move;
     }
 
     std::string ChooseSolver(){
@@ -118,17 +125,27 @@ public:
         PrintResult(num_runs, logger, main_clock_start);
 
         nlohmann::json log;
-        log["total discounted reward"] = logger->AverageDiscountedRoundReward();
-        log["total discounted reward stderr"] = logger->StderrDiscountedRoundReward();
-        log["total undiscounted reward"] = logger->AverageUndiscountedRoundReward();
-        log["total undiscounted reward stderr"] = logger->AverageUndiscountedRoundReward();
-        if (params["log"].empty()) {
-            params["log"] = {};
+        try {
+            std::ifstream f(log_filename);
+            log = nlohmann::json::parse(f);
         }
-        params["log"].emplace_back(log);
+        catch (...) {
+            log["log"] = {};
+        }
+
+        nlohmann::json buf;
+        buf["delta_t"] = delta_t;
+        buf["time_per_move"] = time_per_move;
+        buf["risk_pose"] = risk_pose;
+        buf["risk_likelihood"] = risk_likelihood;
+        buf["total discounted reward"] = logger->AverageDiscountedRoundReward();
+        buf["total discounted reward stderr"] = logger->StderrDiscountedRoundReward();
+        buf["total undiscounted reward"] = logger->AverageUndiscountedRoundReward();
+        buf["total undiscounted reward stderr"] = logger->AverageUndiscountedRoundReward();
+        log["log"].emplace_back(buf);
 
         std::ofstream o(log_filename);
-        o << std::setw(4) << params << std::endl;
+        o << std::setw(4) << log << std::endl;
 
         return 0;
     }
