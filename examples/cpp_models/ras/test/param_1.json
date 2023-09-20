@@ -1,0 +1,12 @@
+{
+    "delta_t": 1.0,
+    "log": [
+    ],
+    "risk_likelihood": [
+        0.4,
+    ],
+    "risk_pose": [
+        120,
+    ],
+    "time_per_move": 1.0
+}

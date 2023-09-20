@@ -16,7 +16,7 @@ add_library(task_allocation SHARED ../src/task_allocation.cpp)
 add_library(operator_model SHARED ../src/operator_model.cpp)
 add_library(vehicle_model SHARED ../src/vehicle_model.cpp)
 
-target_include_directories("${PROJECT_NAME}" PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../include ../../../../include)
+target_include_directories("${PROJECT_NAME}" PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../include ../../../../include ../json/include)
 target_include_directories(task_allocation PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../include ../../../../include)
 target_include_directories(operator_model PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../include ../../../../include)
 target_include_directories(vehicle_model PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../include)

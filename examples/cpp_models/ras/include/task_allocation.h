@@ -46,6 +46,7 @@ private:
 
 public:
     TaskAllocation(int planning_horizon, double risk_thresh, VehicleModel* vehicle_model, OperatorModel* operator_model, double delta_t); 
+    TaskAllocation(const double delta_t_, const std::vector<int> risk_pose_, const std::vector<double> risk_likelihood_);
     TaskAllocation();
 
 	// state transition parameter
@@ -56,7 +57,7 @@ public:
     double m_delta_t;
 
 	// recognition likelihood of the ADSbelief(belief);::vector<double> risk_recog;
-    std::vector<double> recog_likelihood;
+    std::vector<double> m_recog_likelihood;
 	// std::vector<int> m_risk_positions;
 
     VehicleModel* m_vehicle_model;

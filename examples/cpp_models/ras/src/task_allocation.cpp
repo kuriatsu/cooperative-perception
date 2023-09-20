@@ -23,7 +23,6 @@ TAState::TAState() {
     risk_bin = {false, false, true};
 }
 
-
 TAState::TAState(int _ego_pose, float _ego_speed, std::vector<bool> _ego_recog, int _req_time, int _req_target, std::vector<bool> _risk_bin, std::vector<int> _risk_pose) :
 		ego_pose(_ego_pose),
 		ego_speed(_ego_speed),
@@ -247,24 +246,30 @@ TaskAllocation::TaskAllocation() {
     m_max_speed = m_vehicle_model->m_max_speed;
     m_yield_speed = m_vehicle_model->m_yield_speed;
 
-    recog_likelihood = {0.4, 0.4, 0.6};
+    m_recog_likelihood = {0.4, 0.4, 0.6};
 }
 
-TaskAllocation::TaskAllocation(int delta_t_) {
+TaskAllocation::TaskAllocation(const double delta_t_, const std::vector<int> risk_pose_, const std::vector<double> risk_likelihood_) {
     m_planning_horizon = 150;
     m_risk_thresh = 0.5; 
     m_delta_t = delta_t_;
 
     m_vehicle_model = new VehicleModel();
     m_operator_model = new OperatorModel();
-    m_start_state = new TAState();
+
+    m_recog_likelihood = risk_likelihood_;
+    std::vector<bool> risk_bin;
+    for (const auto likelihood : m_recog_likelihood) {
+        risk_bin.emplace_back((likelihood > m_risk_thresh) ? true : false);
+    }
+
+    m_start_state = new TAState(0.0, m_max_speed, risk_bin, 0, 0, risk_bin, risk_pose_);
     m_ta_values = new TAValues(m_start_state->risk_pose.size());
 
     m_vehicle_model->m_delta_t = m_delta_t;
     m_max_speed = m_vehicle_model->m_max_speed;
     m_yield_speed = m_vehicle_model->m_yield_speed;
 
-    recog_likelihood = {0.4, 0.4, 0.6};
 }
 
 int TaskAllocation::NumActions() const {
@@ -463,12 +468,12 @@ Belief* TaskAllocation::InitialBelief(const State* start, string type) const {
 			int idx = distance(row.begin(), col);
 			_ego_recog.emplace_back((ta_start_state->ego_recog[idx] < m_risk_thresh) ? false : true);
 			if (*col) {
-				prob *= recog_likelihood[idx]; 
+				prob *= m_recog_likelihood[idx]; 
 				// prob *= 0.5 ; 
 				_risk_bin.emplace_back(true);
 			}
 			else {
-				prob *= 1.0 - recog_likelihood[idx]; 
+				prob *= 1.0 - m_recog_likelihood[idx]; 
 				// prob *= 0.5; 
 				_risk_bin.emplace_back(false);
 			}
