@@ -250,6 +250,23 @@ TaskAllocation::TaskAllocation() {
     recog_likelihood = {0.4, 0.4, 0.6};
 }
 
+TaskAllocation::TaskAllocation(int delta_t_) {
+    m_planning_horizon = 150;
+    m_risk_thresh = 0.5; 
+    m_delta_t = delta_t_;
+
+    m_vehicle_model = new VehicleModel();
+    m_operator_model = new OperatorModel();
+    m_start_state = new TAState();
+    m_ta_values = new TAValues(m_start_state->risk_pose.size());
+
+    m_vehicle_model->m_delta_t = m_delta_t;
+    m_max_speed = m_vehicle_model->m_max_speed;
+    m_yield_speed = m_vehicle_model->m_yield_speed;
+
+    recog_likelihood = {0.4, 0.4, 0.6};
+}
+
 int TaskAllocation::NumActions() const {
 	return 1 + m_start_state->risk_pose.size() * 2;
 }
@@ -360,13 +377,13 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
             // if (state_prev.ego_speed > m_yield_speed && state_curr.ego_speed > m_yield_speed) {
                 // reward += (state_prev.risk_bin[passed_index] == TAValues::RISK) ? -100 : 100;
             if (state_prev.risk_bin[passed_index] == TAValues::RISK) {
-                // reward += (state_prev.ego_speed - m_yield_speed)/(m_max_speed - m_yield_speed) * -100;
-                reward += (m_max_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed) * 100;
+                // reward += (m_max_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed) * 100;
+                reward += (state_prev.ego_speed - m_yield_speed)/(m_max_speed - m_yield_speed) * -100;
                 // reward += (m_max_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed) * 1000;
             }
             else {
-                reward += (m_max_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed) * -100;
-                // reward += (state_prev.ego_speed - m_yield_speed)/(m_max_speed - m_yield_speed) * 100;
+                // reward += (m_max_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed) * -100;
+                reward += (state_prev.ego_speed - m_yield_speed)/(m_max_speed - m_yield_speed) * 100;
             }
             // }
             // if (state_prev.ego_speed <= m_yield_speed) {

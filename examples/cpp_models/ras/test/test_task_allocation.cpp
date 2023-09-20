@@ -1,6 +1,7 @@
 #include <despot/planner.h>
 
 #include "task_allocation.h"
+#include "json"
 
 using namespace despot;
 
@@ -32,6 +33,6 @@ public:
     }
     };
 
-    int main(int argc, char* argv[]) {
-        return MyPlanner().RunEvaluation(argc, argv);
-    }
+int main(int argc, char* argv[]) {
+    return MyPlanner().RunEvaluation(argc, argv);
+}
