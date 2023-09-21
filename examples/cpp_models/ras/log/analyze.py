@@ -85,14 +85,15 @@ if len(sys.argv) == 2:
 
 elif len(sys.argv) > 2:
 
-    df = pd.DataFrame(columns = ["policy", "density", "travel_time", "mean_fuel_consumption", "dev_accel", "mean_speed", "risk_omission", "risk_omission_num", "ambiguity_omission", "ambiguity_omission_num", "request_time"])
+    df = pd.DataFrame(columns = ["policy", "risk_num", "travel_time", "total_fuel_consumption", "mean_fuel_consumption", "dev_accel", "mean_speed", "risk_omission", "risk_omission_num", "ambiguity_omission", "ambiguity_omission_num", "request_time"])
+    fig, ax = plt.subplots(1, 1, tight_layout=True)
 
     for file in sys.argv[1:]:
         with open(file, "r") as f:
             data = json.load(f)
 
-        policy = re.findall("^[A-Z]*", file)
-        density = re.findall("([\d.]*)_", file)
+        policy = re.findall("([A-Z]*)\d", file)[0]
+        risk_num = float(re.findall("([\d.]*)_", file)[0]) * 2 * 500
         travel_time = 0.0
         fuel_consumption = [] 
         accel = []
@@ -113,17 +114,26 @@ elif len(sys.argv) > 2:
             if frame.get("action") == "REQUEST":
                 request_time += 2.0
 
+            if frame.get("risks") is None:
+                print(f"skipped {file} because of no obstacle spawned")
+                continue
+
             for risk in frame.get("risks"):
                 position = risk.get("lane_position") if risk.get("id")[0] != "-" else 500.0 - risk.get("lane_position")
                 if last_ego_position < position <= frame.get("lane_position"):
+
                     ambiguity_omission += 0.5 - abs(0.5 - risk.get("prob"))
-                    ambiguity_omission_num += 1
+                    if 0.0 < risk.get("prob") < 1.0:
+                        ambiguity_omission_num += 1
+
                     if speed[-1] > 2.8:
                         risk_omission += risk.get("prob") 
                         risk_omission_num += 1
 
+
             last_ego_position = frame.get("lane_position") 
 
+        total_fuel_consumption = sum(fuel_consumption)
         mean_fuel_consumption = sum(fuel_consumption)/len(fuel_consumption)
         mean_speed = sum(speed)/len(speed)
 
@@ -133,7 +143,28 @@ elif len(sys.argv) > 2:
             dev_accel += (a - mean_accel) ** 2
         dev_accel = dev_accel / len(accel)
 
-        buf_df = pd.DataFrame([[policy, density, travel_time, mean_fuel_consumption, dev_accel, mean_speed, risk_omission, risk_omission_num, ambiguity_omission, ambiguity_omission_num, request_time]], columns=df.columns)
+        buf_df = pd.DataFrame([[policy, risk_num, travel_time, total_fuel_consumption, mean_fuel_consumption, dev_accel, mean_speed, risk_omission, risk_omission_num, ambiguity_omission, ambiguity_omission_num, request_time]], columns=df.columns)
         df = pd.concat([df, buf_df], ignore_index=True)
 
-    print(df)
+
+    print(df["policy"])
+    sns.lineplot(data=df, x="risk_num", y="travel_time", hue="policy", markers=True)
+    plt.show()
+    sns.lineplot(data=df, x="risk_num", y="total_fuel_consumption", hue="policy", markers=True)
+    plt.show()
+    sns.lineplot(data=df, x="risk_num", y="mean_fuel_consumption", hue="policy", markers=True)
+    plt.show()
+    sns.lineplot(data=df, x="risk_num", y="dev_accel", hue="policy", markers=True)
+    plt.show()
+    sns.lineplot(data=df, x="risk_num", y="mean_speed", hue="policy", markers=True)
+    plt.show()
+    sns.lineplot(data=df, x="risk_num", y="risk_omission", hue="policy", markers=True)
+    plt.show()
+    sns.lineplot(data=df, x="risk_num", y="risk_omission_num", hue="policy", markers=True)
+    plt.show()
+    sns.lineplot(data=df, x="risk_num", y="ambiguity_omission", hue="policy", markers=True)
+    plt.show()
+    sns.lineplot(data=df, x="risk_num", y="ambiguity_omission_num", hue="policy", markers=True)
+    plt.show()
+    sns.lineplot(data=df, x="risk_num", y="request_time", hue="policy", markers=True)
+    plt.show()
