@@ -8,26 +8,103 @@ import re
 
 #### single data visualization ####
 #### travel distance vs (speed, risk_prob, action) ####
+#if len(sys.argv) == 2:
+#
+#    with open(sys.argv[1], "r") as f:
+#        data = json.load(f)
+#
+#    travel_dist = []
+#    ego_vel = []
+#    for frame in data:
+#        travel_dist.append(frame.get("lane_position"))
+#        ego_vel.append(frame.get("speed"))
+#
+#    fig, ax = plt.subplots(3, 1, tight_layout=True)
+#    ax[0].plot(travel_dist, ego_vel, ".", linestyle="-")
+#    ax[0].set_xlim(0, 500)
+#    ax[0].set_ylabel("vehicle speed [m/s]")
+#    ax[1].set_xlim(0, 500)
+#    ax[1].set_ylabel("risk probs")
+#    ax[2].set_xlim(0, 500)
+#    ax[2].set_ylabel("intervention request")
+#    ax[2].set_xlabel("travel distance [m]")
+#
+#    risk_ids = [] 
+#    color_map = plt.get_cmap("Set3")
+#    risk_num = len(data[0].get("risks"))
+#
+#    for risk in data[0].get("risks"):
+#        risk_ids.append(risk.get("id"))
+#
+#    prev_ego_pose = 0.0
+#    for i in range(0, len(risk_ids)):
+#        id = risk_ids[i]
+#        risk_prob = []
+#        risk_pose = []
+#        clossing_frame = 0
+#
+#        for frame_num in range(0, len(data)):
+#            for risk in data[frame_num].get("risks"):
+#
+#                if id != risk.get("id"): continue
+#
+#                risk_prob.append(risk.get("prob")) 
+#                position = risk.get("lane_position") if id[0] != "-" else 500.0 - risk.get("lane_position")
+#                risk_pose.append(position)
+#
+#                if prev_ego_pose < position <= data[frame_num].get("lane_position"):
+#                    clossing_frame = frame_num
+#
+#            prev_ego_pose = data[frame_num].get("lane_position")
+#
+#        ax[1].plot(risk_pose, risk_prob, linestyle="-", color=color_map(i/len(risk_ids)))
+#        ax[1].plot(risk_pose[0], risk_prob[0]+0.01, marker="$S$", markersize=5, color=color_map(i/len(risk_ids)))
+#        ax[1].plot(risk_pose[clossing_frame], risk_prob[clossing_frame]+0.01, "x", markersize=5, color=color_map(i/len(risk_ids)))
+#        ax[1].plot(risk_pose[-1], risk_prob[-1]+0.01, marker="$G$", markersize=5, color=color_map(i/len(risk_ids)))
+#
+#
+#    last_request_target = ""
+#    request_position = []
+#    hight = 1
+#    for frame in data:
+#        print(request_position, last_request_target, frame.get("action_target"))
+#
+#        if frame.get("action") == "REQUEST" \
+#           and (len(request_position)==0 or frame.get("action_target") == last_request_target):
+#                request_position.append(frame.get("lane_position"))
+#                last_request_target = frame.get("action_target")
+#        elif len(request_position) > 0:
+#            ax[2].plot(request_position, [hight]*len(request_position), marker=".", linestyle="-", color=color_map(risk_ids.index(last_request_target)/len(risk_ids)))
+#            request_position = []
+#            last_request_target = ""
+#            hight += 1
+#
+#
+#    plt.show()
+
 if len(sys.argv) == 2:
 
     with open(sys.argv[1], "r") as f:
         data = json.load(f)
 
-    travel_dist = []
+    fig, ax = plt.subplots(2, 1, tight_layout=True)
+    ax[0].set_xlim(0, 80)
+    ax[0].set_ylabel("vehicle speed [m/s]")
+    ax[1].set_xlim(0, 80)
+    ax[1].set_ylabel("risk probs")
+    ax2 = ax[0].twinx()
+    ax2.set_ylabel("intervention request")
+    ax2.set_xlabel("travel distance [m]")
+
+    elapse_time_list = []
+    elapse_time = 0.0
     ego_vel = []
     for frame in data:
-        travel_dist.append(frame.get("lane_position"))
+        elapse_time_list.append(elapse_time)
+        elapse_time += 2.0
         ego_vel.append(frame.get("speed"))
-
-    fig, ax = plt.subplots(3, 1, tight_layout=True)
-    ax[0].plot(travel_dist, ego_vel, ".", linestyle="-")
-    ax[0].set_xlim(0, 500)
-    ax[0].set_ylabel("vehivle speed [m/s]")
-    ax[1].set_xlim(0, 500)
-    ax[1].set_ylabel("risk probs")
-    ax[2].set_xlim(0, 500)
-    ax[2].set_ylabel("intervention request")
-    ax[2].set_xlabel("travel distance [m]")
+    
+    ax[0].plot(elapse_time_list, ego_vel, ".", linestyle="-")
 
     risk_ids = [] 
     color_map = plt.get_cmap("Set3")
@@ -36,48 +113,68 @@ if len(sys.argv) == 2:
     for risk in data[0].get("risks"):
         risk_ids.append(risk.get("id"))
 
-    prev_ego_pose = 0.0
+    reserved_time_list = []
     for i in range(0, len(risk_ids)):
         id = risk_ids[i]
         risk_prob = []
-        risk_pose = []
-        clossing_frame = 0
+        risk_prob_time = []
+        crossing_time = 0 
+        crossing_prob = 0.0
+        elapsed_time = 0.0
 
         for frame_num in range(0, len(data)):
             for risk in data[frame_num].get("risks"):
 
                 if id != risk.get("id"): continue
 
-                risk_prob.append(risk.get("prob")) 
+                if id == data[frame_num].get("action_target"):
+                    if risk_prob and (elapsed_time - risk_prob_time[-1]) > 2.0 and frame_num != len(data)-1:
+                        print(f"request drop time detected")
+
+                        risk_prob_time.append(elapsed_time + 2.0)
+                        for risk in data[frame_num+1].get("risks"):
+                            if id != risk.get("id"): continue
+                            risk_prob.append(risk.get("prob"))
+                        
+                        ax[1].plot(risk_prob_time, risk_prob, linestyle="-", color=color_map(i/len(risk_ids)))
+                        risk_prob = []
+                        risk_prob_time = []
+                    risk_prob.append(risk.get("prob")) 
+                    risk_prob_time.append(elapsed_time)
+                    print(f"requested to {id} at {elapsed_time}")
+
+
                 position = risk.get("lane_position") if id[0] != "-" else 500.0 - risk.get("lane_position")
-                risk_pose.append(position)
+                if id == "-E0_0-400":
+                    print(f"{position}, {data[frame_num].get('lane_position')}")
+                if crossing_time == 0 and position <= data[frame_num].get("lane_position"):
+                    print(f"crossed with {id} at {elapsed_time}")
+                    crossing_time = elapsed_time
+                    if crossing_time in reserved_time_list:
+                        crossing_time += 1.0
+                    crossing_prob = risk.get("prob")
+                    if crossing_prob == 0.0:
+                        crossing_prob += 0.01 
+                    ax2.bar(crossing_time, crossing_prob, color=color_map(i/len(risk_ids)))
+                    reserved_time_list.append(crossing_time)
 
-                if prev_ego_pose < position <= data[frame_num].get("lane_position"):
-                    clossing_frame = frame_num
+            elapsed_time += 2.0
 
-            prev_ego_pose = data[frame_num].get("lane_position")
+        if risk_prob:
+            for risk in data[-1].get("risks"):
+                if id != risk.get("id"): continue
+                risk_prob.append(risk.get("prob"))
+                risk_prob_time.append(risk_prob_time[-1] + 2.0)
 
-        ax[1].plot(risk_pose, risk_prob, linestyle="-", color=color_map(i/len(risk_ids)))
-        ax[1].plot(risk_pose[0], risk_prob[0]+0.01, marker="$S$", markersize=5, color=color_map(i/len(risk_ids)))
-        ax[1].plot(risk_pose[clossing_frame], risk_prob[clossing_frame]+0.01, "x", markersize=5, color=color_map(i/len(risk_ids)))
-        ax[1].plot(risk_pose[-1], risk_prob[-1]+0.01, marker="$G$", markersize=5, color=color_map(i/len(risk_ids)))
+        if crossing_time == 0:
+            crossing_time = elapsed_time
+            for risk in data[-1].get("risks"):
+                if id != risk.get("id"): continue
+                crossing_prob = risk.get("prob")
+
+        ax[1].plot(risk_prob_time, risk_prob, linestyle="-", color=color_map(i/len(risk_ids)))
 
 
-    last_request_target = ""
-    request_position = []
-    hight = 1
-    for frame in data:
-        print(request_position, last_request_target, frame.get("action_target"))
-
-        if frame.get("action") == "REQUEST" \
-           and (len(request_position)==0 or frame.get("action_target") == last_request_target):
-                request_position.append(frame.get("lane_position"))
-                last_request_target = frame.get("action_target")
-        elif len(request_position) > 0:
-            ax[2].plot(request_position, [hight]*len(request_position), marker=".", linestyle="-", color=color_map(risk_ids.index(last_request_target)/len(risk_ids)))
-            request_position = []
-            last_request_target = ""
-            hight += 1
 
 
     plt.show()
