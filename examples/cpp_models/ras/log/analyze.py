@@ -1,6 +1,6 @@
+import matplotlib.pyplot as plt
 import json
 import sys
-import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 import pandas as pd
@@ -88,13 +88,7 @@ if len(sys.argv) == 2:
         data = json.load(f)
 
     fig, ax = plt.subplots(2, 1, tight_layout=True)
-    ax[0].set_xlim(0, 80)
-    ax[0].set_ylabel("vehicle speed [m/s]")
-    ax[1].set_xlim(0, 80)
-    ax[1].set_ylabel("risk probs")
     ax2 = ax[0].twinx()
-    ax2.set_ylabel("intervention request")
-    ax2.set_xlabel("travel distance [m]")
 
     elapse_time_list = []
     elapse_time = 0.0
@@ -107,78 +101,99 @@ if len(sys.argv) == 2:
     ax[0].plot(elapse_time_list, ego_vel, ".", linestyle="-")
 
     risk_ids = [] 
-    color_map = plt.get_cmap("Set3")
     risk_num = len(data[0].get("risks"))
-
     for risk in data[0].get("risks"):
         risk_ids.append(risk.get("id"))
+    color_map = plt.get_cmap("Set3")
+
 
     reserved_time_list = []
     for i in range(0, len(risk_ids)):
         id = risk_ids[i]
-        risk_prob = []
-        risk_prob_time = []
-        crossing_time = 0 
-        crossing_prob = 0.0
         elapsed_time = 0.0
+        is_crossed = False
+        last_prob = None
+        crossing_time = 0
+        
 
-        for frame_num in range(0, len(data)):
-            for risk in data[frame_num].get("risks"):
+        for frame in data:
+            elapsed_time += 2.0
+            for risk in frame.get("risks"):
 
                 if id != risk.get("id"): continue
 
-                if id == data[frame_num].get("action_target"):
-                    if risk_prob and (elapsed_time - risk_prob_time[-1]) > 2.0 and frame_num != len(data)-1:
-                        print(f"request drop time detected")
-
-                        risk_prob_time.append(elapsed_time + 2.0)
-                        for risk in data[frame_num+1].get("risks"):
-                            if id != risk.get("id"): continue
-                            risk_prob.append(risk.get("prob"))
-                        
-                        ax[1].plot(risk_prob_time, risk_prob, linestyle="-", color=color_map(i/len(risk_ids)))
-                        risk_prob = []
-                        risk_prob_time = []
-                    risk_prob.append(risk.get("prob")) 
-                    risk_prob_time.append(elapsed_time)
-                    print(f"requested to {id} at {elapsed_time}")
-
-
+                last_prob = risk.get("prob")
                 position = risk.get("lane_position") if id[0] != "-" else 500.0 - risk.get("lane_position")
-                if id == "-E0_0-400":
-                    print(f"{position}, {data[frame_num].get('lane_position')}")
-                if crossing_time == 0 and position <= data[frame_num].get("lane_position"):
-                    print(f"crossed with {id} at {elapsed_time}")
+                if crossing_time == 0 and position <= frame.get("lane_position"):
+                    print(f"crossed with {risk.get('id')} at {elapsed_time}")
+                    is_crossed = True
+
                     crossing_time = elapsed_time
-                    if crossing_time in reserved_time_list:
-                        crossing_time += 1.0
+                    while True:
+                        if crossing_time in reserved_time_list: 
+                            crossing_time += 1.0
+                        else:
+                            break
                     crossing_prob = risk.get("prob")
-                    if crossing_prob == 0.0:
-                        crossing_prob += 0.01 
+                    if crossing_prob == 0.0: crossing_prob += 0.01 
+
                     ax2.bar(crossing_time, crossing_prob, color=color_map(i/len(risk_ids)))
                     reserved_time_list.append(crossing_time)
+                    continue
 
-            elapsed_time += 2.0
 
-        if risk_prob:
-            for risk in data[-1].get("risks"):
-                if id != risk.get("id"): continue
-                risk_prob.append(risk.get("prob"))
-                risk_prob_time.append(risk_prob_time[-1] + 2.0)
 
-        if crossing_time == 0:
+        if not is_crossed:
             crossing_time = elapsed_time
-            for risk in data[-1].get("risks"):
-                if id != risk.get("id"): continue
-                crossing_prob = risk.get("prob")
+            while True:
+                if crossing_time in reserved_time_list: 
+                    crossing_time += 1.0
+                else:
+                    break
+            ax2.bar(crossing_time, last_prob, color=color_map(i/len(risk_ids)))
 
-        ax[1].plot(risk_prob_time, risk_prob, linestyle="-", color=color_map(i/len(risk_ids)))
+
+    last_action_target = None
+    buf_prob = []
+    buf_time = []
+    elapsed_time = 0.0
+    for frame in data:
+        elapsed_time += 2.0
+
+        target = frame.get("action_target")
+        if frame.get("action") in ["NO_ACTION", "RECOG"] or last_action_target != target:
+            for risk in frame.get("risks"):
+                if last_action_target != risk.get("id"): continue
+                buf_prob.append(risk.get("prob"))
+                buf_time.append(elapsed_time)
 
 
+            if last_action_target != None:
+                ax[1].plot(buf_time, buf_prob, linestyle="-", marker=".", color=color_map(risk_ids.index(last_action_target)/len(risk_ids)))
 
+            if frame.get("action") in ["NO_ACTION", "RECOG"]:
+                last_action_target = None
+            else:
+                last_action_target = target
+            buf_prob = []
+            buf_time = []
+            continue
+
+        for risk in frame.get("risks"):
+            if target != risk.get("id"): continue
+            print(f"requested to {target} at {elapsed_time}")
+            buf_prob.append(risk.get("prob"))
+            buf_time.append(elapsed_time)
+            last_action_target = target
+
+    ax[0].set_xlim(0, elapsed_time)
+    ax[0].set_ylabel("vehicle speed [m/s]")
+    ax[1].set_xlim(0, elapsed_time)
+    ax[1].set_ylabel("risk probs")
+    ax2.set_ylabel("intervention request")
+    ax2.set_xlabel("travel distance [m]")
 
     plt.show()
-
 
 elif len(sys.argv) > 2:
 
