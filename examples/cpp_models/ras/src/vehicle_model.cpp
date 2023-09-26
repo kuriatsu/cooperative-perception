@@ -51,7 +51,7 @@ double VehicleModel::getAccel(const double speed, const int pose, const std::vec
             acc_list.emplace_back(a);
         }
         else {
-            double a = (std::pow(m_yield_speed, 2.0) - std::pow(speed, 2.0))/(2.0*(distance-m_safety_margin));
+            double a = (std::pow(m_yield_speed, 2.0) - std::pow(speed, 2.0))/(2.0*(distance+m_safety_margin));
             acc_list.emplace_back(a);
         }
 

@@ -83,13 +83,15 @@ import re
 #    plt.show()
 
 if len(sys.argv) == 2:
+    fig, ax = plt.subplots(2, 1, tight_layout=True)
 
     with open(sys.argv[1], "r") as f:
         data = json.load(f)
 
-    fig, ax = plt.subplots(2, 1, tight_layout=True)
-    ax2 = ax[0].twinx()
 
+    ##########################
+    # print("time-speed")
+    ##########################
     elapse_time_list = []
     elapse_time = 0.0
     ego_vel = []
@@ -106,7 +108,10 @@ if len(sys.argv) == 2:
         risk_ids.append(risk.get("id"))
     color_map = plt.get_cmap("Set3")
 
-
+    ##########################
+    # print("risk position and prob")
+    ##########################
+    ax2 = ax[0].twinx()
     reserved_time_list = []
     for i in range(0, len(risk_ids)):
         id = risk_ids[i]
@@ -125,17 +130,17 @@ if len(sys.argv) == 2:
                 last_prob = risk.get("prob")
                 position = risk.get("lane_position") if id[0] != "-" else 500.0 - risk.get("lane_position")
                 if crossing_time == 0 and position <= frame.get("lane_position"):
-                    print(f"crossed with {risk.get('id')} at {elapsed_time}")
+                    print(f"crossed with {risk.get('id')} at {elapsed_time} risk: {risk.get('prob')}")
                     is_crossed = True
 
                     crossing_time = elapsed_time
                     while True:
                         if crossing_time in reserved_time_list: 
-                            crossing_time += 1.0
+                            crossing_time += 0.8
                         else:
                             break
                     crossing_prob = risk.get("prob")
-                    if crossing_prob == 0.0: crossing_prob += 0.01 
+                    if crossing_prob < 0.1: crossing_prob += 0.02 
 
                     ax2.bar(crossing_time, crossing_prob, color=color_map(i/len(risk_ids)))
                     reserved_time_list.append(crossing_time)
@@ -143,6 +148,7 @@ if len(sys.argv) == 2:
 
 
 
+        ## no crossing means the target are at the end of the course
         if not is_crossed:
             crossing_time = elapsed_time
             while True:
@@ -151,69 +157,116 @@ if len(sys.argv) == 2:
                 else:
                     break
             ax2.bar(crossing_time, last_prob, color=color_map(i/len(risk_ids)))
+            print(f"{id} doesn't crossed time: {crossing_time} prob : {last_prob}")
 
 
+    ##########################
+    # print("intervention request")
+    ##########################
     last_action_target = None
     buf_prob = []
     buf_time = []
-    elapsed_time = 0.0
-    for frame in data:
-        elapsed_time += 2.0
 
-        target = frame.get("action_target")
-        if frame.get("action") in ["NO_ACTION", "RECOG"] or last_action_target != target:
-            for risk in frame.get("risks"):
-                if last_action_target != risk.get("id"): continue
+    ## first data
+    if data[0].get("action") == "REQUEST":
+        target = data[0].get("action_target")
+        for risk in data[0].get("risks"):
+            if target == risk.get("id"):
                 buf_prob.append(risk.get("prob"))
-                buf_time.append(elapsed_time)
+                buf_time.append(0.0)
+                break
+        last_action_target = target
 
+    ## from second data
+    for frame_num in range(1, len(data)):
+        elapsed_time = frame_num * 2.0
+        frame = data[frame_num]
+        target = frame.get("action_target")
 
-            if last_action_target != None:
-                ax[1].plot(buf_time, buf_prob, linestyle="-", marker=".", color=color_map(risk_ids.index(last_action_target)/len(risk_ids)))
+        if frame.get("action") == "REQUEST":
 
-            if frame.get("action") in ["NO_ACTION", "RECOG"]:
-                last_action_target = None
-            else:
-                last_action_target = target
-            buf_prob = []
-            buf_time = []
-            continue
+            ## keep intervention request
+            if last_action_target == target:
+                for risk in frame.get("risks"):
+                    if target == risk.get("id"):
+                        buf_prob.append(risk.get("prob"))
+                        buf_time.append(elapsed_time)
+                        break
 
-        for risk in frame.get("risks"):
-            if target != risk.get("id"): continue
-            print(f"requested to {target} at {elapsed_time}")
-            buf_prob.append(risk.get("prob"))
-            buf_time.append(elapsed_time)
+            ## request 1 -> requet 2  
+            ## plot last intervention request to 1 
+            if last_action_target != target and last_action_target is not None:
+                ax[1].plot(buf_time, buf_prob, linestyle="-", color=color_map(risk_ids.index(last_action_target)/len(risk_ids)))
+                ax[1].plot(buf_time[1:], buf_prob[1:], marker=".", linestyle="", color=color_map(risk_ids.index(last_action_target)/len(risk_ids)))
+                ax[1].plot(buf_time[0], buf_prob[0], marker="x", linestyle="", color=color_map(risk_ids.index(last_action_target)/len(risk_ids)))
+
+            ## start intervention request
+            ## 1. clear log data 
+            ## 2. save initial prob state and prob state after first intervention request
+            if last_action_target != target:
+                buf_prob = []
+                buf_time = []
+                for risk in data[frame_num-1].get("risks"):
+                    if target == risk.get("id"):
+                        buf_prob.append(risk.get("prob"))
+                        buf_time.append(elapsed_time-2.0)
+                        break
+                for risk in frame.get("risks"):
+                    if target == risk.get("id"):
+                        buf_prob.append(risk.get("prob"))
+                        buf_time.append(elapsed_time)
+                        break
+
             last_action_target = target
+                
+        else:
+            ## finish intervention request 
+            ## plot last intervention request data and clear log
+            if last_action_target is not None:
+                ax[1].plot(buf_time, buf_prob, linestyle="-", color=color_map(risk_ids.index(last_action_target)/len(risk_ids)))
+                ax[1].plot(buf_time[1:], buf_prob[1:], marker=".", linestyle="", color=color_map(risk_ids.index(last_action_target)/len(risk_ids)))
+                ax[1].plot(buf_time[0], buf_prob[0], marker="x", linestyle="", color=color_map(risk_ids.index(last_action_target)/len(risk_ids)))
+                buf_prob = []
+                buf_time = []
 
-    ax[0].set_xlim(0, elapsed_time)
+            ## no intervention request
+            else:
+                buf_prob = []
+                buf_time = []
+                
+            last_action_target = None
+
+    ax[0].set_xlim(0, (len(data) + 1.0) * 2.0)
     ax[0].set_ylabel("vehicle speed [m/s]")
-    ax[1].set_xlim(0, elapsed_time)
+    ax[1].set_xlim(0, (len(data) + 1.0) * 2.0)
     ax[1].set_ylabel("risk probs")
     ax2.set_ylabel("intervention request")
     ax2.set_xlabel("travel distance [m]")
 
     plt.show()
 
+
+#################################
+# print("summary")
+#################################
 elif len(sys.argv) > 2:
 
-    df = pd.DataFrame(columns = ["policy", "risk_num", "travel_time", "total_fuel_consumption", "mean_fuel_consumption", "dev_accel", "mean_speed", "risk_omission", "risk_omission_num", "ambiguity_omission", "ambiguity_omission_num", "request_time"])
+    df = pd.DataFrame(columns = ["policy", "risk_num", "travel_time", "total_fuel_consumption", "mean_fuel_consumption", "dev_accel", "mean_speed", "risk_omission", "ambiguity_omission", "request_time"])
     fig, ax = plt.subplots(1, 1, tight_layout=True)
 
     for file in sys.argv[1:]:
         with open(file, "r") as f:
             data = json.load(f)
 
+        print(file)
         policy = re.findall("([A-Z]*)\d", file)[0]
         risk_num = float(re.findall("([\d.]*)_", file)[0]) * 2 * 500
         travel_time = 0.0
         fuel_consumption = [] 
         accel = []
         speed = []
-        risk_omission = 0.0 
-        risk_omission_num = 0
-        ambiguity_omission = 0.0 
-        ambiguity_omission_num = 0
+        risk_omission = [] 
+        ambiguity_omission = [] 
         request_time = 0.0
 
         last_ego_position = 0.0
@@ -234,14 +287,11 @@ elif len(sys.argv) > 2:
                 position = risk.get("lane_position") if risk.get("id")[0] != "-" else 500.0 - risk.get("lane_position")
                 if last_ego_position < position <= frame.get("lane_position"):
 
-                    ambiguity_omission += 0.5 - abs(0.5 - risk.get("prob"))
-                    if 0.0 < risk.get("prob") < 1.0:
-                        ambiguity_omission_num += 1
+                    ambiguity_omission.append(0.5 - abs(0.5 - risk.get("prob")))
 
-                    if speed[-1] > 2.8:
-                        risk_omission += risk.get("prob") 
-                        risk_omission_num += 1
-
+                    print(risk.get("hidden"))
+                    if risk.get("hidden"):
+                        risk_omission.append(frame.get("speed"))
 
             last_ego_position = frame.get("lane_position") 
 
@@ -255,7 +305,10 @@ elif len(sys.argv) > 2:
             dev_accel += (a - mean_accel) ** 2
         dev_accel = dev_accel / len(accel)
 
-        buf_df = pd.DataFrame([[policy, risk_num, travel_time, total_fuel_consumption, mean_fuel_consumption, dev_accel, mean_speed, risk_omission, risk_omission_num, ambiguity_omission, ambiguity_omission_num, request_time]], columns=df.columns)
+        mean_risk_omission = sum(risk_omission)/len(risk_omission) if risk_omission else 0.0
+        mean_ambiguity_omission = sum(ambiguity_omission)/len(ambiguity_omission) if ambiguity_omission else 0.0
+
+        buf_df = pd.DataFrame([[policy, risk_num, travel_time, total_fuel_consumption, mean_fuel_consumption, dev_accel, mean_speed, mean_risk_omission, mean_ambiguity_omission, request_time]], columns=df.columns)
         df = pd.concat([df, buf_df], ignore_index=True)
 
 
@@ -272,11 +325,7 @@ elif len(sys.argv) > 2:
     plt.show()
     sns.lineplot(data=df, x="risk_num", y="risk_omission", hue="policy", markers=True)
     plt.show()
-    sns.lineplot(data=df, x="risk_num", y="risk_omission_num", hue="policy", markers=True)
-    plt.show()
     sns.lineplot(data=df, x="risk_num", y="ambiguity_omission", hue="policy", markers=True)
-    plt.show()
-    sns.lineplot(data=df, x="risk_num", y="ambiguity_omission_num", hue="policy", markers=True)
     plt.show()
     sns.lineplot(data=df, x="risk_num", y="request_time", hue="policy", markers=True)
     plt.show()

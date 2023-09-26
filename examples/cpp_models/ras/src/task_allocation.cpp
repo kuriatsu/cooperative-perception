@@ -388,7 +388,7 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
             }
             else {
                 // reward += (m_max_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed) * -100;
-                reward += (state_prev.ego_speed - m_yield_speed)/(m_max_speed - m_yield_speed) * 100;
+                reward += (state_prev.ego_speed - m_yield_speed)/(m_max_speed - m_yield_speed) * 10;
             }
             // }
             // if (state_prev.ego_speed <= m_yield_speed) {
@@ -425,10 +425,10 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 	// int request
 	// if (ta_action == TAValues::REQUEST) {
 
-    if (ta_action == TAValues::RECOG) {
-        if (state_curr.risk_bin[action_target_idx] != state_curr.ego_recog[action_target_idx])
-            reward += -1;
-    }
+    // if (ta_action == TAValues::RECOG) {
+    //     if (state_curr.risk_bin[action_target_idx] != state_curr.ego_recog[action_target_idx])
+    //         reward += -1;
+    // }
 
 	if (ta_action == TAValues::REQUEST && state_curr.req_time == m_delta_t) {
         reward += 1 * -1 ;

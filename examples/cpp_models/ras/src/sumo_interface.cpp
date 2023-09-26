@@ -185,7 +185,7 @@ void SumoInterface::spawnPedestrians() {
 
     // Generate random value
     std::mt19937 mt{std::random_device{}()};
-    std::uniform_real_distribution<double> position_noise(-interval, interval), risk_val(0, 1);
+    std::uniform_real_distribution<double> position_noise(-interval, interval), prob(0, 1), rand(0, 1);
 
     // add peds for each lane
     auto lane_list = Lane::getIDList();
@@ -206,7 +206,9 @@ void SumoInterface::spawnPedestrians() {
             Person::setColor(ped_id, libsumo::TraCIColor(0, 0, 200));
             Person::appendWalkingStage(ped_id, {edge}, 0);
             Person::appendWaitingStage(ped_id, 1000);
-            m_risks[ped_id] = Risk(ped_id, risk_val(mt)); 
+            double risk_prob = prob(mt);
+            bool risk = (rand(mt) < risk_prob) ? true : false;
+            m_risks[ped_id] = Risk(ped_id, risk, risk_prob); 
         }
     }
     std::cout << "spawned pedestrian" << m_risks.size() << std::endl;
@@ -254,15 +256,16 @@ void SumoInterface::close() {
 }
 
 void SumoInterface::start() {
-    try {
-        Simulation::load({"-c", "../map/straight.sumocfg"});
-    }
-    catch (libsumo::TraCIException& error) {
-        Simulation::start({"sumo-gui", "-c", "../map/straight.sumocfg"});
-    }
-    catch (libsumo::FatalTraCIError& error) {
-        Simulation::start({"sumo", "-c", "../map/straight.sumocfg"});
-    }
+    Simulation::start({"sumo", "-c", "../map/straight.sumocfg"});
+    // try {
+    //     Simulation::load({"-c", "../map/straight.sumocfg"});
+    // }
+    // catch (libsumo::TraCIException& error) {
+    //     Simulation::start({"sumo-gui", "-c", "../map/straight.sumocfg"});
+    // }
+    // catch (libsumo::FatalTraCIError& error) {
+    //     Simulation::start({"sumo", "-c", "../map/straight.sumocfg"});
+    // }
     // Simulation::executeMove();
 //    if (Simulation::hasGUI()) {
 //        Simulation::load({"-c", "../map/straight.sumocfg"});
