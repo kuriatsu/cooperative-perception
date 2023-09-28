@@ -133,7 +133,7 @@ if len(sys.argv) == 2:
                     print(f"crossed with {risk.get('id')} at {elapsed_time} risk: {risk.get('prob')}")
                     is_crossed = True
 
-                    crossing_time = elapsed_time
+                    crossing_time = elapsed_time - 1.0
                     while True:
                         if crossing_time in reserved_time_list: 
                             crossing_time += 0.8
@@ -239,7 +239,9 @@ if len(sys.argv) == 2:
     ax[0].set_xlim(0, (len(data) + 1.0) * 2.0)
     ax[0].set_ylabel("vehicle speed [m/s]")
     ax[1].set_xlim(0, (len(data) + 1.0) * 2.0)
+    ax[1].set_ylim(0, 1.0)
     ax[1].set_ylabel("risk probs")
+    ax2.set_ylim(0, 1.0)
     ax2.set_ylabel("intervention request")
     ax2.set_xlabel("travel distance [m]")
 
@@ -255,10 +257,10 @@ elif len(sys.argv) > 2:
     fig, ax = plt.subplots(1, 1, tight_layout=True)
 
     for file in sys.argv[1:]:
+        print(file)
         with open(file, "r") as f:
             data = json.load(f)
 
-        print(file)
         policy = re.findall("([A-Z]*)\d", file)[0]
         risk_num = float(re.findall("([\d.]*)_", file)[0]) * 2 * 500
         travel_time = 0.0
@@ -270,7 +272,8 @@ elif len(sys.argv) > 2:
         request_time = 0.0
 
         last_ego_position = 0.0
-        for frame in data:
+        for frame_num in range(1, len(data)):
+            frame = data[frame_num]
             travel_time += 2.0
             speed.append(frame.get("speed"))
             accel.append(frame.get("accel"))
@@ -291,7 +294,7 @@ elif len(sys.argv) > 2:
 
                     print(risk.get("hidden"))
                     if risk.get("hidden"):
-                        risk_omission.append(frame.get("speed"))
+                        risk_omission.append(data[frame_num-1].get("speed"))
 
             last_ego_position = frame.get("lane_position") 
 

@@ -88,20 +88,20 @@ public:
     double distance;
 
 public:
-    Risk(std::string _id, double _risk_p) {
-        id = _id;
-        risk_prob = _risk_p;
-        risk_pred = _risk_p >= 0.5;
-        risk_hidden = _risk_p >= 0.5;
+    Risk(std::string id_, bool risk_val_, double p_risk_) {
+        id = id_;
+        risk_prob = p_risk_;
+        risk_pred = risk_prob >= 0.5;
+        risk_hidden = risk_val_; 
         distance = -100;
     }
 
-    Risk(std::string _id, double _risk_p, Pose _pose) {
-        id = _id;
-        risk_prob = _risk_p;
-        risk_pred = _risk_p >= 0.5;
-        risk_hidden = _risk_p >= 0.5;
-        pose = _pose;
+    Risk(std::string id_, bool risk_val_, double p_risk_, Pose pose_) {
+        id = id_;
+        risk_prob = p_risk_;
+        risk_pred = p_risk_ >= 0.5;
+        risk_hidden = risk_val_;
+        pose = pose_;
         distance = -100;
     }        
     
