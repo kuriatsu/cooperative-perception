@@ -37,7 +37,7 @@ public:
     }
 
     DSPOMDP* InitializeModel(option::Option* options) {
-		DSPOMDP* model = new TaskAllocation(delta_t, risk_pose, risk_likelihood);
+		DSPOMDP* model = new TaskAllocation(delta_ t, risk_pose, risk_likelihood);
 		// DSPOMDP* model = new TaskAllocation(params["delta_t"], params["risk_pose"], params["risk_likelihood"]);
         return model;
     }
