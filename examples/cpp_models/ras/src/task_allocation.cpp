@@ -438,7 +438,7 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 }
 
 double TaskAllocation::GetMaxReward() const {
-	return 300;
+	return 1000;
 }
 
 ValuedAction TaskAllocation::GetBestAction() const {
