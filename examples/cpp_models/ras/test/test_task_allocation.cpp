@@ -153,24 +153,24 @@ public:
 
 
 int main(int argc, char* argv[]) {
-    // return MyPlanner(argv[1]).RunEvaluation(argc, argv);
+    return MyPlanner(argv[1]).RunEvaluation(argc, argv);
     // return MyPlanner().RunEvaluation(argc, argv);
-    std::mt19937 mt{std::random_device{}()};
-    std::uniform_int_distribution<int> pose_dist(10, 140);
-    std::uniform_real_distribution<double> likelihood_dist(0.0, 1.0);
-    std::vector<double> time_step_list = {1.0, 2.0, 3.0, 6.0};
-    for (const auto time_step : time_step_list) {
-        for (int risk_num=1; risk_num < 8; ++risk_num) {
-            for (int round = 0; round < 10; round ++) {
-                std::vector<int> risk_pose;
-                std::vector<double> risk_likelihood;
-                for (int i=0; i<risk_num; i++) {
-                    risk_pose.emplace_back(pose_dist(mt));
-                    risk_likelihood.emplace_back(likelihood_dist(mt));
-                }
-                MyPlanner(argv[1], time_step, risk_pose, risk_likelihood).RunEvaluation(argc, argv);
-            }
-        }
-    }
+//    std::mt19937 mt{std::random_device{}()};
+//    std::uniform_int_distribution<int> pose_dist(10, 140);
+//    std::uniform_real_distribution<double> likelihood_dist(0.0, 1.0);
+//    std::vector<double> time_step_list = {1.0, 2.0, 3.0, 6.0};
+//    for (const auto time_step : time_step_list) {
+//        for (int risk_num=1; risk_num < 8; ++risk_num) {
+//            for (int round = 0; round < 10; round ++) {
+//                std::vector<int> risk_pose;
+//                std::vector<double> risk_likelihood;
+//                for (int i=0; i<risk_num; i++) {
+//                    risk_pose.emplace_back(pose_dist(mt));
+//                    risk_likelihood.emplace_back(likelihood_dist(mt));
+//                }
+//                MyPlanner(argv[1], time_step, risk_pose, risk_likelihood).RunEvaluation(argc, argv);
+//            }
+//        }
+//    }
     return 0;
 }

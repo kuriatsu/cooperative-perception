@@ -71,16 +71,17 @@ public:
             ACT_TYPE action = history.LastAction();
             OBS_TYPE obs = history.LastObservation();
 
-            if (ta_values->getActionAttrib(action) == TAValues::REQUEST) { 
+            // if (ta_values->getActionAttrib(action) == TAValues::REQUEST) { 
+            if (ta_state.req_time > 0) { 
 
                 if (task_allocation->m_operator_model->int_acc(ta_state.req_time) <= 0.5) {
-                    return action;
+                    return ta_values->getAction(TAValues::REQUEST, ta_state.req_target);
                 }
                 else if (task_allocation->m_operator_model->int_acc(ta_state.req_time) == 1.0) {
                     // if ((obs == TAValues::RISK && ta_state.ego_recog[ta_state.req_target] == TAValues::NO_RISK) || (obs == TAValues::NO_RISK && ta_state.ego_recog[ta_state.req_target] == TAValues::RISK)) {
                     if (obs != ta_state.ego_recog[ta_state.req_target]) {
                         // std::cout << "recog after request" << std::endl;
-                        return ta_values->getAction(TAValues::REQUEST, ta_state.req_target);
+                        return ta_values->getAction(TAValues::RECOG, ta_state.req_target);
                     }
                 }
             }
@@ -425,12 +426,14 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 	// int request
 	// if (ta_action == TAValues::REQUEST) {
 
-    // if (ta_action == TAValues::RECOG) {
-    //     if (state_curr.risk_bin[action_target_idx] != state_curr.ego_recog[action_target_idx])
-    //         reward += -1;
-    // }
+    if (ta_action == TAValues::RECOG) {
+        reward += -1;
+        if (state_curr.risk_bin[action_target_idx] != state_curr.ego_recog[action_target_idx])
+            reward += -10;
+    }
 
-	if (ta_action == TAValues::REQUEST && state_curr.req_time == m_delta_t) {
+	// if (ta_action == TAValues::REQUEST) {
+	if (ta_action == TAValues::REQUEST && (state_curr.req_time == m_delta_t || state_prev.req_target != state_curr.req_target)) {
         reward += 1 * -1 ;
 	}
 
@@ -635,6 +638,7 @@ void TaskAllocation::PrintState(const State& state, ostream& out) const {
  		<< "ego_speed : " << ras_state.ego_speed << "\n"
  		<< "ego_recog : " << ras_state.ego_recog << "\n"
  		<< "req_time : " << ras_state.req_time << "\n"
+ 		<< "risk_pose : " << ras_state.risk_pose << "\n"
  		<< "req_target : " << ras_state.req_target << "\n"
  		<< "risk_bin : " << ras_state.risk_bin << "\n"
         << "weight : " << ras_state.weight << "\n"
