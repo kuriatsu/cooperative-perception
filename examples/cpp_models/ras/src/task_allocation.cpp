@@ -292,19 +292,13 @@ bool TaskAllocation::Step(State& state, double rand_num, ACT_TYPE action, double
     // when action == no_action
     if (ta_action == TAValues::NO_ACTION) {
         // std::cout << "action : NO_ACTION" << std::endl;
-        state_curr.req_time = 0;
-        state_curr.req_target = 0;
-        obs = m_operator_model->execIntervention(state_curr.req_time, ta_action, "", TAValues::NO_RISK);
+        if (state_prev.req_time == 0) {
+            obs = m_operator_model->execIntervention(state_prev.req_time, ta_action, std::to_string(target_idx), state_curr.risk_bin[target_idx]);
+            state_curr.req_time = 0;
+            state_curr.req_target = 0;
+            state_curr.ego_recog[target_idx] = obs;
     }
     
-	// when action = change recog state
-    else if (ta_action == TAValues::RECOG) {
-        // std::cout << "action : RECOG" << std::endl;
-		state_curr.ego_recog[target_idx] = (state_prev.ego_recog[target_idx] == TAValues::RISK) ? TAValues::NO_RISK : TAValues::RISK;
-        state_curr.req_time = 0;
-        state_curr.req_target = 0;
-        obs = m_operator_model->execIntervention(state_curr.req_time, ta_action, "", TAValues::NO_RISK);
-	}
     
 	// when action = request intervention
 	else if (ta_action == TAValues::REQUEST) {
@@ -320,9 +314,9 @@ bool TaskAllocation::Step(State& state, double rand_num, ACT_TYPE action, double
 		else {
 			state_curr.req_time = m_delta_t;
 			state_curr.req_target = target_idx;
+            obs = m_operator_model->execIntervention(state_prev.req_time, ta_action, std::to_string(target_idx), state_prev.risk_bin[target_idx]);
 		}
 
-        obs = m_operator_model->execIntervention(state_curr.req_time, ta_action, std::to_string(target_idx), state_curr.risk_bin[target_idx]);
 
 	}
 	reward = CalcReward(state_prev, state_curr, action);
