@@ -17,16 +17,14 @@ double OperatorModel::int_acc(const int time) const {
 	}
 }
 
-int OperatorModel::execIntervention(const int time, const int action, const std::string target, const bool risk) const {
+int OperatorModel::execIntervention(const int time, const bool risk) const {
 
-    if (action == TAValues::RECOG || action == TAValues::NO_ACTION) {
-        last_target_id = "NONE";
-        return TAValues::NONE;
+    if (time == 0) {
+        return TAValues::RISK;
     }
     else {
         double rand_num = despot::Random::RANDOM.NextDouble();
         double acc = int_acc(time);
-        last_target_id = target;
     
         // TODO: is this output is okay? especially "else" section
         if (rand_num < acc) {
@@ -36,6 +34,5 @@ int OperatorModel::execIntervention(const int time, const int action, const std:
             return (risk == TAValues::RISK) ? TAValues::NO_RISK : TAValues::RISK;    
             // return (rand_num < 0.5) ? TAValues::RISK : TAValues::NO_RISK;
         }
-
     }
 }

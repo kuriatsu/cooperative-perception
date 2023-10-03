@@ -77,103 +77,7 @@ public:
                 if (task_allocation->m_operator_model->int_acc(ta_state.req_time) <= 0.5) {
                     return ta_values->getAction(TAValues::REQUEST, ta_state.req_target);
                 }
-                else if (task_allocation->m_operator_model->int_acc(ta_state.req_time) == 1.0) {
-                    // if ((obs == TAValues::RISK && ta_state.ego_recog[ta_state.req_target] == TAValues::NO_RISK) || (obs == TAValues::NO_RISK && ta_state.ego_recog[ta_state.req_target] == TAValues::RISK)) {
-                    if (obs != ta_state.ego_recog[ta_state.req_target]) {
-                        // std::cout << "recog after request" << std::endl;
-                        return ta_values->getAction(TAValues::RECOG, ta_state.req_target);
-                    }
-                }
             }
-            
-//            else {
-//                double comf_stop_dist = vehicle_model->getDecelDistance(ta_state.ego_speed, vehicle_model->m_min_decel, vehicle_model->m_safety_margin);
-//                double harsh_stop_dist = vehicle_model->getDecelDistance(ta_state.ego_speed, vehicle_model->m_max_decel, 0.0);
-//
-//                // std::cout << "create list" << "comf_stop_dist : " << comf_stop_dist << " harsh_stop_dist : " << harsh_stop_dist << std::endl;
-//                std::vector<int> recog_target_list, request_target_list;
-//                for (int i=0; i<ta_state.risk_pose.size(); ++i) {
-//
-//                    // if (ta_state.ego_recog[i] == ta_state.risk_bin[i] || ta_state.risk_pose[i] - ta_state.ego_pose < harsh_stop_dist)
-//                    if (ta_state.risk_pose[i] - ta_state.ego_pose < harsh_stop_dist)
-//                        continue;
-//
-////                    else if (ta_state.risk_pose[i] - ta_state.ego_pose < comf_stop_dist) {
-////                        bool in_history = false;
-////                        for (int j = history.Size()-1; j >= 0; j--) {
-////                            if (history.Action(j) == ta_values->getAction(TAValues::RECOG, i)) {
-////                                in_history = true;
-////                                break;
-////                            }
-////                        }
-////                        if (!in_history)
-////                            recog_target_list.emplace_back(i);
-////                    }
-////                    else {
-//
-//
-//
-//                    if (ta_state.risk_pose[i] - ta_state.ego_pose >= comf_stop_dist) {
-//                        bool in_history = false;
-//                        for (int j = history.Size()-1; j >= 0; j--) {
-//                            if (history.Action(j) == ta_values->getAction(TAValues::REQUEST, i)) {
-//                                // std::cout << "already in hist : " << i << std::endl;
-//                                in_history = true;
-//                                break;
-//                            }
-//                        }
-//                        if (!in_history)
-//                            request_target_list.emplace_back(i); 
-//                    }
-//                    if (ta_state.ego_recog[i] == TAValues::NO_RISK) {
-//                        recog_target_list.emplace_back(i);
-//                    }
-//                }
-//
-//                int recog_target = 1000, request_target = 1000, min_dist;
-//                min_dist = 1000;
-//                for(const auto idx : recog_target_list) {
-//                    if (min_dist > ta_state.risk_pose[idx]) {
-//                        min_dist = ta_state.risk_pose[idx];
-//                        recog_target = idx;
-//                    }
-//                }
-//                min_dist = 1000;
-//                for(const auto idx : request_target_list) {
-//                    if (min_dist > ta_state.risk_pose[idx]) {
-//                        min_dist = ta_state.risk_pose[idx];
-//                        request_target = idx;
-//                    }
-//                }
-
-                // std::cout << "#########" << std::endl;
-                // std::cout << ta_state.ego_pose << "," << harsh_stop_dist << "," << comf_stop_dist << ta_state.risk_bin << ta_state.ego_recog << request_target_list << recog_target_list << std::endl;
-//                // std::cout << "compare" << ta_state.ego_pose << "," << request_target << "," << recog_target << "comf_stop_dist : " << comf_stop_dist << " harsh_stop_dist : " << harsh_stop_dist << std::endl;
-                //    // std::cout << recog_target_list.size() << ", " << request_target_list.size() << std::endl;
-//                if (recog_target_list.size()==0 && request_target_list.size()==0) { 
-//                    // std::cout << "no action selected" << std::endl;
-//                    return task_allocation->m_ta_values->getAction(TAValues::NO_ACTION, 0);
-//                }
-//
-//                else if (recog_target_list.empty()) {
-//                    // std::cout <<  "request selected : " << request_target << std::endl;
-//                    return ta_values->getAction(TAValues::REQUEST, request_target);
-//                }
-//
-//                else if (request_target_list.empty()) {
-//                    // std::cout <<  "recog selected : " << recog_target << std::endl;
-//                    return ta_values->getAction(TAValues::RECOG, recog_target);
-//                }
-//                else if (ta_state.risk_pose[request_target] < ta_state.risk_pose[recog_target]) {
-//                    // std::cout <<  "request selected : " << request_target << std::endl;
-//                    return ta_values->getAction(TAValues::REQUEST, request_target);
-//                }
-//                else {
-//                    // std::cout <<  "recog selected : " << recog_target << std::endl;
-//                    return ta_values->getAction(TAValues::RECOG, recog_target);
-//                }
-//            }
-
         }
         return task_allocation->m_ta_values->getAction(TAValues::NO_ACTION, 0);
     }
@@ -261,7 +165,7 @@ TaskAllocation::TaskAllocation(const double delta_t_, const std::vector<int> ris
     m_recog_likelihood = risk_likelihood_;
     std::vector<bool> risk_bin;
     for (const auto likelihood : m_recog_likelihood) {
-        risk_bin.emplace_back((likelihood > m_risk_thresh) ? true : false);
+        risk_bin.emplace_back((likelihood >= m_risk_thresh) ? true : false);
     }
 
     m_start_state = new TAState(0.0, m_max_speed, risk_bin, 0, 0, risk_bin, risk_pose_);
@@ -274,7 +178,7 @@ TaskAllocation::TaskAllocation(const double delta_t_, const std::vector<int> ris
 }
 
 int TaskAllocation::NumActions() const {
-	return 1 + m_start_state->risk_pose.size() * 2;
+	return 1 + m_start_state->risk_pose.size();
 }
 
 bool TaskAllocation::Step(State& state, double rand_num, ACT_TYPE action, double& reward, OBS_TYPE& obs)  const {
@@ -285,40 +189,38 @@ bool TaskAllocation::Step(State& state, double rand_num, ACT_TYPE action, double
 	// ego state trantion
 	// EgoVehicleTransition(state_curr.ego_pose, state_curr.ego_speed, state_prev.ego_recog, risk_pose, action);
     m_vehicle_model->getTransition(state_curr.ego_speed, state_curr.ego_pose, state_prev.ego_recog, state_prev.risk_pose);
-    
+ 
     int target_idx = m_ta_values->getActionTarget(action);
     TAValues::ACT ta_action = m_ta_values->getActionAttrib(action);
     
     // when action == no_action
     if (ta_action == TAValues::NO_ACTION) {
         // std::cout << "action : NO_ACTION" << std::endl;
-        if (state_prev.req_time == 0) {
-            obs = m_operator_model->execIntervention(state_prev.req_time, ta_action, std::to_string(target_idx), state_curr.risk_bin[target_idx]);
-            state_curr.req_time = 0;
-            state_curr.req_target = 0;
-            state_curr.ego_recog[target_idx] = obs;
+        state_curr.req_time = 0;
+        obs = m_operator_model->execIntervention(0, false);
     }
-    
     
 	// when action = request intervention
 	else if (ta_action == TAValues::REQUEST) {
         // std::cout << "action : REQUEST" << std::endl;
-        state_curr.ego_recog[target_idx] = TAValues::RISK;
+        state_curr.req_target = target_idx;
 
-		// request to the same target
-		if (state_prev.req_target == target_idx) {
+		// request to the same target or started to request
+		if (state_prev.req_target == target_idx || state_prev.req_time == 0) {
             state_curr.req_time += m_delta_t;
-			state_curr.req_target = target_idx;
+            state_curr.ego_recog[target_idx] = TAValues::RISK;
 		} 
-		// request to new target
+		// change request target 
 		else {
 			state_curr.req_time = m_delta_t;
-			state_curr.req_target = target_idx;
-            obs = m_operator_model->execIntervention(state_prev.req_time, ta_action, std::to_string(target_idx), state_prev.risk_bin[target_idx]);
+            state_curr.ego_recog[target_idx] = TAValues::RISK;
 		}
 
+        obs = m_operator_model->execIntervention(state_curr.req_time, state_curr.risk_bin[state_curr.req_target]);
+        state_curr.ego_recog[state_curr.req_target] = obs;
 
 	}
+
 	reward = CalcReward(state_prev, state_curr, action);
 
 	if (state_curr.ego_pose >= m_planning_horizon)
@@ -332,17 +234,21 @@ double TaskAllocation::ObsProb(OBS_TYPE obs, const State& state, ACT_TYPE action
 
     int target_idx = m_ta_values->getActionTarget(action);
     TAValues::ACT ta_action = m_ta_values->getActionAttrib(action);
+    const TAState& ras_state = static_cast<const TAState&>(state);
 
-    if (ta_action == TAValues::REQUEST) {
-        const TAState& ras_state = static_cast<const TAState&>(state);
-        double acc = m_operator_model->int_acc(ras_state.req_time);
-
-        if (obs == TAValues::NONE) return 0.0;
-        return (ras_state.risk_bin[target_idx] == obs) ? acc : 1.0 - acc;
+    if (ta_action == TAValues::NO_ACTION) {
+        if (ras_state.req_time > 0) {
+            double acc = m_operator_model->int_acc(ras_state.req_time);
+            return (ras_state.risk_bin[ras_state.req_target] == obs) ? acc : 1.0 - acc;
+        }
+        else {
+            return obs == TAValues::RISK;
+        }
     }
+
     else {
-        return obs == TAValues::NONE;
-        // return 1.0;
+        double acc = m_operator_model->int_acc(ras_state.req_time);
+        return (ras_state.risk_bin[ras_state.req_target] == obs) ? acc : 1.0 - acc;
     }
 }
 
@@ -419,12 +325,6 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 
 	// int request
 	// if (ta_action == TAValues::REQUEST) {
-
-    if (ta_action == TAValues::RECOG) {
-        // reward += -1;
-        if (state_curr.risk_bin[action_target_idx] != state_curr.ego_recog[action_target_idx])
-            reward += -1;
-    }
 
 	// if (ta_action == TAValues::REQUEST) {
 	if (ta_action == TAValues::REQUEST && (state_curr.req_time == m_delta_t || state_prev.req_target != state_curr.req_target)) {
@@ -641,9 +541,6 @@ void TaskAllocation::PrintState(const State& state, ostream& out) const {
 
 void TaskAllocation::PrintObs(const State& state, OBS_TYPE obs, ostream& out) const {
     switch(obs) {
-        case TAValues::NONE:
-            out << "NONE" << endl;
-            break;
         case TAValues::NO_RISK:
             out << "NO_RISK" << endl;
             break;
@@ -677,8 +574,6 @@ void TaskAllocation::PrintAction(ACT_TYPE action, ostream& out) const {
 
 	if (ta_action == TAValues::REQUEST)
 		out << "request to " << target_idx << endl;
-	else if (ta_action == TAValues::RECOG) 
-		out << "change recog state " << target_idx << endl;
 	else
 		out << "nothing" << endl;
 }

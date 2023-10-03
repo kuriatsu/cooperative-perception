@@ -114,56 +114,50 @@ bool RasWorld::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
     TAValues::ACT ta_action = ta_values->getActionAttrib(action);
     int target_idx = ta_values->getActionTarget(action);
     
+    // NO_ACTION
+    if (ta_action == TAValues::NO_ACTION) {
+        std::cout << "NO_ACTION" << std::endl;
+        obs = operator_model->execIntervention(pomdp_state->req_time, pomdp_state->ego_recog[pomdp_state->req_target]);
+        obs_history.emplace_back(obs);
+
+        if (pomdp_state->req_time > 0) {
+            sim->getRisk(id_idx_list[pomdp_state->req_target])->risk_pred = obs;
+            pomdp_state->ego_recog[pomdp_state->req_target] = obs;
+        }
+
+        pomdp_state->req_time = 0;
+        req_target_history.emplace_back("none");
+        ta_values->printObs(obs);
+
+    }
+    
     // intervention request
-    if (ta_action == TAValues::REQUEST) {
+    else {
         std::string req_target_id = id_idx_list[target_idx];
         std::cout << "action : REQUEST to " << target_idx << " = " << req_target_id << std::endl;
-        std::vector<int> red_color = {200, 0, 0};
-        sim->setColor(req_target_id, red_color, "p");
+        obs = operator_model->execIntervention(pomdp_state->req_time, pomdp_state->ego_recog[pomdp_state->req_target]);
+        obs_history.emplace_back(obs);
 
-        if (req_target_history.empty() || req_target_history.back() == req_target_id) {
+		// request to the same target or started to request
+        if (req_target_history.empty() || req_target_history.back() == req_target_id || pomdp_state->req_time == 0) {
             pomdp_state->req_time += Globals::config.time_per_move;
+            sim->getRisk(req_target_id)->risk_pred = TAValues::RISK;
+            pomdp_state->ego_recog[target_idx] = TAValues::RISK;
         }
+		// change request target 
         else {
             sim->getRisk(req_target_id)->risk_pred = TAValues::RISK;
             pomdp_state->ego_recog[target_idx] = TAValues::RISK;
+            sim->getRisk(id_idx_list[pomdp_state->req_target])->risk_pred = obs;
             pomdp_state->req_time = Globals::config.time_per_move;
             pomdp_state->req_target = target_idx;
         }
 
+        std::vector<int> red_color = {200, 0, 0};
+        sim->setColor(req_target_id, red_color, "p");
         req_target_history.emplace_back(req_target_id);
-        obs = operator_model->execIntervention(pomdp_state->req_time, ta_action, req_target_id, sim->getRisk(req_target_id)->risk_hidden);
-        obs_history.emplace_back(obs);
         ta_values->printObs(obs);
-    }
-    
-    // change recog state
-    else if (ta_action == TAValues::RECOG) {
-        std::string recog_target_id = id_idx_list[target_idx];
-        std::cout << "action : change RECOG of " << target_idx << " = " << recog_target_id << std::endl;
 
-
-        sim->getRisk(recog_target_id)->risk_pred = (sim->getRisk(recog_target_id)->risk_pred == TAValues::RISK) ? TAValues::NO_RISK : TAValues::RISK;
-        pomdp_state->ego_recog[target_idx] = (pomdp_state->ego_recog[target_idx] == TAValues::RISK) ? TAValues::NO_RISK : TAValues::RISK;
-        pomdp_state->req_time = 0;
-        pomdp_state->req_target = 0;
-        req_target_history.emplace_back("none");
-
-        obs = operator_model->execIntervention(pomdp_state->req_time, ta_action, "", TAValues::NO_RISK);
-        obs_history.emplace_back(obs);
-        ta_values->printObs(obs);
-    }
-    
-    // NO_ACTION
-    else {
-        std::cout << "NO_ACTION" << std::endl;
-        pomdp_state->req_time = 0;
-        pomdp_state->req_target = 0;
-        req_target_history.emplace_back("none");
-
-        obs = operator_model->execIntervention(pomdp_state->req_time, ta_action, "", false);
-        obs_history.emplace_back(obs);
-        ta_values->printObs(obs);
     }
     return false;
 }
@@ -240,10 +234,6 @@ ACT_TYPE RasWorld::MyopicAction() {
     // if intervention requested to the target and can request more
     if (0 < pomdp_state->req_time && pomdp_state->req_time < 6 && pomdp_state->risk_pose[pomdp_state->req_target] > vehicle_model->getDecelDistance(pomdp_state->ego_speed, vehicle_model->m_max_decel, 0.0)) {
         return ta_values->getAction(TAValues::REQUEST, pomdp_state->req_target);
-    }
-    // finish request and change state 
-    else if (0 < pomdp_state->req_time && pomdp_state->ego_recog[pomdp_state->req_target] != obs_history.back()) {
-        return ta_values->getAction(TAValues::RECOG, pomdp_state->req_target);
     }
 
     // find request target

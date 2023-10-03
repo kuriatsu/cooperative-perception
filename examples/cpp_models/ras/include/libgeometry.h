@@ -113,8 +113,7 @@ class TAValues {
 private:
     int no_action_head = 0;
     int request_head = 1;
-    int change_recog_head = 2;
-    int max_action_num = 3;
+    int max_action_num = 2;
 
 public:
     TAValues() {
@@ -124,17 +123,15 @@ public:
         if (num_targets == 0) {
             no_action_head = 0;
             request_head = 0;
-            change_recog_head = 0;
             max_action_num = 1;
         }
         no_action_head = 0;
         request_head = 1;
-        change_recog_head = num_targets + 1;
-        max_action_num = 1 + num_targets * 2;
+        max_action_num = 1 + num_targets;
     };
 
-    enum OBS {NO_RISK, RISK, NONE};
-    enum ACT {NO_ACTION, REQUEST, RECOG};
+    enum OBS {NO_RISK, RISK};
+    enum ACT {NO_ACTION, REQUEST};
 
     int numActions() {
         return max_action_num;
@@ -144,11 +141,8 @@ public:
         if (action == no_action_head) {
             return 0;
         }
-        else if (request_head <= action && action < change_recog_head) {
+        else if (request_head <= action) {
             return action - request_head;
-        }
-        else if (change_recog_head <= action) {
-            return action - change_recog_head;
         }
         else {
             std::cerr << "action index may be out of range \n" <<
@@ -162,11 +156,8 @@ public:
         if (action == no_action_head) {
             return NO_ACTION;
         }
-        else if (request_head <= action && action < change_recog_head) {
+        else if (request_head <= action) {
             return REQUEST;
-        }
-        else if (change_recog_head <= action) {
-            return RECOG;
         }
         else {
             std::cerr << "action index may be out of range \n" <<
@@ -183,9 +174,6 @@ public:
         else if (attrib == REQUEST) {
             return request_head + target;
         }
-        else if (attrib == RECOG) {
-            return change_recog_head + target;
-        }
         else {
             std::cerr << "action attrib may be out of range \n" <<
                 "num_action :" << attrib << 
@@ -198,11 +186,8 @@ public:
         if (action == no_action_head) {
             return "NO_ACTION";
         }
-        else if (request_head <= action && action < change_recog_head) {
+        else if (request_head <= action) {
             return "REQUEST";
-        }
-        else if (change_recog_head <= action) {
-            return "RECOG";
         }
         else {
             std::cerr << "action index may be out of range \n" <<
@@ -219,9 +204,6 @@ public:
         else if (obs == RISK) {
             return "RISK";
         }
-        else if (obs == NONE) {
-            return "NONE";
-        }
         else {
             std::cerr << "obs value is out of range" << std::endl;
             return "ERR";
@@ -233,13 +215,9 @@ public:
         if (action == no_action_head) {
             out <<  "NO_ACTION" << std::endl;
         }
-        else if (request_head <= action && action < change_recog_head) {
+        else if (request_head <= action) {
             target_index = action - request_head;
             out << "REQUEST to " << target_index;
-        }
-        else if (change_recog_head <= action) {
-            target_index = action - change_recog_head;
-            out << "change RECOG of " << target_index;
         }
         else {
             std::cerr << "action index may be out of range \n" <<
@@ -255,9 +233,6 @@ public:
         }
         else if (obs == RISK) {
             std::cout << "obs : RISK" << std::endl;
-        }
-        else if (obs == NONE) {
-            std::cout << "obs : NONE" << std::endl;
         }
         else {
             std::cout << "obs value is out of range" << std::endl;

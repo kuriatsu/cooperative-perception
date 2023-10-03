@@ -24,9 +24,8 @@ public:
     ~OperatorModel();
 	
 	double int_acc(const int time) const;
-    int execIntervention(const int time, const int action, const std::string target, const bool risk) const;
+    int execIntervention(const int time, const bool risk) const;
     
 private:
     enum { NO_RISK = 0, RISK = 1, NONE = 2};
-    mutable std::string last_target_id = "NONE";
 };

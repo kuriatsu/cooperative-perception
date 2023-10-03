@@ -1,16 +1,214 @@
 {
-    "delta_t": 1.0,
+    "delta_t": 2.0,
     "log": [
+        {
+            "delta_t": 2.0,
+            "risk_likelihood": [
+                0.4,
+                0.5,
+                0.6
+            ],
+            "risk_pose": [
+                60,
+                100,
+                120
+            ],
+            "time_per_move": 2.0,
+            "total discounted reward": 8.67958015921953,
+            "total discounted reward stderr": 0.0,
+            "total undiscounted reward": 12.0,
+            "total undiscounted reward stderr": 12.0
+        },
+        {
+            "delta_t": 2.0,
+            "risk_likelihood": [
+                0.4,
+                0.5,
+                0.6
+            ],
+            "risk_pose": [
+                60,
+                100,
+                120
+            ],
+            "time_per_move": 2.0,
+            "total discounted reward": 17.77650755850214,
+            "total discounted reward stderr": 0.0,
+            "total undiscounted reward": 27.0,
+            "total undiscounted reward stderr": 27.0
+        },
+        {
+            "delta_t": 2.0,
+            "risk_likelihood": [
+                0.4,
+                0.5,
+                0.6
+            ],
+            "risk_pose": [
+                60,
+                100,
+                120
+            ],
+            "time_per_move": 2.0,
+            "total discounted reward": 18.83020972944428,
+            "total discounted reward stderr": 0.0,
+            "total undiscounted reward": 29.0,
+            "total undiscounted reward stderr": 29.0
+        },
+        {
+            "delta_t": 2.0,
+            "risk_likelihood": [
+                0.4,
+                0.5,
+                0.6
+            ],
+            "risk_pose": [
+                60,
+                100,
+                120
+            ],
+            "time_per_move": 2.0,
+            "total discounted reward": 7.021138956583839,
+            "total discounted reward stderr": 0.0,
+            "total undiscounted reward": 14.0,
+            "total undiscounted reward stderr": 14.0
+        },
+        {
+            "delta_t": 2.0,
+            "risk_likelihood": [
+                0.4,
+                0.5,
+                0.6
+            ],
+            "risk_pose": [
+                60,
+                100,
+                120
+            ],
+            "time_per_move": 2.0,
+            "total discounted reward": 8.058894504678655,
+            "total discounted reward stderr": 0.0,
+            "total undiscounted reward": 16.0,
+            "total undiscounted reward stderr": 16.0
+        },
+        {
+            "delta_t": 2.0,
+            "risk_likelihood": [
+                0.4,
+                0.5,
+                0.6
+            ],
+            "risk_pose": [
+                60,
+                100,
+                120
+            ],
+            "time_per_move": 2.0,
+            "total discounted reward": 5.659049657436284,
+            "total discounted reward stderr": 0.0,
+            "total undiscounted reward": 13.0,
+            "total undiscounted reward stderr": 13.0
+        },
+        {
+            "delta_t": 2.0,
+            "risk_likelihood": [
+                0.4,
+                0.5,
+                0.6
+            ],
+            "risk_pose": [
+                60,
+                100,
+                120
+            ],
+            "time_per_move": 2.0,
+            "total discounted reward": 18.69779286463959,
+            "total discounted reward stderr": 0.0,
+            "total undiscounted reward": 29.0,
+            "total undiscounted reward stderr": 29.0
+        },
+        {
+            "delta_t": 2.0,
+            "risk_likelihood": [
+                0.4,
+                0.5,
+                0.4
+            ],
+            "risk_pose": [
+                60,
+                100,
+                120
+            ],
+            "time_per_move": 2.0,
+            "total discounted reward": 26.45847194607606,
+            "total discounted reward stderr": 0.0,
+            "total undiscounted reward": 40.0,
+            "total undiscounted reward stderr": 40.0
+        },
+        {
+            "delta_t": 2.0,
+            "risk_likelihood": [
+                0.4,
+                0.5,
+                0.4
+            ],
+            "risk_pose": [
+                60,
+                100,
+                120
+            ],
+            "time_per_move": 2.0,
+            "total discounted reward": 20.326817734232414,
+            "total discounted reward stderr": 0.0,
+            "total undiscounted reward": 28.0,
+            "total undiscounted reward stderr": 28.0
+        },
+        {
+            "delta_t": 2.0,
+            "risk_likelihood": [
+                0.4,
+                0.5,
+                0.4
+            ],
+            "risk_pose": [
+                60,
+                100,
+                120
+            ],
+            "time_per_move": 2.0,
+            "total discounted reward": 21.927655030326164,
+            "total discounted reward stderr": 0.0,
+            "total undiscounted reward": 30.0,
+            "total undiscounted reward stderr": 30.0
+        },
+        {
+            "delta_t": 2.0,
+            "risk_likelihood": [
+                0.5,
+                0.5,
+                0.5
+            ],
+            "risk_pose": [
+                60,
+                100,
+                120
+            ],
+            "time_per_move": 2.0,
+            "total discounted reward": 4.927393126435817,
+            "total discounted reward stderr": 0.0,
+            "total undiscounted reward": 11.0,
+            "total undiscounted reward stderr": 11.0
+        }
     ],
     "risk_likelihood": [
-        0.4,
         0.5,
-        0.6,
+        0.5,
+        0.5
     ],
     "risk_pose": [
         60,
         100,
-        120,
+        120
     ],
-    "time_per_move": 1.0
+    "time_per_move": 2.0
 }
