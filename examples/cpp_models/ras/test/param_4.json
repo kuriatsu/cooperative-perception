@@ -1,5 +1,5 @@
 {
-    "delta_t": 2.0,
+    "delta_t": 1.0,
     "log": [
         {
             "delta_t": 2.0,
@@ -506,6 +506,50 @@
             "total discounted reward stderr": 0.0,
             "total undiscounted reward": 21.0,
             "total undiscounted reward stderr": 21.0
+        },
+        {
+            "delta_t": 2.0,
+            "risk_likelihood": [
+                0.4,
+                0.2,
+                0.5,
+                0.8,
+                0.4
+            ],
+            "risk_pose": [
+                50,
+                80,
+                90,
+                120,
+                130
+            ],
+            "time_per_move": 2.0,
+            "total discounted reward": 36.83791869589126,
+            "total discounted reward stderr": 0.0,
+            "total undiscounted reward": 55.0,
+            "total undiscounted reward stderr": 55.0
+        },
+        {
+            "delta_t": 1.0,
+            "risk_likelihood": [
+                0.4,
+                0.2,
+                0.5,
+                0.8,
+                0.4
+            ],
+            "risk_pose": [
+                50,
+                80,
+                90,
+                120,
+                130
+            ],
+            "time_per_move": 1.0,
+            "total discounted reward": 31.31593792464924,
+            "total discounted reward stderr": 0.0,
+            "total undiscounted reward": 63.0,
+            "total undiscounted reward stderr": 63.0
         }
     ],
     "risk_likelihood": [
@@ -522,5 +566,5 @@
         120,
         130
     ],
-    "time_per_move": 2.0
+    "time_per_move": 1.0
 }

@@ -6,19 +6,25 @@ RasWorld::RasWorld() {
 
 }
 
-RasWorld::RasWorld(VehicleModel *vehicle_model_, OperatorModel *operator_model_, double delta_t, double obstacle_density, std::vector<double> perception_range, std::string log_file_prefix_) {
+RasWorld::RasWorld(VehicleModel *vehicle_model_, OperatorModel *operator_model_, double delta_t, double obstacle_density_, std::vector<double> perception_range, std::string policy_type_) {
 
     operator_model = operator_model_;
     vehicle_model = vehicle_model_;
-    log_file_prefix = log_file_prefix_;
-    sim = new SumoInterface(vehicle_model, delta_t, obstacle_density, perception_range);
+    policy_type = policy_type_;
+    obstacle_density = obstacle_density_
+    sim = new SumoInterface(vehicle_model, delta_t, obstacle_density_, perception_range);
 }
 
 RasWorld::~RasWorld() {
+
+    m_log["obstacle_density"] = obstacle_density;
+    m_log["policy"] = policy_type;
+    m_log["delta_t"] =vehicle_model->m_delta_t ;
+
     time_t now = std::time(nullptr);
     struct tm* local_now = std::localtime(&now);
     std::stringstream ss;
-    ss << log_file_prefix 
+    ss << policy_type+std::to_string(obstacle_density)+"_" 
        << local_now->tm_year + 1900
        << setw(2) << setfill('0') << local_now->tm_mon 
        << setw(2) << setfill('0') << local_now->tm_mday 
@@ -218,7 +224,7 @@ void RasWorld::Log(ACT_TYPE action, OBS_TYPE obs) {
         step_log["risks"].emplace_back(buf);
     }
 
-    m_log.emplace_back(step_log);
+    m_log["log"].emplace_back(step_log);
 }
 
 bool RasWorld::isTerminate() {

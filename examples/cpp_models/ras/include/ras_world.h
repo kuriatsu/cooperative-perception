@@ -18,7 +18,8 @@ private:
 
     // log data
     nlohmann::json m_log = nlohmann::json::array();
-    std::string log_file_prefix = "";
+    std::string policy_type = "DESPOT";
+    std::double obstacle_density;
 
     // for myopic action
     std::vector<std::string> req_target_history;
@@ -32,7 +33,7 @@ public:
 
 public:
     RasWorld();
-    RasWorld(VehicleModel *vehicle_model_, OperatorModel *operator_model_, double delta_t, double obstacle_density, std::vector<double> perception_range, std::string log_file_prefix_); 
+    RasWorld(VehicleModel *vehicle_model_, OperatorModel *operator_model_, double delta_t, double obstacle_density_, std::vector<double> perception_range, std::string policy_type_); 
     bool Connect();
     State* Initialize();
     State* GetCurrentState();

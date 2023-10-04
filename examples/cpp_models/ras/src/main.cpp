@@ -49,7 +49,7 @@ public:
 	}
 
 	World* InitializeWorld(std::string& world_type, DSPOMDP* model, option::Option* options) {
-        RasWorld* ras_world = new RasWorld(vehicle_model, operator_model, delta_t, obstacle_density, perception_range, policy_type+std::to_string(obstacle_density)+"_");
+        RasWorld* ras_world = new RasWorld(vehicle_model, operator_model, delta_t, obstacle_density, perception_range, policy_type);
         ras_world->Connect();
         ras_world->Initialize();
         return ras_world;

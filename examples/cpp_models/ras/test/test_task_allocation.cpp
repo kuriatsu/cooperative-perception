@@ -10,7 +10,6 @@ class MyPlanner: public Planner {
 private:
     std::string log_filename;
     double delta_t;
-    double time_per_move;
     std::vector<int> risk_pose;
     std::vector<double> risk_likelihood;
 
@@ -23,7 +22,6 @@ public:
         std::ifstream f(filename);
         nlohmann::json params = nlohmann::json::parse(f);
         delta_t = params["delta_t"];
-        time_per_move = params["time_per_move"];
         risk_pose = static_cast<std::vector<int>>(params["risk_pose"]);
         risk_likelihood = static_cast<std::vector<double>>(params["risk_likelihood"]);
     }
@@ -31,7 +29,6 @@ public:
     MyPlanner(const std::string filename, const double delta_t_, const std::vector<int> risk_pose_, const std::vector<double>risk_likelihood_) {
         log_filename = filename;
         delta_t = delta_t_;
-        time_per_move = delta_t_;
         risk_pose = risk_pose_;
         risk_likelihood = risk_likelihood_;
     }
@@ -51,7 +48,7 @@ public:
         Globals::config.num_scenarios = 500;
         Globals::config.sim_len = 100;
         Globals::config.search_depth = 100;
-        Globals::config.time_per_move = time_per_move;
+        Globals::config.time_per_move = delta_t;
     }
 
     std::string ChooseSolver(){
@@ -135,7 +132,6 @@ public:
 
         nlohmann::json buf;
         buf["delta_t"] = delta_t;
-        buf["time_per_move"] = time_per_move;
         buf["risk_pose"] = risk_pose;
         buf["risk_likelihood"] = risk_likelihood;
         buf["total discounted reward"] = logger->AverageDiscountedRoundReward();
