@@ -6,7 +6,7 @@ policies=(
     "EGOISTIC"
 )
 
-dencities=(
+densities=(
     0.001
     0.005
     0.01
@@ -21,10 +21,10 @@ dencities=(
 #    0.1
 )
 
-for policy in "${policies[@]}"; do
-    for dencity in "${dencities[@]}"; do
+for density in "${densities[@]}"; do
+    for policy in "${policies[@]}"; do
         for i in {1..20}; do
-            ../build/ras ${policy} ${dencity}
+            ../build/ras ${policy} ${density}
         done
     done
 done

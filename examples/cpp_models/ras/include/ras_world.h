@@ -17,9 +17,9 @@ private:
     std::vector<Risk> perception_targets;
 
     // log data
-    nlohmann::json m_log = nlohmann::json::array();
+    nlohmann::json m_log;
     std::string policy_type = "DESPOT";
-    std::double obstacle_density;
+    double obstacle_density;
 
     // for myopic action
     std::vector<std::string> req_target_history;

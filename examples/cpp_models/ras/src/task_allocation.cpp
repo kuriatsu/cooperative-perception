@@ -262,11 +262,11 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
     TAValues::ACT ta_action = m_ta_values->getActionAttrib(action);
 
 	for (auto it=state_curr.risk_pose.begin(), end=state_curr.risk_pose.end(); it != end; ++it) {
-		if (state_prev.ego_pose <= *it && *it < state_curr.ego_pose) {
+		if (state_prev.ego_pose < *it && *it <= state_curr.ego_pose) {
             int passed_index = distance(state_curr.risk_pose.begin(), it);
 
 			// driving safety
-            reward += (state_prev.risk_bin[passed_index] == state_prev.ego_recog[passed_index]) ? 10 : -10;
+            // reward += (state_curr.risk_bin[passed_index] == state_curr.ego_recog[passed_index]) ? 10 : -10;
             // if (state_prev.ego_recog[target_index] == TAValues::NO_RISK)
             //    reward += (state_prev.risk_bin[target_index] == TAValues::NO_RISK) ? 100 : -100;
             // else 
@@ -282,14 +282,14 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 
             // if (state_prev.ego_speed > m_yield_speed && state_curr.ego_speed > m_yield_speed) {
                 // reward += (state_prev.risk_bin[passed_index] == TAValues::RISK) ? -100 : 100;
-            if (state_prev.risk_bin[passed_index] == TAValues::RISK) {
+            if (state_curr.risk_bin[passed_index] == TAValues::RISK) {
                 // reward += (m_max_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed) * 100;
-                reward += (state_prev.ego_speed - m_yield_speed)/(m_max_speed - m_yield_speed) * -100;
+                reward += (state_curr.ego_speed - m_yield_speed)/(m_max_speed - m_yield_speed) * -100;
                 // reward += (m_max_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed) * 1000;
             }
             else {
                 // reward += (m_max_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed) * -100;
-                reward += (state_prev.ego_speed - m_yield_speed)/(m_max_speed - m_yield_speed) * 10;
+                reward += (state_curr.ego_speed - m_yield_speed)/(m_max_speed - m_yield_speed) * 100;
             }
             
             // if (state_prev.ego_speed <= m_yield_speed) {
@@ -326,10 +326,12 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 	// int request
 	// if (ta_action == TAValues::REQUEST) {
 
-	// if (ta_action == TAValues::REQUEST) {
-	if (ta_action == TAValues::REQUEST && (state_curr.req_time == m_delta_t || state_prev.req_target != state_curr.req_target)) {
-        reward += 1 * -1 ;
+	if (ta_action == TAValues::REQUEST) {
+        reward += 1 * -1;
 	}
+	if (ta_action == TAValues::REQUEST && (state_curr.req_time == m_delta_t || state_prev.req_target != state_curr.req_target)) {
+        reward += -1;
+    }
 
 	return reward;
 }

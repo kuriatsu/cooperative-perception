@@ -3,6 +3,7 @@ import json
 import sys
 import numpy as np
 import seaborn as sns
+import math
 import pandas as pd
 import re
 
@@ -127,6 +128,7 @@ if len(sys.argv) == 2:
             elapsed_time += data.get("delta_t")
             for risk in frame.get("risks"):
 
+                print(risk)
                 if id != risk.get("id"): continue
 
                 last_prob = risk.get("prob")
@@ -142,7 +144,8 @@ if len(sys.argv) == 2:
                         else:
                             break
                     crossing_prob = risk.get("prob")
-                    if crossing_prob < 0.1: crossing_prob += 0.02 
+                    if crossing_prob < 0.1: 
+                        crossing_prob += 0.02 
 
                     ax2.bar(crossing_time, crossing_prob, color=color_map(i/len(risk_ids)))
                     reserved_time_list.append(crossing_time)
@@ -256,7 +259,8 @@ if len(sys.argv) == 2:
 elif len(sys.argv) > 2:
 
     df = pd.DataFrame(columns = ["policy", "risk_num", "travel_time", "total_fuel_consumption", "mean_fuel_consumption", "dev_accel", "mean_speed", "risk_omission", "ambiguity_omission", "request_time"])
-    req_prob_list = {"DESPOT":[0] * 10, "MYOPIC":[0]*10, "EGOISTIC":[0]*10}
+    request_target_prob_count = {"DESPOT":[0] * 10, "MYOPIC":[0]*10, "EGOISTIC":[0]*10}
+    risk_prob_count = {"DESPOT":[0] * 10, "MYOPIC":[0]*10, "EGOISTIC":[0]*10}
 
     fig, ax = plt.subplots(1, 1, tight_layout=True)
 
@@ -276,11 +280,16 @@ elif len(sys.argv) > 2:
         risk_omission = [] 
         ambiguity_omission = [] 
         request_time = 0.0
+        request_history = []
 
         last_ego_position = 0.0
+
+        for risk in log[0].get("risks"):
+            risk_prob_count.get(policy)[math.floor(risk.get("prob")*10)] += 1
+
         for frame_num in range(1, len(log)):
             frame = log[frame_num]
-            travel_time += data.get("deta_t")
+            travel_time += data.get("delta_t")
             speed.append(frame.get("speed"))
             accel.append(frame.get("accel"))
             fuel_consumption.append(frame.get("fuel_consumption"))
@@ -290,11 +299,13 @@ elif len(sys.argv) > 2:
                 request_time += data.get("delta_t") 
                 ## update request-target_prob list
                 target = frame.get("action_target")
-                if log[frame_num-1].get("action") != "REQUEST" or log[frame_num-1].get("action_target") != target:
-                    for risk in frame.get("risks"):
+                if target not in request_history:
+                    for risk in log[0].get("risks"):
                         if target == risk.get("id"):
-                            req_prob_list.get(policy)[math.floor(risk.get("prob")*10)] += 1
+                            request_target_prob_count.get(policy)[math.floor(risk.get("prob")*10)] += 1
                             break
+
+                request_history.append(target)
 
             if frame.get("risks") is None:
                 print(f"skipped {file} because of no obstacle spawned")
@@ -351,8 +362,14 @@ elif len(sys.argv) > 2:
     plt.show()
 
 
+    for policy in risk_prob_count.keys():
+        for i in range(0, len(risk_prob_count.get(policy))):
+            print(policy, i, len(risk_prob_count))
+            if risk_prob_count.get(policy)[i] > 0:
+                request_target_prob_count[policy][i] = request_target_prob_count[policy][i] / risk_prob_count[policy][i]
+
     fig, ax = plt.subplots(1,3, tight_layout=True)
-    sns.barplot(x=np.arange(0.0, 1.0, 0.1), y=req_prob_list.get("DESPOT"), ax=ax[0])
-    sns.barplot(x=np.arange(0.0, 1.0, 0.1), y=req_prob_list.get("MYOPIC"), ax=ax[1])
-    sns.barplot(x=np.arange(0.0, 1.0, 0.1), y=req_prob_list.get("EGOISTIC"), ax=ax[2])
+    sns.barplot(x=np.arange(0.0, 1.0, 0.1), y=request_target_prob_count.get("DESPOT"), ax=ax[0])
+    sns.barplot(x=np.arange(0.0, 1.0, 0.1), y=request_target_prob_count.get("MYOPIC"), ax=ax[1])
+    sns.barplot(x=np.arange(0.0, 1.0, 0.1), y=request_target_prob_count.get("EGOISTIC"), ax=ax[2])
     plt.show()
