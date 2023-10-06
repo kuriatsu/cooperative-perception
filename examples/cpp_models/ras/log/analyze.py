@@ -284,8 +284,12 @@ elif len(sys.argv) > 2:
 
         last_ego_position = 0.0
 
-        for risk in log[0].get("risks"):
-            risk_prob_count.get(policy)[math.floor(risk.get("prob")*10)] += 1
+        if log[0].get("risks") is not None:
+            for risk in log[0].get("risks"):
+                if risk.get("prob") == 1.0:
+                    risk_prob_count.get(policy)[-1] += 1
+                else:
+                    risk_prob_count.get(policy)[math.floor(risk.get("prob")*10)] += 1
 
         for frame_num in range(1, len(log)):
             frame = log[frame_num]
@@ -294,6 +298,11 @@ elif len(sys.argv) > 2:
             accel.append(frame.get("accel"))
             fuel_consumption.append(frame.get("fuel_consumption"))
             
+
+            if frame.get("risks") is None:
+                print(f"skipped {file} because of no obstacle spawned")
+                continue
+
             if frame.get("action") == "REQUEST":
                 ## add request time
                 request_time += data.get("delta_t") 
@@ -306,10 +315,6 @@ elif len(sys.argv) > 2:
                             break
 
                 request_history.append(target)
-
-            if frame.get("risks") is None:
-                print(f"skipped {file} because of no obstacle spawned")
-                continue
 
             ## risk ambiguity omission and risk omission
             for risk in frame.get("risks"):
@@ -372,4 +377,10 @@ elif len(sys.argv) > 2:
     sns.barplot(x=np.arange(0.0, 1.0, 0.1), y=request_target_prob_count.get("DESPOT"), ax=ax[0])
     sns.barplot(x=np.arange(0.0, 1.0, 0.1), y=request_target_prob_count.get("MYOPIC"), ax=ax[1])
     sns.barplot(x=np.arange(0.0, 1.0, 0.1), y=request_target_prob_count.get("EGOISTIC"), ax=ax[2])
+    for a in ax:
+        a.set_xticklabels([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
+        a.set_ylim(0.0, 1.0)
+        a.set_xlabel("risk probability")
+        a.set_ylabel("intervention request rate")
+
     plt.show()
