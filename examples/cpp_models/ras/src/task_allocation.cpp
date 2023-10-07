@@ -197,7 +197,7 @@ bool TaskAllocation::Step(State& state, double rand_num, ACT_TYPE action, double
     if (ta_action == TAValues::NO_ACTION) {
         // std::cout << "action : NO_ACTION" << std::endl;
         state_curr.req_time = 0;
-        obs = m_operator_model->execIntervention(0, false);
+        obs = m_operator_model->execIntervention(0, false, rand_num);
     }
     
 	// when action = request intervention
@@ -208,15 +208,13 @@ bool TaskAllocation::Step(State& state, double rand_num, ACT_TYPE action, double
 		// request to the same target or started to request
 		if (state_prev.req_target == target_idx || state_prev.req_time == 0) {
             state_curr.req_time += m_delta_t;
-            state_curr.ego_recog[target_idx] = TAValues::RISK;
 		} 
 		// change request target 
 		else {
 			state_curr.req_time = m_delta_t;
-            state_curr.ego_recog[target_idx] = TAValues::RISK;
 		}
 
-        obs = m_operator_model->execIntervention(state_curr.req_time, state_curr.risk_bin[state_curr.req_target]);
+        obs = m_operator_model->execIntervention(state_curr.req_time, state_curr.risk_bin[state_curr.req_target], rand_num);
         state_curr.ego_recog[state_curr.req_target] = obs;
 
 	}
@@ -237,13 +235,7 @@ double TaskAllocation::ObsProb(OBS_TYPE obs, const State& state, ACT_TYPE action
     const TAState& ras_state = static_cast<const TAState&>(state);
 
     if (ta_action == TAValues::NO_ACTION) {
-        if (ras_state.req_time > 0) {
-            double acc = m_operator_model->int_acc(ras_state.req_time);
-            return (ras_state.risk_bin[ras_state.req_target] == obs) ? acc : 1.0 - acc;
-        }
-        else {
-            return obs == TAValues::RISK;
-        }
+        return obs == TAValues::RISK;
     }
 
     else {
@@ -267,21 +259,13 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 
 			// driving safety
             // reward += (state_curr.risk_bin[passed_index] == state_curr.ego_recog[passed_index]) ? 10 : -10;
-            // if (state_prev.ego_recog[target_index] == TAValues::NO_RISK)
+            
+            //if (state_prev.ego_recog[target_index] == TAValues::NO_RISK)
             //    reward += (state_prev.risk_bin[target_index] == TAValues::NO_RISK) ? 100 : -100;
             // else 
             //    reward += (state_prev.risk_bin[target_index] == TAValues::RISK) ? 100 : -100;
 
-// request intervention (same with recog==risk reward ?)
-//            if (state_prev.ego_speed > m_yield_speed) {
-//                reward += (state_prev.risk_bin[target_index] == TAValues::RISK) ? -100 : 100;
-//            }
-//            else {
-//                reward += (state_prev.risk_bin[target_index] == TAValues::RISK) ? 100 : -100;
-//            }
 
-            // if (state_prev.ego_speed > m_yield_speed && state_curr.ego_speed > m_yield_speed) {
-                // reward += (state_prev.risk_bin[passed_index] == TAValues::RISK) ? -100 : 100;
             if (state_curr.risk_bin[passed_index] == TAValues::RISK) {
                 // reward += (m_max_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed) * 100;
                 reward += (state_curr.ego_speed - m_yield_speed)/(m_max_speed - m_yield_speed) * -100;
@@ -292,30 +276,9 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
                 reward += (state_curr.ego_speed - m_yield_speed)/(m_max_speed - m_yield_speed) * 100;
             }
             
-            // if (state_prev.ego_speed <= m_yield_speed) {
-            //     reward += (state_prev.risk_bin[passed_index] == TAValues::NO_RISK) ? -100 : 100;
-            // }
-
-            // if (state_prev.risk_bin[target_index] == TAValues::RISK)
-            //    reward += (state_prev.ego_speed <= m_yield_speed) ? 100 : -100;
-            // else
-            //     reward += (state_prev.ego_speed > m_yield_speed) ? 100 : -100;
-
-            // try to keep mid speed
-            // if (state_prev.ego_recog[target_index] == TAValues::RISK)
-            //     reward += (m_max_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed) * 10;
-                // when risk, lower is better
-            // else
-                // when no risk, higher is better
-            //    reward += (state_prev.ego_speed - m_yield_speed)/(m_max_speed - m_yield_speed) * 10;
 		}
 	}
 
-	// driving comfort (avoid unnecessary speed change)
-    // if (state_curr.ego_speed > state_prev.ego_speed) {
-        // reward += -1;
-        // reward += (state_curr.ego_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed) * -1;
-    // }
 	
     // driving efficiency
     // reward += -1;
@@ -326,11 +289,11 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 	// int request
 	// if (ta_action == TAValues::REQUEST) {
 
-	if (ta_action == TAValues::REQUEST) {
-        reward += 1 * -1;
-	}
+	// if (ta_action == TAValues::REQUEST) {
+    //     reward += 1 * -1;
+	// }
 	if (ta_action == TAValues::REQUEST && (state_curr.req_time == m_delta_t || state_prev.req_target != state_curr.req_target)) {
-        reward += -1;
+        reward += -10;
     }
 
 	return reward;

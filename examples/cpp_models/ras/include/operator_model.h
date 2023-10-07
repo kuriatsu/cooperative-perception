@@ -25,6 +25,7 @@ public:
 	
 	double int_acc(const int time) const;
     int execIntervention(const int time, const bool risk) const;
+    int execIntervention(const int time, const bool risk, const double rand_num) const;
     
 private:
     enum { NO_RISK = 0, RISK = 1, NONE = 2};

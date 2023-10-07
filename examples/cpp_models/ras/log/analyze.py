@@ -311,7 +311,10 @@ elif len(sys.argv) > 2:
                 if target not in request_history:
                     for risk in log[0].get("risks"):
                         if target == risk.get("id"):
-                            request_target_prob_count.get(policy)[math.floor(risk.get("prob")*10)] += 1
+                            if risk.get("prob") == 1.0:
+                                request_target_prob_count.get(policy)[-1] += 1
+                            else:
+                                request_target_prob_count.get(policy)[math.floor(risk.get("prob")*10)] += 1
                             break
 
                 request_history.append(target)

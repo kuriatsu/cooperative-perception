@@ -36,3 +36,22 @@ int OperatorModel::execIntervention(const int time, const bool risk) const {
         }
     }
 }
+
+int OperatorModel::execIntervention(const int time, const bool risk, const double rand_num) const {
+
+    if (time == 0) {
+        return TAValues::RISK;
+    }
+    else {
+        double acc = int_acc(time);
+    
+        // TODO: is this output is okay? especially "else" section
+        if (rand_num < acc) {
+            return (risk == TAValues::RISK) ? TAValues::RISK : TAValues::NO_RISK;    
+        }
+        else {
+            return (risk == TAValues::RISK) ? TAValues::NO_RISK : TAValues::RISK;    
+            // return (rand_num < 0.5) ? TAValues::RISK : TAValues::NO_RISK;
+        }
+    }
+}
