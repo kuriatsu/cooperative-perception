@@ -1,10 +1,10 @@
 #include "vehicle_model.h"
 
 int main(void) {
-    std::vector<bool> recog_list = {false, true};
-    std::vector<int> target_poses = {100, 120};
+    std::vector<bool> recog_list = {true, true};
+    std::vector<int> target_poses = {100, 110};
     VehicleModel vehicle_model;
-    vehicle_model.m_delta_t = 2.0;
+    vehicle_model.m_delta_t = 1.0;
     int ego_pose = 0;
     double ego_speed = 11.2;
 

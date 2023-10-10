@@ -292,6 +292,8 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 	// if (ta_action == TAValues::REQUEST) {
     //     reward += 1 * -1;
 	// }
+    
+    // penalty for initial intervention request
 	if (ta_action == TAValues::REQUEST && (state_curr.req_time == m_delta_t || state_prev.req_target != state_curr.req_target)) {
         reward += -10;
     }

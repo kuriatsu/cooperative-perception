@@ -739,6 +739,27 @@
             "total discounted reward stderr": 0.0,
             "total undiscounted reward": 210.0,
             "total undiscounted reward stderr": 210.0
+        },
+        {
+            "delta_t": 1.0,
+            "risk_likelihood": [
+                0.4,
+                0.2,
+                0.5,
+                0.8,
+                0.4
+            ],
+            "risk_pose": [
+                50,
+                80,
+                90,
+                120,
+                130
+            ],
+            "total discounted reward": 82.86774583855666,
+            "total discounted reward stderr": 0.0,
+            "total undiscounted reward": 162.0,
+            "total undiscounted reward stderr": 162.0
         }
     ],
     "risk_likelihood": [
