@@ -257,8 +257,8 @@ void SumoInterface::close() {
 
 void SumoInterface::start() {
     // Simulation::start({"sumo", "-c", "map/straight.sumocfg"});
-    Simulation::start({"sumo", "-c", "../map/straight.sumocfg"});
-    // Simulation::start({"sumo-gui", "-c", "../map/straight.sumocfg"});
+    // Simulation::start({"sumo", "-c", "../map/straight.sumocfg"});
+    Simulation::start({"sumo-gui", "-c", "../map/straight.sumocfg"});
     // try {
     //     Simulation::load({"-c", "../map/straight.sumocfg"});
     // }

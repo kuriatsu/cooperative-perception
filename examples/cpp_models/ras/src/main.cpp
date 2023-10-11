@@ -25,7 +25,7 @@ public:
     double max_accel = 0.15 * 9.8;
     double max_decel = 0.3 * 9.8;
     double min_decel = 0.2 * 9.8;
-    int safety_margin = 5;
+    int safety_margin = 20;
 
     double delta_t = 1.0;
     double time_per_move = 1.0;

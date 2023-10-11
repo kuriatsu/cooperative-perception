@@ -12,7 +12,7 @@ namespace despot {
 
 TAState::TAState() {
     ego_pose = 0;
-    ego_speed = 11.2;
+    ego_speed = 0;
     req_time = 0;
     req_target = 0;
     // ego_recog = {false, true, true};
@@ -267,8 +267,8 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 
 
             if (state_curr.risk_bin[passed_index] == TAValues::RISK) {
-                // reward += (m_max_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed) * 100;
-                reward += (state_curr.ego_speed - m_yield_speed)/(m_max_speed - m_yield_speed) * -100;
+                reward += (m_max_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed) * 100;
+                // reward += (state_curr.ego_speed - m_yield_speed)/(m_max_speed - m_yield_speed) * -10;
                 // reward += (m_max_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed) * 1000;
             }
             else {
@@ -282,6 +282,7 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 	
     // driving efficiency
     // reward += -1;
+    reward += (state_curr.ego_speed - m_yield_speed)/(m_max_speed - m_yield_speed) * 1;
 
     // if (ta_action == TAValues::RECOG && state_prev.risk_bin[action_target_idx] != state_prev.ego_recog[action_target_idx])
     //     reward += -100;
@@ -296,6 +297,12 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
     // penalty for initial intervention request
 	if (ta_action == TAValues::REQUEST && (state_curr.req_time == m_delta_t || state_prev.req_target != state_curr.req_target)) {
         reward += -10;
+    }
+
+    if (state_prev.req_time > 0 && (ta_action != TAValues::REQUEST || state_curr.req_target != state_prev.req_target)) {
+        if (state_curr.risk_bin[state_prev.req_target] != state_curr.ego_recog[state_prev.req_target]) {
+            reward += -1000;
+        }
     }
 
 	return reward;

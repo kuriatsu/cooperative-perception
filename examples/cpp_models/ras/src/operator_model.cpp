@@ -46,10 +46,11 @@ int OperatorModel::execIntervention(const int time, const bool risk, const doubl
         double acc = int_acc(time);
     
         // TODO: is this output is okay? especially "else" section
-        if (rand_num < acc) {
+        if (rand_num <= acc) {
             return (risk == TAValues::RISK) ? TAValues::RISK : TAValues::NO_RISK;    
         }
         else {
+            // std::cout << "acc" << acc << "rand num" << rand_num << std::endl;
             return (risk == TAValues::RISK) ? TAValues::NO_RISK : TAValues::RISK;    
             // return (rand_num < 0.5) ? TAValues::RISK : TAValues::NO_RISK;
         }
