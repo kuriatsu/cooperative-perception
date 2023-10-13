@@ -148,6 +148,7 @@ if len(sys.argv) == 2:
                         crossing_prob += 0.02 
 
                     ax2.bar(crossing_time, crossing_prob, color=color_map(i/len(risk_ids)))
+                    ax2.annotate(id, xy=[crossing_time, crossing_prob], size=10, color="black")
                     reserved_time_list.append(crossing_time)
                     continue
 
@@ -222,6 +223,7 @@ if len(sys.argv) == 2:
                         buf_time.append(elapsed_time)
                         break
 
+                ax[1].annotate(target, xy=[buf_time[0], buf_prob[0]], size=10, color="black")
             last_action_target = target
                 
         else:
