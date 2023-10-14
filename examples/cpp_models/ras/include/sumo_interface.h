@@ -27,6 +27,7 @@ public:
     std::vector<Risk> perception();
     void controlEgoVehicle(const std::vector<Risk>& targets);
     void spawnPedestrians();
+    void spawnPedestrians(std::vector<Risk> obj_list); 
     void spawnEgoVehicle();
     double getEgoSpeed();
     Risk* getRisk(const std::string& id);

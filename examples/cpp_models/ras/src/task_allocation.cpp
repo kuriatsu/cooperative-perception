@@ -267,8 +267,8 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 
 
             if (state_curr.risk_bin[passed_index] == TAValues::RISK) {
-                reward += (m_max_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed) * 100;
-                // reward += (state_curr.ego_speed - m_yield_speed)/(m_max_speed - m_yield_speed) * -10;
+                // reward += (m_max_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed) * 100;
+                reward += (state_curr.ego_speed - m_yield_speed)/(m_max_speed - m_yield_speed) * -100;
                 // reward += (m_max_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed) * 1000;
             }
             else {

@@ -7,59 +7,68 @@
 using namespace despot;
 
 class MyPlanner: public Planner {
+
+private:
+    // sim model
+    double _obstacle_density = 0.01; // density 1ppl/m, 0.1=1ppl per 10m, 0.01=1ppl per 100m
+    std::vector<double> _perception_range = {50, 150}; // left+right range, forward range
+                                                      
+    // model parameters
+    string _world_type = "simulator";
+    string _belief_type = "DEFAULT";
+    string _policy_type = "DESPOT"; // DESPOT, MYOPIC, EGOISTIC
+    option::Option *_options;
+
+    // log
+    string _log_file = "";
+    
+    // simulation params
+    int _planning_horizon = 150;
+    double _risk_thresh = 0.5;
+    // operator_model
+    double _min_time = 3.0;
+    double _acc_time_min = 0.5;
+    double _acc_time_slope = 0.25;
+
+    // vehicle model
+    double _max_speed = 11.2;
+    double _yield_speed = 2.8;
+    double _max_accel = 0.15 * 9.8;
+    double _max_decel = 0.3 * 9.8;
+    double _min_decel = 0.2 * 9.8;
+    int _safety_margin = 20;
+
+    double _delta_t = 1.0;
+    double _time_per_move = 1.0;
+
 public:
 	MyPlanner() {
 	}
 
-    // params
-    int planning_horizon = 150;
-    double risk_thresh = 0.5;
-    // operator_model
-    double min_time = 3.0;
-    double acc_time_min = 0.5;
-    double acc_time_slope = 0.25;
-
-    // vehicle model
-    double max_speed = 11.2;
-    double yield_speed = 2.8;
-    double max_accel = 0.15 * 9.8;
-    double max_decel = 0.3 * 9.8;
-    double min_decel = 0.2 * 9.8;
-    int safety_margin = 20;
-
-    double delta_t = 1.0;
-    double time_per_move = 1.0;
-
-    // sim model
-    double obstacle_density = 0.01; // density 1ppl/m, 0.1=1ppl per 10m, 0.01=1ppl per 100m
-    std::vector<double> perception_range = {50, 150}; // left+right range, forward range
-
-    // model parameters
-    string world_type = "simulator";
-    string belief_type = "DEFAULT";
-    string policy_type = "DESPOT"; // DESPOT, MYOPIC, EGOISTIC
-    option::Option *options;
-
     // models
-    OperatorModel *operator_model = new OperatorModel(min_time, acc_time_min, acc_time_slope);
-    VehicleModel *vehicle_model = new VehicleModel(max_speed, yield_speed, max_accel, max_decel, min_decel, safety_margin, delta_t);
+    OperatorModel *_operator_model = new OperatorModel(_min_time, _acc_time_min, _acc_time_slope);
+    VehicleModel *_vehicle_model = new VehicleModel(_max_speed, _yield_speed, _max_accel, _max_decel, _min_decel, _safety_margin, _delta_t);
 
 	DSPOMDP* InitializeModel(option::Option* options) {
-		DSPOMDP* model = new TaskAllocation(planning_horizon, risk_thresh, vehicle_model, operator_model, delta_t);
+		DSPOMDP* model = new TaskAllocation(_planning_horizon, _risk_thresh, _vehicle_model, _operator_model, _delta_t);
 		return model;
 	}
 
 	World* InitializeWorld(std::string& world_type, DSPOMDP* model, option::Option* options) {
-        RasWorld* ras_world = new RasWorld(vehicle_model, operator_model, delta_t, obstacle_density, perception_range, policy_type);
+        RasWorld* ras_world = new RasWorld(_vehicle_model, _operator_model, _delta_t, _obstacle_density, _perception_range, _policy_type);
         ras_world->Connect();
-        ras_world->Initialize();
+        if (_log_file.empty()) 
+            ras_world->Initialize();
+        else
+            ras_world->Initialize(_log_file);
+
         return ras_world;
 	}
 
     void InitializeDefaultParameters() {
         Globals::config.num_scenarios = 100;
         Globals::config.sim_len = 90;
-        Globals::config.time_per_move = time_per_move; 
+        Globals::config.time_per_move = _time_per_move; 
 	}
 
 	std::string ChooseSolver() {
@@ -98,33 +107,19 @@ public:
         assert(belief != NULL);
         // solver->belief(belief);
 
-        solver = InitializeSolver(model, belief, ChooseSolver(), options);
-
-        double step_start_t = get_time_second();
-        double start_t = get_time_second();
+        solver = InitializeSolver(model, belief, ChooseSolver(), _options);
 
         ACT_TYPE action;
-        if (policy_type == "MYOPIC")
+        if (_policy_type == "MYOPIC")
             action = ras_world->MyopicAction();
-        else if (policy_type == "EGOISTIC")
+        else if (_policy_type == "EGOISTIC")
             action = ras_world->EgoisticAction();
         else
             action = solver->Search().action;
 
-        double end_t = get_time_second();
-        double search_time = end_t - start_t;
-
         OBS_TYPE obs;
-        start_t = get_time_second();
         bool terminal = ras_world->ExecuteAction(action, obs);
-        end_t = get_time_second();
-        double execute_time = end_t - start_t;
-
-        start_t = get_time_second();
         solver->BeliefUpdate(action, obs);
-        end_t = get_time_second();
-        double update_time = end_t - start_t;
-
         ras_world->UpdateState(action, obs, ta_model->getRiskProb(belief));
         ras_world->Log(action, obs);
 
@@ -132,7 +127,7 @@ public:
     }
 
     
-    int RunPlanning(int argc, char *argv[]) {
+    int RunPlanning(const double obstacle_density, const std::string policy_type, const std::string log_file) {
 
         /* =========================
          * initialize parameters
@@ -140,51 +135,95 @@ public:
         bool search_solver;
         int num_runs = 1;
         int time_limit = -1;
-
-        if (argc >= 3) {
-            policy_type = std::string(argv[1]);
-            obstacle_density = std::stod(std::string(argv[2]));
-            // for (int i=3; i<argc; i++) {
-            //     argv[i-2] = argv[i];
-            // }
-            // argc -= 2;
-            // std::cout << obstacle_density << argv[2] << std::endl;
-        }
+        _obstacle_density = obstacle_density;
+        _policy_type = policy_type;
+        _log_file = log_file;
 
         std::string solver_type = ChooseSolver();
-        options = InitializeParamers(argc, argv, solver_type,
-                    search_solver, num_runs, world_type, belief_type, time_limit);
-        if(options==NULL)
+        _options = InitializeParamers(argc, argv, solver_type,
+                    search_solver, num_runs, _world_type, _belief_type, time_limit);
+        if(_options==NULL)
             return 0;
         clock_t main_clock_start = clock();
 
-        DSPOMDP *model = InitializeModel(options);
+        DSPOMDP *model = InitializeModel(_options);
         assert(model != NULL);
 
-        World *world = InitializeWorld(world_type, model, options);
+        World *world = InitializeWorld(world_type, model, _options);
         assert(world != NULL);
 
         Belief *belief = NULL;
         Solver *solver = NULL;
 
         Logger *logger = NULL;
-        InitializeLogger(logger, options, model, belief, solver, num_runs,
+        InitializeLogger(logger, _options, model, belief, solver, num_runs,
                 main_clock_start, world, world_type, time_limit, solver_type);
 
-        DisplayParameters(options, model);
+        DisplayParameters(_options, model);
 
         logger->InitRound(world->GetCurrentState());
         round_=0; step_=0;
         PlanningLoop(solver, world, model, logger);
         logger->EndRound();
 
-        delete world;
         PrintResult(1, logger, main_clock_start);
         
+        std::stringstream ss;
+        ss << policy_type+std::to_string(obstacle_density)+"_"; 
+
+        if (log_file.empty) {
+            time_t now = std::time(nullptr);
+            struct tm* local_now = std::localtime(&now);
+            ss << local_now->tm_year + 1900
+               << setw(2) << setfill('0') << local_now->tm_mon 
+               << setw(2) << setfill('0') << local_now->tm_mday 
+               << setw(2) << setfill('0') << local_now->tm_hour
+               << setw(2) << setfill('0') << local_now->tm_min
+               << setw(2) << setfill('0') << local_now->tm_sec
+               << ".json";
+        }
+        else {
+            std::stringstream filename_ss{log_file};
+            std::string filename_s;
+            std::vector<std::string> filename_splitted;
+            while (getline(filename_ss, s, "_")) {
+                filename_splitted.emplace_back(s);
+            }
+            ss << filename_splitted[-1];
+        }
+
+        world->SaveLog(ss.str());
+
+        std::cout << "#### close simulator ####" << std::endl;
+        world->Close();
+
         return 0;
     }
 };
 
 int main(int argc, char* argv[]) {
-	return MyPlanner().RunPlanning(argc, argv);
+    char *optarg;
+    int optind, opterr, optopt;
+    double obstacle_density;
+    std::string policy_type, log_file;
+	MyPlanner planner = MyPlanner();
+
+    while ((opt = getopt(argc, argv, "d:p:l:")) != -1) {
+        switch (opt) {
+            case "d":
+                obstacle_density = std::stod(std::string(optarg));
+                break;
+            case "p":
+                policy_type = std::string(optarg);
+                break;
+            case "l":
+                log_file = std::string(optarg);
+                break;
+            default:
+                print("No option \n Usage: [-d dencity] [-p policy] [-l log_file]");
+                break;
+        }
+    }
+
+    return planner.RunPlanning(obstacle_density, policy_type, log_file);
 }

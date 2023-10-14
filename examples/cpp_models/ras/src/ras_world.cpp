@@ -15,32 +15,6 @@ RasWorld::RasWorld(VehicleModel *vehicle_model_, OperatorModel *operator_model_,
     sim = new SumoInterface(vehicle_model, delta_t, obstacle_density_, perception_range);
 }
 
-RasWorld::~RasWorld() {
-
-    m_log["obstacle_density"] = obstacle_density;
-    m_log["policy"] = policy_type;
-    m_log["delta_t"] =vehicle_model->m_delta_t ;
-
-    time_t now = std::time(nullptr);
-    struct tm* local_now = std::localtime(&now);
-    std::stringstream ss;
-    ss << policy_type+std::to_string(obstacle_density)+"_" 
-       << local_now->tm_year + 1900
-       << setw(2) << setfill('0') << local_now->tm_mon 
-       << setw(2) << setfill('0') << local_now->tm_mday 
-       << setw(2) << setfill('0') << local_now->tm_hour
-       << setw(2) << setfill('0') << local_now->tm_min
-       << setw(2) << setfill('0') << local_now->tm_sec
-       << ".json";
-    std::ofstream o(ss.str());
-    o << std::setw(4) << m_log << std::endl;
-    std::cout << "saved log data to " << ss.str() << std::endl;
-
-    exit(1);
-    std::cout << "#### close simulator ####" << std::endl;
-    sim->close();
-}
-
 bool RasWorld::Connect(){
     sim->start();
     return true;
@@ -48,6 +22,33 @@ bool RasWorld::Connect(){
 
 State* RasWorld::Initialize() {
     sim->spawnPedestrians();
+    sim->spawnEgoVehicle();
+    pomdp_state = new TAState();
+    pomdp_state->req_time = 0;
+    pomdp_state->req_target = 0;
+    ta_values = new TAValues(); 
+    return NULL;
+}
+
+State* RasWorld::Initialize(const std::string log_file) {
+    std::ifstream i(log_file);
+    json log_json;
+    i >> log_json;
+    std::vector<Risk> obj_list;
+    for (auto risk : log_json["log"][0]["risks"]) {
+        Risk obj;
+        obj.id = risk["id"];
+        obj.risk_hidden = risk["hidden"];
+        obj.risk_prob = risk["prob"];
+        obj.risk_pred = risk["pred"];
+        obj.pose.x = risk["x"];
+        obj.pose.y = risk["y"];
+        obj.pose.lane = risk["lane"];
+        obj.pose.lane_position = risk["lane_position"];
+        obj_list.emplace_back(obj);
+    }
+
+    sim->spawnPedestrians(obj_list);
     sim->spawnEgoVehicle();
     pomdp_state = new TAState();
     pomdp_state->req_time = 0;
@@ -164,12 +165,20 @@ bool RasWorld::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 
 
 void RasWorld::UpdateState(ACT_TYPE action, OBS_TYPE obs, const std::vector<double>& risk_probs) {
-    // Reflect belief to risk database in sumo_interface
     for (auto itr = risk_probs.begin(), end = risk_probs.end(); itr != end; itr++) {
+        /** write state change to risks info in sumo_interface **/
         int idx = std::distance(risk_probs.begin(), itr);
-        std::string req_target_id = id_idx_list[idx];
-        Risk* risk = sim->getRisk(req_target_id);
+        std::string target_id = id_idx_list[idx];
+        Risk* risk = sim->getRisk(target_id);
         risk->risk_pred = pomdp_state->ego_recog[idx];
+
+        /** write state change to risks info in current perception info **/
+        perception_targets[idx].risk_pred = pomdp_state->ego_recog[idx];
+
+        /** 
+        to avoid belief weight and observation bug
+        when belief prob = 1.0 and obs = NORISK -> risk_prob become nan 
+        **/
         if (std::isnan(*itr)) {
             risk->risk_prob = 0.5;
         }
@@ -178,6 +187,7 @@ void RasWorld::UpdateState(ACT_TYPE action, OBS_TYPE obs, const std::vector<doub
         }
     }
 
+    /** control ego vehicle **/
     sim->controlEgoVehicle(perception_targets);
 }
      
@@ -223,7 +233,7 @@ void RasWorld::Log(ACT_TYPE action, OBS_TYPE obs) {
         step_log["risks"].emplace_back(buf);
     }
 
-    m_log["log"].emplace_back(step_log);
+    _log["log"].emplace_back(step_log);
 }
 
 bool RasWorld::isTerminate() {
@@ -232,6 +242,21 @@ bool RasWorld::isTerminate() {
 
 void RasWorld::Step(int delta_t) {
     sim->step(delta_t);
+}
+
+void RasWorld::Close() {
+    sim->close();
+}
+
+void RasWorld::SaveLog(std::string filename) {
+
+    _log["obstacle_density"] = obstacle_density;
+    _log["policy"] = policy_type;
+    _log["delta_t"] =vehicle_model->m_delta_t ;
+
+    std::ofstream o(filename);
+    o << std::setw(4) << _log << std::endl;
+    std::cout << "saved log data to " << filename << std::endl;
 }
 
 ACT_TYPE RasWorld::MyopicAction() {
@@ -264,4 +289,3 @@ ACT_TYPE RasWorld::MyopicAction() {
 ACT_TYPE RasWorld::EgoisticAction() {
     return ta_values->getAction(TAValues::NO_ACTION, 0);
 }
-
