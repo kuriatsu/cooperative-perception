@@ -7,6 +7,27 @@ import math
 import pandas as pd
 import re
 
+def CarcReward(state_prev, state_curr, action):
+    reward = 0
+    for risk in state_curr["risks"]:
+        if state_prev["lane_position"] < risk["lane_position"] <= state_curr["lane_position"]:
+
+            if risk["risk_hidden"] == "RISK":
+                raward += (state_curr["speed"] - 2.8) / (11.2 - 2.8) * -100
+            else:
+                raward += (state_curr["speed"] - 2.8) / (11.2 - 2.8) * 100
+
+    raward += (state_curr["speed"] - 2.8) / (11.2 - 2.8) * 1
+
+    if action == "REQUEST" and (state_curr["request_time"] == 1.0 or state_prev["target"] != state_curr["target"]):
+        reward += -10
+
+    if state_prev["req_time"] > 0 and (action != "REQUEST" or state_prev["target"] != state_prev["target"]):
+        if risk["risk_hidden"] != risk["risk_pred"]:
+            reward += -1000
+
+    return reward
+
 #### single data visualization ####
 #### travel distance vs (speed, risk_prob, action) ####
 #if len(sys.argv) == 2:
@@ -172,6 +193,7 @@ if len(sys.argv) == 2:
     last_action_target = None
     buf_prob = []
     buf_time = []
+    reward = [0]
 
     ## first log
     if log[0].get("action") == "REQUEST":
@@ -243,11 +265,15 @@ if len(sys.argv) == 2:
                 
             last_action_target = None
 
+        ## reward
+        reward.append(CalcReward(log[frame_num-1], log[frame_num]))
+
     ax[0].set_xlim(0, (len(log) + 1.0) * data.get("delta_t"))
     ax[0].set_ylabel("vehicle speed [m/s]")
     ax[1].set_xlim(0, (len(log) + 1.0) * data.get("delta_t"))
     ax[1].set_ylim(0, 1.0)
     ax[1].set_ylabel("risk probs")
+    ax[0].annotate(sum(reward), xy=[len(log), 10], size=10, color="black")
     ax2.set_ylim(0, 1.0)
     ax2.set_ylabel("intervention request")
     ax2.set_xlabel("travel distance [m]")
@@ -260,7 +286,7 @@ if len(sys.argv) == 2:
 #################################
 elif len(sys.argv) > 2:
 
-    df = pd.DataFrame(columns = ["policy", "risk_num", "travel_time", "total_fuel_consumption", "mean_fuel_consumption", "dev_accel", "mean_speed", "risk_omission", "ambiguity_omission", "request_time"])
+    df = pd.DataFrame(columns = ["policy", "risk_num", "travel_time", "total_fuel_consumption", "mean_fuel_consumption", "dev_accel", "mean_speed", "risk_omission", "ambiguity_omission", "request_time", "reward"])
     request_target_prob_count = {"DESPOT":[0] * 10, "MYOPIC":[0]*10, "EGOISTIC":[0]*10}
     risk_prob_count = {"DESPOT":[0] * 10, "MYOPIC":[0]*10, "EGOISTIC":[0]*10}
 
@@ -283,6 +309,7 @@ elif len(sys.argv) > 2:
         ambiguity_omission = [] 
         request_time = 0.0
         request_history = []
+        reward = [0]
 
         last_ego_position = 0.0
 
@@ -333,12 +360,16 @@ elif len(sys.argv) > 2:
                     if risk.get("hidden"):
                         risk_omission.append(log[frame_num-1].get("speed"))
 
+            ## calculate reward
+            reward.append(CarcReward(log[frame_num-1], log[frame_num]))
+
             last_ego_position = frame.get("lane_position") 
 
         ## summarize
         total_fuel_consumption = sum(fuel_consumption)
         mean_fuel_consumption = sum(fuel_consumption)/len(fuel_consumption)
         mean_speed = sum(speed)/len(speed)
+        total_reward = sum(reward)
 
         dev_accel = 0.0
         mean_accel = sum(accel)/len(accel)
@@ -349,7 +380,7 @@ elif len(sys.argv) > 2:
         mean_risk_omission = sum(risk_omission)/len(risk_omission) if risk_omission else 0.0
         mean_ambiguity_omission = sum(ambiguity_omission)/len(ambiguity_omission) if ambiguity_omission else 0.0
 
-        buf_df = pd.DataFrame([[policy, risk_num, travel_time, total_fuel_consumption, mean_fuel_consumption, dev_accel, mean_speed, mean_risk_omission, mean_ambiguity_omission, request_time]], columns=df.columns)
+        buf_df = pd.DataFrame([[policy, risk_num, travel_time, total_fuel_consumption, mean_fuel_consumption, dev_accel, mean_speed, mean_risk_omission, mean_ambiguity_omission, request_time, total_reward]], columns=df.columns)
         df = pd.concat([df, buf_df], ignore_index=True)
 
 
@@ -370,6 +401,7 @@ elif len(sys.argv) > 2:
     plt.show()
     sns.lineplot(data=df, x="risk_num", y="request_time", hue="policy", markers=True)
     plt.show()
+    sns.lineplot(data=df, x="risk_num", y="total_reward", hue="policy", markers=True)
 
 
     for policy in risk_prob_count.keys():
