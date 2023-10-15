@@ -112,7 +112,7 @@ public:
         ACT_TYPE action;
         if (_policy_type == "MYOPIC")
             action = ras_world->MyopicAction();
-        else if (_policy_type == "EGOISTIC")
+        else if (_policy_type == "EGOISTIC" || _policy_type == "REFERENCE")
             action = ras_world->EgoisticAction();
         else
             action = solver->Search().action;
@@ -120,7 +120,12 @@ public:
         OBS_TYPE obs;
         bool terminal = ras_world->ExecuteAction(action, obs);
         solver->BeliefUpdate(action, obs);
-        ras_world->UpdateState(action, obs, ta_model->getRiskProb(belief));
+
+        if (_policy_type == "REFERENCE")
+            ras_world->sim->controlEgoVehicle(start_state->risk_pose, start_state->risk_bin);
+        else
+            ras_world->UpdateState(action, obs, ta_model->getRiskProb(belief));
+
         ras_world->Log(action, obs);
 
         return false;

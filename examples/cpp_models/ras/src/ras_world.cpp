@@ -165,16 +165,16 @@ bool RasWorld::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 
 void RasWorld::UpdateState(ACT_TYPE action, OBS_TYPE obs, const std::vector<double>& risk_probs) {
     for (auto itr = risk_probs.begin(), end = risk_probs.end(); itr != end; itr++) {
-        /** write state change to risks info in sumo_interface **/
+        /* write state change to risks info in sumo_interface */
         int idx = std::distance(risk_probs.begin(), itr);
         std::string target_id = perception_target_ids[idx];
         Risk* risk = sim->getRisk(target_id);
         risk->risk_pred = pomdp_state->ego_recog[idx];
 
-        /** 
-        to avoid belief weight and observation bug
-        when belief prob = 1.0 and obs = NORISK -> risk_prob become nan 
-        **/
+        /* 
+         * to avoid belief weight and observation bug
+         * when belief prob = 1.0 and obs = NORISK -> risk_prob become nan 
+         */
         if (std::isnan(*itr)) {
             risk->risk_prob = 0.5;
         }
@@ -183,7 +183,7 @@ void RasWorld::UpdateState(ACT_TYPE action, OBS_TYPE obs, const std::vector<doub
         }
     }
 
-    /** control ego vehicle **/
+    /* control ego vehicle */
     sim->controlEgoVehicle(pomdp_state->risk_pose, pomdp_state->ego_recog);
 }
      

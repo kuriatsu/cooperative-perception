@@ -169,8 +169,9 @@ void SumoInterface::spawnPedestrians() {
             std::string ped_id = lane_id + "-" + std::to_string(i);
             Person::add(ped_id, edge, position);
             Person::setColor(ped_id, libsumo::TraCIColor(0, 0, 200));
-            Person::appendWalkingStage(ped_id, {edge}, 0);
-            Person::appendWaitingStage(ped_id, 1000);
+            // Person::appendWalkingStage(ped_id, {edge}, 0);
+            // Person::appendWaitingStage(ped_id, 1000);
+            Person::setSpeed(ped_id, 0.8)
             double risk_prob = prob(mt);
             bool risk = (rand(mt) < risk_prob) ? true : false;
             m_risks[ped_id] = Risk(ped_id, risk, risk_prob); 
