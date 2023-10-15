@@ -61,9 +61,7 @@ State* RasWorld::Initialize(const std::string log_file) {
 State* RasWorld::GetCurrentState() {
 
     std::cout << "################GetCurrentState##################" << std::endl;
-    perception_targets = sim->perception();
-
-    id_idx_list.clear();
+    perception_target_ids = sim->perception();
 
     // check wether last request target still exists in the perception targets
     bool is_last_req_target = false;
@@ -73,23 +71,22 @@ State* RasWorld::GetCurrentState() {
     pomdp_state->ego_recog.clear();
     pomdp_state->risk_pose.clear();
     pomdp_state->risk_bin.clear();
-    for (int i=0; i<perception_targets.size(); i++) {
-        Risk &risk = perception_targets[i];
-        id_idx_list.emplace_back(risk.id);
-        pomdp_state->ego_recog.emplace_back(risk.risk_pred);
-        pomdp_state->risk_pose.emplace_back(risk.distance);
-        pomdp_state->risk_bin.emplace_back(risk.risk_hidden);
+    for (int i=0; i<perception_target_ids.size(); i++) {
+        Risk *risk = sim->getRisk(perception_target_ids[i]);
+        pomdp_state->ego_recog.emplace_back(risk->risk_pred);
+        pomdp_state->risk_pose.emplace_back(risk->distance);
+        pomdp_state->risk_bin.emplace_back(risk->risk_hidden);
         
-        if (req_target_history.size() > 0 && req_target_history.back() == risk.id) {
+        if (req_target_history.size() > 0 && req_target_history.back() == risk->id) {
             is_last_req_target = true;
             pomdp_state->req_target = i; 
         }
 
         std::cout << 
-            "id :" << risk.id << "\n" <<
-            "distance :" << risk.distance << "\n" <<
-            "pred :" << risk.risk_pred << "\n" <<
-            "prob :" << risk.risk_prob << "\n" <<
+            "id :" << risk->id << "\n" <<
+            "distance :" << risk->distance << "\n" <<
+            "pred :" << risk->risk_pred << "\n" <<
+            "prob :" << risk->risk_prob << "\n" <<
             std::endl;
     }
 
@@ -109,8 +106,8 @@ State* RasWorld::GetCurrentState() {
 
 std::vector<double> RasWorld::GetPerceptionLikelihood() {
     std::vector<double> likelihood;
-    for (const auto& risk: perception_targets) {
-        likelihood.emplace_back(risk.risk_prob);
+    for (const auto& id: perception_target_ids) {
+        likelihood.emplace_back(sim->getRisk(id)->risk_prob);
     }
     return likelihood;
 }
@@ -133,9 +130,9 @@ bool RasWorld::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
         obs_history.emplace_back(obs);
     }
     
-    // intervention request
+    /** REQEST **/
     else {
-        std::string req_target_id = id_idx_list[target_idx];
+        std::string req_target_id = perception_target_ids[target_idx];
         std::cout << "action : REQUEST to " << target_idx << " = " << req_target_id << std::endl;
 
         pomdp_state->req_target = target_idx;
@@ -149,6 +146,7 @@ bool RasWorld::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
         }
         req_target_history.emplace_back(req_target_id);
 
+        /** get obs and update it to ego_recog **/
         obs = operator_model->execIntervention(pomdp_state->req_time, pomdp_state->ego_recog[pomdp_state->req_target]);
         ta_values->printObs(obs);
         obs_history.emplace_back(obs);
@@ -156,6 +154,7 @@ bool RasWorld::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
         sim->getRisk(req_target_id)->risk_pred = obs;
         pomdp_state->ego_recog[target_idx] = obs;
         
+        /** change color of the intervention target **/
         std::vector<int> red_color = {200, 0, 0};
         sim->setColor(req_target_id, red_color, "p");
 
@@ -168,12 +167,9 @@ void RasWorld::UpdateState(ACT_TYPE action, OBS_TYPE obs, const std::vector<doub
     for (auto itr = risk_probs.begin(), end = risk_probs.end(); itr != end; itr++) {
         /** write state change to risks info in sumo_interface **/
         int idx = std::distance(risk_probs.begin(), itr);
-        std::string target_id = id_idx_list[idx];
+        std::string target_id = perception_target_ids[idx];
         Risk* risk = sim->getRisk(target_id);
         risk->risk_pred = pomdp_state->ego_recog[idx];
-
-        /** write state change to risks info in current perception info **/
-        perception_targets[idx].risk_pred = pomdp_state->ego_recog[idx];
 
         /** 
         to avoid belief weight and observation bug
@@ -188,7 +184,7 @@ void RasWorld::UpdateState(ACT_TYPE action, OBS_TYPE obs, const std::vector<doub
     }
 
     /** control ego vehicle **/
-    sim->controlEgoVehicle(perception_targets);
+    sim->controlEgoVehicle(pomdp_state->risk_pose, pomdp_state->ego_recog);
 }
      
 void RasWorld::Log(ACT_TYPE action, OBS_TYPE obs) {
@@ -202,7 +198,7 @@ void RasWorld::Log(ACT_TYPE action, OBS_TYPE obs) {
     std::string log_obs = ta_values->getObsName(obs);
     std::string log_action_target = "NONE";
     if (log_action != "NO_ACTION") {
-        log_action_target = id_idx_list[ta_values->getActionTarget(action)];
+        log_action_target = perception_target_ids[ta_values->getActionTarget(action)];
     }
 
     nlohmann::json step_log = {
@@ -269,7 +265,7 @@ ACT_TYPE RasWorld::MyopicAction() {
     // find request target
     int closest_target = -1, min_dist = 100000;
     for (int i=0; i<pomdp_state->risk_pose.size(); i++) {
-        int is_in_history = std::count(req_target_history.begin(), req_target_history.end(), id_idx_list[i]);
+        int is_in_history = std::count(req_target_history.begin(), req_target_history.end(), perception_target_ids[i]);
         double request_distance = vehicle_model->getDecelDistance(pomdp_state->ego_pose, vehicle_model->m_min_decel, vehicle_model->m_safety_margin) + vehicle_model->m_yield_speed * (6.0 - vehicle_model->getDecelTime(pomdp_state->ego_speed, vehicle_model->m_min_decel)); 
        if (is_in_history == 0 && pomdp_state->risk_pose[i] > request_distance) {
             if (pomdp_state->risk_pose[i] < min_dist) {

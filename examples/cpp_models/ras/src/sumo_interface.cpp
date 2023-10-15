@@ -16,7 +16,7 @@ SumoInterface::SumoInterface(VehicleModel *vehicle_model, double delta_t, double
     m_perception_range = perception_range;
 }
 
-std::vector<Risk> SumoInterface::perception() {
+std::vector<std::string> SumoInterface::perception() {
 
     Pose ego_pose;
     try { 
@@ -28,7 +28,7 @@ std::vector<Risk> SumoInterface::perception() {
     }
     // std::vector<std::string> ego_route = Vehicle::getRoute(m_ego_name);
     
-    std::vector<Risk> targets;
+    std::vector<std::string> perception_target_ids;
     // m_passed_targets.clear();
 
     for (std::string& ped_id : Person::getIDList()) {
@@ -55,20 +55,15 @@ std::vector<Risk> SumoInterface::perception() {
         double prev_distance = m_risks[ped_id].distance;
         m_risks[ped_id].distance = rel_risk_pose.y;
 
-        // for logging
-        // if (fabs(rel_risk_pose.x) < m_perception_range[0]/2 && prev_distance >= 0 && rel_risk_pose.y < 0) {
-        //     m_passed_targets.emplace_back(ped_id);
-        // }
-        // std::cout << rel_risk_pose.x << ", " << rel_risk_pose.y << ", " << m_perception_range[1] << std::endl;
         if (fabs(rel_risk_pose.x) < m_perception_range[0]/2 && 0 < rel_risk_pose.y && rel_risk_pose.y < m_perception_range[1]) {
             Person::setColor(ped_id, libsumo::TraCIColor(200, 200, 0));
-            targets.emplace_back(m_risks[ped_id]);
+            perception_target_ids.emplace_back(ped_id);
         }
         else {
             Person::setColor(ped_id, libsumo::TraCIColor(0, 0, 200));
         }
     }
-    return targets;
+    return perception_target_ids;
 }
 
 void SumoInterface::setColor(const std::string id, const std::vector<int> color, const std::string attrib) const {
@@ -85,7 +80,7 @@ void SumoInterface::setColor(const std::string id, const std::vector<int> color,
     }
 }
 
-void SumoInterface::controlEgoVehicle(const std::vector<Risk>& targets){
+void SumoInterface::controlEgoVehicle(const std::vector<int>& target_poses, const std::vector<bool> target_risks) const {
 
     double speed;
     try {
@@ -97,13 +92,7 @@ void SumoInterface::controlEgoVehicle(const std::vector<Risk>& targets){
         Simulation::close();
     }
 
-    std::vector<bool> recog_list;
-    std::vector<int> target_poses;
-    for (const auto& target : targets) {
-        recog_list.emplace_back(target.risk_pred);
-        target_poses.emplace_back(target.distance);
-    }
-    double a = m_vehicle_model->getAccel(speed, 0, recog_list, target_poses);
+    double a = m_vehicle_model->getAccel(speed, 0, target_risks, target_poses);
     a = m_vehicle_model->clipSpeed(a, speed);
     Vehicle::setAcceleration(m_ego_name, a, m_delta_t);
 

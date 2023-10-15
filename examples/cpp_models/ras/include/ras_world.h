@@ -13,8 +13,7 @@ using namespace despot;
 class RasWorld: public World {
 private:
     TAState* pomdp_state; // save previous state
-    std::vector<std::string> id_idx_list;
-    std::vector<Risk> perception_targets;
+    std::vector<std::string> perception_target_ids;
 
     // log data
     nlohmann::json _log;
