@@ -3,6 +3,7 @@
 #include "ras_world.h"
 #include "operator_model.h"
 #include "sumo_interface.h"
+#include <unistd.h>
 
 using namespace despot;
 
@@ -54,7 +55,7 @@ public:
 		return model;
 	}
 
-	World* InitializeWorld(std::string& world_type, DSPOMDP* model, option::Option* options) {
+	World* InitializeWorld(std::string& _world_type, DSPOMDP* model, option::Option* options) {
         RasWorld* ras_world = new RasWorld(_vehicle_model, _operator_model, _delta_t, _obstacle_density, _perception_range, _policy_type);
         ras_world->Connect();
         if (_log_file.empty()) 
@@ -91,7 +92,7 @@ public:
         TaskAllocation* ta_model = static_cast<TaskAllocation*>(model);
         logger->CheckTargetTime();
         
-        for (int i=0; i<delta_t; i++) {
+        for (int i=0; i<_delta_t; i++) {
             ras_world->Step(0);
         }
 
@@ -103,7 +104,7 @@ public:
         std::vector<double> likelihood_list = ras_world->GetPerceptionLikelihood();
         ta_model->syncCurrentState(start_state, likelihood_list);
 
-        Belief* belief = ta_model->InitialBelief(start_state, likelihood_list, belief_type);
+        Belief* belief = ta_model->InitialBelief(start_state, likelihood_list, _belief_type);
         assert(belief != NULL);
         // solver->belief(belief);
 
@@ -132,7 +133,7 @@ public:
     }
 
     
-    int RunPlanning(const double obstacle_density, const std::string policy_type, const std::string log_file) {
+    int RunPlanning(int argc, char** argv, const double obstacle_density, const std::string policy_type, const std::string log_file) {
 
         /* =========================
          * initialize parameters
@@ -154,7 +155,7 @@ public:
         DSPOMDP *model = InitializeModel(_options);
         assert(model != NULL);
 
-        World *world = InitializeWorld(world_type, model, _options);
+        World *world = InitializeWorld(_world_type, model, _options);
         assert(world != NULL);
 
         Belief *belief = NULL;
@@ -162,7 +163,7 @@ public:
 
         Logger *logger = NULL;
         InitializeLogger(logger, _options, model, belief, solver, num_runs,
-                main_clock_start, world, world_type, time_limit, solver_type);
+                main_clock_start, world, _world_type, time_limit, solver_type);
 
         DisplayParameters(_options, model);
 
@@ -176,7 +177,7 @@ public:
         std::stringstream ss;
         ss << policy_type+std::to_string(obstacle_density)+"_"; 
 
-        if (log_file.empty) {
+        if (log_file.empty()) {
             time_t now = std::time(nullptr);
             struct tm* local_now = std::localtime(&now);
             ss << local_now->tm_year + 1900
@@ -189,18 +190,18 @@ public:
         }
         else {
             std::stringstream filename_ss{log_file};
-            std::string filename_s;
+            std::string filename_s, buf_s;
             std::vector<std::string> filename_splitted;
-            while (getline(filename_ss, s, "_")) {
-                filename_splitted.emplace_back(s);
+            while (std::getline(filename_ss, buf_s, '_')) {
+                filename_splitted.emplace_back(buf_s);
             }
             ss << filename_splitted[-1];
         }
 
-        world->SaveLog(ss.str());
+        static_cast<RasWorld*>(world)->SaveLog(ss.str());
 
         std::cout << "#### close simulator ####" << std::endl;
-        world->Close();
+        static_cast<RasWorld*>(world)->Close();
 
         return 0;
     }
@@ -208,27 +209,27 @@ public:
 
 int main(int argc, char* argv[]) {
     char *optarg;
-    int optind, opterr, optopt;
+    int opt, optind, opterr, optopt;
     double obstacle_density;
     std::string policy_type, log_file;
 	MyPlanner planner = MyPlanner();
 
     while ((opt = getopt(argc, argv, "d:p:l:")) != -1) {
         switch (opt) {
-            case "d":
+            case 'd':
                 obstacle_density = std::stod(std::string(optarg));
                 break;
-            case "p":
+            case 'p':
                 policy_type = std::string(optarg);
                 break;
-            case "l":
+            case 'l':
                 log_file = std::string(optarg);
                 break;
             default:
-                print("No option \n Usage: [-d dencity] [-p policy] [-l log_file]");
+                std::cout << "No option \n Usage: [-d dencity] [-p policy] [-l log_file]" << std::endl;
                 break;
         }
     }
 
-    return planner.RunPlanning(obstacle_density, policy_type, log_file);
+    return planner.RunPlanning(argc, argv, obstacle_density, policy_type, log_file);
 }

@@ -32,7 +32,7 @@ State* RasWorld::Initialize() {
 
 State* RasWorld::Initialize(const std::string log_file) {
     std::ifstream i(log_file);
-    json log_json;
+    nlohmann::json log_json;
     i >> log_json;
     std::vector<Risk> obj_list;
     for (auto risk : log_json["log"][0]["risks"]) {

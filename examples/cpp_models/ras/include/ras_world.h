@@ -48,6 +48,5 @@ public:
 
     ACT_TYPE MyopicAction();
     ACT_TYPE EgoisticAction(); 
-    ~RasWorld();
 }; 
 
