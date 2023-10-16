@@ -98,29 +98,6 @@ void SumoInterface::controlEgoVehicle(const std::vector<int>& target_poses, cons
 
 }
 
-void SumoInterface::controlEgoVehicleWithTrueState(const std::vector<Risk>& targets){
-
-    double speed;
-    try {
-        speed = Vehicle::getSpeed(m_ego_name);
-        std::cout << "prev accel " << Vehicle::getAcceleration(m_ego_name);
-    }
-    catch (libsumo::TraCIException& error) {
-        Simulation::close();
-    }
-
-    std::vector<bool> recog_list;
-    std::vector<int> target_poses;
-    for (const auto& target : targets) {
-        recog_list.emplace_back(target.risk_hidden);
-        target_poses.emplace_back(target.distance);
-    }
-    double a = m_vehicle_model->getAccel(speed, 0, recog_list, target_poses);
-    a = m_vehicle_model->clipSpeed(a, speed);
-    Vehicle::setAcceleration(m_ego_name, a, m_delta_t);
-
-}
-
 void SumoInterface::spawnEgoVehicle() {
     std::cout << "spawn ego vehicle" << std::endl;
     auto edge_list = Edge::getIDList();
@@ -171,7 +148,7 @@ void SumoInterface::spawnPedestrians() {
             Person::setColor(ped_id, libsumo::TraCIColor(0, 0, 200));
             // Person::appendWalkingStage(ped_id, {edge}, 0);
             // Person::appendWaitingStage(ped_id, 1000);
-            Person::setSpeed(ped_id, 0.8)
+            Person::setSpeed(ped_id, 0.8);
             double risk_prob = prob(mt);
             bool risk = (rand(mt) < risk_prob) ? true : false;
             m_risks[ped_id] = Risk(ped_id, risk, risk_prob); 
@@ -185,10 +162,10 @@ void SumoInterface::spawnPedestrians(std::vector<Risk> obj_list) {
 
     // add peds
     for (auto risk : obj_list) {
-        Person::add(risk.id, risk.lane, risk.lane_position);
-        Person::setColor(ped_id, libsumo::TraCIColor(0, 0, 200));
-        Person::appendWalkingStage(ped_id, {edge}, 0);
-        Person::appendWaitingStage(ped_id, 1000);
+        Person::add(risk.id, risk.pose.lane, risk.pose.lane_position);
+        Person::setColor(risk.id, libsumo::TraCIColor(0, 0, 200));
+        Person::appendWalkingStage(risk.id, {risk.pose.lane}, 0);
+        Person::appendWaitingStage(risk.id, 1000);
         m_risks[risk.id] = risk; 
     }
     std::cout << "spawned pedestrian" << m_risks.size() << std::endl;
