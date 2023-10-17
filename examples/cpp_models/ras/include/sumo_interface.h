@@ -24,9 +24,10 @@ public:
     SumoInterface();
     SumoInterface(VehicleModel *vehicle_model, double delta_t, double density, std::vector<double> perception_range); 
 
-    std::vector<Risk> perception();
-    void controlEgoVehicle(const std::vector<Risk>& targets);
+    std::vector<std::string> perception();
+    void controlEgoVehicle(const std::vector<int>& target_poses, const std::vector<bool> target_risks) const;
     void spawnPedestrians();
+    void spawnPedestrians(std::vector<Risk> obj_list); 
     void spawnEgoVehicle();
     double getEgoSpeed();
     Risk* getRisk(const std::string& id);

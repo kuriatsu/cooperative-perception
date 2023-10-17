@@ -16,7 +16,7 @@ SumoInterface::SumoInterface(VehicleModel *vehicle_model, double delta_t, double
     m_perception_range = perception_range;
 }
 
-std::vector<Risk> SumoInterface::perception() {
+std::vector<std::string> SumoInterface::perception() {
 
     Pose ego_pose;
     try { 
@@ -28,7 +28,7 @@ std::vector<Risk> SumoInterface::perception() {
     }
     // std::vector<std::string> ego_route = Vehicle::getRoute(m_ego_name);
     
-    std::vector<Risk> targets;
+    std::vector<std::string> perception_target_ids;
     // m_passed_targets.clear();
 
     for (std::string& ped_id : Person::getIDList()) {
@@ -55,20 +55,15 @@ std::vector<Risk> SumoInterface::perception() {
         double prev_distance = m_risks[ped_id].distance;
         m_risks[ped_id].distance = rel_risk_pose.y;
 
-        // for logging
-        // if (fabs(rel_risk_pose.x) < m_perception_range[0]/2 && prev_distance >= 0 && rel_risk_pose.y < 0) {
-        //     m_passed_targets.emplace_back(ped_id);
-        // }
-        // std::cout << rel_risk_pose.x << ", " << rel_risk_pose.y << ", " << m_perception_range[1] << std::endl;
         if (fabs(rel_risk_pose.x) < m_perception_range[0]/2 && 0 < rel_risk_pose.y && rel_risk_pose.y < m_perception_range[1]) {
             Person::setColor(ped_id, libsumo::TraCIColor(200, 200, 0));
-            targets.emplace_back(m_risks[ped_id]);
+            perception_target_ids.emplace_back(ped_id);
         }
         else {
             Person::setColor(ped_id, libsumo::TraCIColor(0, 0, 200));
         }
     }
-    return targets;
+    return perception_target_ids;
 }
 
 void SumoInterface::setColor(const std::string id, const std::vector<int> color, const std::string attrib) const {
@@ -85,7 +80,7 @@ void SumoInterface::setColor(const std::string id, const std::vector<int> color,
     }
 }
 
-void SumoInterface::controlEgoVehicle(const std::vector<Risk>& targets){
+void SumoInterface::controlEgoVehicle(const std::vector<int>& target_poses, const std::vector<bool> target_risks) const {
 
     double speed;
     try {
@@ -97,64 +92,11 @@ void SumoInterface::controlEgoVehicle(const std::vector<Risk>& targets){
         Simulation::close();
     }
 
-    std::vector<bool> recog_list;
-    std::vector<int> target_poses;
-    for (const auto& target : targets) {
-        recog_list.emplace_back(target.risk_pred);
-        target_poses.emplace_back(target.distance);
-    }
-    double a = m_vehicle_model->getAccel(speed, 0, recog_list, target_poses);
+    double a = m_vehicle_model->getAccel(speed, 0, target_risks, target_poses);
     a = m_vehicle_model->clipSpeed(a, speed);
     Vehicle::setAcceleration(m_ego_name, a, m_delta_t);
 
-//    if (speed < m_yield_speed) return;
-//
-//    std::vector<double> acc_list;
-//	for (const auto &target : targets) {
-//        bool is_decel_target = false; 
-//        std::cout << "control vehicle, risk_pred " << target.risk_pred << std::endl;
-//
-//        if (target.distance < 0) {
-//            is_decel_target = false;
-//        }
-//        else {
-//            is_decel_target = (target.risk_pred == true);
-//        }
-//
-//        if (!is_decel_target){
-//            continue;
-//        }
-//
-//        double a = (pow(m_yield_speed, 2.0) - pow(speed, 2.0))/(2.0*(target.distance-m_safety_margin));
-//        // std::cout << "ped: " << target.id << " dist: "<<  target.distance << " acc: " << a << std::endl;
-//        acc_list.emplace_back(a);
-//    }
-//
-//    if (acc_list.empty()) return;
-//
-//    auto a_itr = min_element(acc_list.begin(), acc_list.end());
-//    double min_acc = *a_itr;
-//    // int decel_target = target.distanceance(acc_list.begin(), a_itr);
-//    // std::cout << "speed: " << speed << " acc: " << min_acc << std::endl;
-//    // speed += min_acc * m_delta_t;
-//    // if (speed <= m_yield_speed) {
-//    //     acc = 0.0;
-//    //  }
-//    // else if (speed >= m_max_speed) {
-//    //     acc = 0.0;
-//    // }
-    
-//    if (a >= 0.0) {
-//        a = std::min(a, m_max_accel);
-//        Vehicle::setAcceleration(m_ego_name, a, m_delta_t);
-//    }
-//    else {
-//        a = std::max(a, -m_max_decel);
-//        Vehicle::setAcceleration(m_ego_name, a, m_delta_t);
-//    }
-
 }
-
 
 void SumoInterface::spawnEgoVehicle() {
     std::cout << "spawn ego vehicle" << std::endl;
@@ -204,12 +146,28 @@ void SumoInterface::spawnPedestrians() {
             std::string ped_id = lane_id + "-" + std::to_string(i);
             Person::add(ped_id, edge, position);
             Person::setColor(ped_id, libsumo::TraCIColor(0, 0, 200));
-            Person::appendWalkingStage(ped_id, {edge}, 0);
-            Person::appendWaitingStage(ped_id, 1000);
+            // Person::appendWalkingStage(ped_id, {edge}, 0);
+            // Person::appendWaitingStage(ped_id, 1000);
+            Person::setSpeed(ped_id, 0.8);
             double risk_prob = prob(mt);
             bool risk = (rand(mt) < risk_prob) ? true : false;
             m_risks[ped_id] = Risk(ped_id, risk, risk_prob); 
         }
+    }
+    std::cout << "spawned pedestrian" << m_risks.size() << std::endl;
+}
+
+void SumoInterface::spawnPedestrians(std::vector<Risk> obj_list) {
+    std::cout << "spawn pedestrians from log file" << m_density << std::endl;
+
+    // add peds
+    for (auto risk : obj_list) {
+        Person::add(risk.id, risk.pose.lane, risk.pose.lane_position);
+        Person::setColor(risk.id, libsumo::TraCIColor(0, 0, 200));
+        // Person::appendWalkingStage(risk.id, {risk.pose.lane}, 0);
+        // Person::appendWaitingStage(risk.id, 1000);
+        Person::setSpeed(ped_id, 0.8);
+        m_risks[risk.id] = risk; 
     }
     std::cout << "spawned pedestrian" << m_risks.size() << std::endl;
 }

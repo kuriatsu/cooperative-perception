@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(ras)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g3 -O0")
-set(CXXFLAGS "${CXXFLAGS} -g3")
+## set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g3 -O0")
+## set(CXXFLAGS "${CXXFLAGS} -g3")
 
 find_library(libdespot NAMES despot PATHS ../../../build/ NO_DEFAULT_PATH)
 

@@ -13,11 +13,10 @@ using namespace despot;
 class RasWorld: public World {
 private:
     TAState* pomdp_state; // save previous state
-    std::vector<std::string> id_idx_list;
-    std::vector<Risk> perception_targets;
+    std::vector<std::string> perception_target_ids;
 
     // log data
-    nlohmann::json m_log;
+    nlohmann::json _log;
     std::string policy_type = "DESPOT";
     double obstacle_density;
 
@@ -36,16 +35,18 @@ public:
     RasWorld(VehicleModel *vehicle_model_, OperatorModel *operator_model_, double delta_t, double obstacle_density_, std::vector<double> perception_range, std::string policy_type_); 
     bool Connect();
     State* Initialize();
+    State* Initialize(const std::string log_file);
     State* GetCurrentState();
     std::vector<double> GetPerceptionLikelihood();
     bool ExecuteAction(ACT_TYPE action, OBS_TYPE& obs);
     void UpdateState(ACT_TYPE action, OBS_TYPE obs, const std::vector<double>& risk_probs);
     void Log(ACT_TYPE action, OBS_TYPE obs);
+    void SaveLog(std::string filename);
     void Step(int delta_t = 0);
+    void Close();
     bool isTerminate();
 
     ACT_TYPE MyopicAction();
     ACT_TYPE EgoisticAction(); 
-    ~RasWorld();
 }; 
 
