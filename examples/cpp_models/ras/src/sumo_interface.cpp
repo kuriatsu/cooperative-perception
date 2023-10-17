@@ -85,7 +85,6 @@ void SumoInterface::controlEgoVehicle(const std::vector<int>& target_poses, cons
     double speed;
     try {
         speed = Vehicle::getSpeed(m_ego_name);
-        std::cout << "prev accel " << Vehicle::getAcceleration(m_ego_name);
     }
     catch (libsumo::TraCIException& error) {
         // std::cout << "no ego_vehicle" << std::endl;
@@ -123,6 +122,11 @@ void SumoInterface::spawnEgoVehicle() {
 
 void SumoInterface::spawnPedestrians() {
     std::cout << "spawn pedestrians" << m_density << std::endl;
+    if (m_density == 0.0) {
+        std::cout << "pedestrian dencity is 0" << std::endl;
+        return;
+    }
+
     double interval = 1/m_density;
 
     // Generate random value
@@ -146,8 +150,8 @@ void SumoInterface::spawnPedestrians() {
             std::string ped_id = lane_id + "-" + std::to_string(i);
             Person::add(ped_id, edge, position);
             Person::setColor(ped_id, libsumo::TraCIColor(0, 0, 200));
-            // Person::appendWalkingStage(ped_id, {edge}, 0);
-            // Person::appendWaitingStage(ped_id, 1000);
+            Person::appendWalkingStage(ped_id, {edge}, 0);
+            Person::appendWaitingStage(ped_id, 1000);
             Person::setSpeed(ped_id, 0.8);
             double risk_prob = prob(mt);
             bool risk = (rand(mt) < risk_prob) ? true : false;
@@ -164,9 +168,9 @@ void SumoInterface::spawnPedestrians(std::vector<Risk> obj_list) {
     for (auto risk : obj_list) {
         Person::add(risk.id, risk.pose.lane, risk.pose.lane_position);
         Person::setColor(risk.id, libsumo::TraCIColor(0, 0, 200));
-        // Person::appendWalkingStage(risk.id, {risk.pose.lane}, 0);
-        // Person::appendWaitingStage(risk.id, 1000);
-        Person::setSpeed(ped_id, 0.8);
+        Person::appendWalkingStage(risk.id, {risk.pose.lane}, 0);
+        Person::appendWaitingStage(risk.id, 1000);
+        Person::setSpeed(risk.id, 0.8);
         m_risks[risk.id] = risk; 
     }
     std::cout << "spawned pedestrian" << m_risks.size() << std::endl;
@@ -215,8 +219,8 @@ void SumoInterface::close() {
 
 void SumoInterface::start() {
     // Simulation::start({"sumo", "-c", "map/straight.sumocfg"});
-    Simulation::start({"sumo", "-c", "../map/straight.sumocfg"});
-    // Simulation::start({"sumo-gui", "-c", "../map/straight.sumocfg"});
+    // Simulation::start({"sumo", "-c", "../map/straight.sumocfg"});
+    Simulation::start({"sumo-gui", "-c", "../map/straight.sumocfg"});
     // try {
     //     Simulation::load({"-c", "../map/straight.sumocfg"});
     // }

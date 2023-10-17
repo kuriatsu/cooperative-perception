@@ -7,23 +7,23 @@ import math
 import pandas as pd
 import re
 
-def CarcReward(state_prev, state_curr, action):
+def CalcReward(state_prev, state_curr):
     reward = 0
     for risk in state_curr["risks"]:
         if state_prev["lane_position"] < risk["lane_position"] <= state_curr["lane_position"]:
 
-            if risk["risk_hidden"] == "RISK":
-                raward += (state_curr["speed"] - 2.8) / (11.2 - 2.8) * -100
+            if risk["hidden"] == "RISK":
+                reward += (state_curr["speed"] - 2.8) / (11.2 - 2.8) * -100
             else:
-                raward += (state_curr["speed"] - 2.8) / (11.2 - 2.8) * 100
+                reward += (state_curr["speed"] - 2.8) / (11.2 - 2.8) * 100
 
-    raward += (state_curr["speed"] - 2.8) / (11.2 - 2.8) * 1
+    reward += (state_curr["speed"] - 2.8) / (11.2 - 2.8) * 1
 
-    if action == "REQUEST" and (state_curr["request_time"] == 1.0 or state_prev["target"] != state_curr["target"]):
+    if state_prev["action"] == "REQUEST" and (state_prev["action"] != "REQUEST" or state_prev["action_target"] != state_curr["action_target"]):
         reward += -10
 
-    if state_prev["req_time"] > 0 and (action != "REQUEST" or state_prev["target"] != state_prev["target"]):
-        if risk["risk_hidden"] != risk["risk_pred"]:
+    if state_prev["action"] == "REQUEST" and (state_prev["action"] != "REQUEST" or state_prev["action_target"] != state_curr["action_target"]):
+        if risk["hidden"] != risk["pred"]:
             reward += -1000
 
     return reward
@@ -273,7 +273,7 @@ if len(sys.argv) == 2:
     ax[1].set_xlim(0, (len(log) + 1.0) * data.get("delta_t"))
     ax[1].set_ylim(0, 1.0)
     ax[1].set_ylabel("risk probs")
-    ax[0].annotate(sum(reward), xy=[len(log), 10], size=10, color="black")
+    ax[0].annotate(f"reward: \n{sum(reward):.1f}", xy=[len(log)-8, 1], size=10, color="black")
     ax2.set_ylim(0, 1.0)
     ax2.set_ylabel("intervention request")
     ax2.set_xlabel("travel distance [m]")

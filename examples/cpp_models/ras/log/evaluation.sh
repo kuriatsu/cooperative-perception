@@ -1,10 +1,5 @@
 #!/usr/bin/sh
 
-policies=(
-    "DESPOT"
-    "MYOPIC"
-    "EGOISTIC"
-)
 
 densities=(
     0.001
@@ -32,9 +27,19 @@ densities=(
 )
 
 for density in "${densities[@]}"; do
-    for policy in "${policies[@]}"; do
-        for i in {1..20}; do
-            ../build/ras ${policy} ${density}
-        done
+    for i in {1..10}; do
+        ../build/ras -p DESPOT -d ${density}
     done
 done
+
+policies=(
+    "MYOPIC"
+    "EGOISTIC"
+    "REFERENCE"
+)
+
+while read log ; do
+    for policy in "${policies[@]}"; do
+        ../build/ras -p ${policy} -l ${log}
+    done
+done < <(find . -name "*.json" )

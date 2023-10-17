@@ -62,6 +62,7 @@ State* RasWorld::GetCurrentState() {
 
     std::cout << "################GetCurrentState##################" << std::endl;
     perception_target_ids = sim->perception();
+    std::cout << perception_target_ids << std::endl;
 
     // check wether last request target still exists in the perception targets
     bool is_last_req_target = false;
@@ -125,7 +126,7 @@ bool RasWorld::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
         pomdp_state->req_time = 0;
         req_target_history.emplace_back("none");
 
-        obs = operator_model->execIntervention(pomdp_state->req_time, pomdp_state->ego_recog[pomdp_state->req_target]);
+        obs = operator_model->execIntervention(pomdp_state->req_time, pomdp_state->risk_bin[pomdp_state->req_target]);
         ta_values->printObs(obs);
         obs_history.emplace_back(obs);
     }
@@ -147,7 +148,7 @@ bool RasWorld::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
         req_target_history.emplace_back(req_target_id);
 
         /** get obs and update it to ego_recog **/
-        obs = operator_model->execIntervention(pomdp_state->req_time, pomdp_state->ego_recog[pomdp_state->req_target]);
+        obs = operator_model->execIntervention(pomdp_state->req_time, pomdp_state->risk_bin[pomdp_state->req_target]);
         ta_values->printObs(obs);
         obs_history.emplace_back(obs);
 
