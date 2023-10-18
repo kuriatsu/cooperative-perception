@@ -238,7 +238,6 @@ public:
             while (std::getline(filename_ss, buf_s, '_')) {
                 filename_splitted.emplace_back(buf_s);
             }
-            std::cout << filename_splitted << std::endl;
             ss << filename_splitted.back();
         }
 

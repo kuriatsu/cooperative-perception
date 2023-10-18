@@ -286,9 +286,9 @@ if len(sys.argv) == 2:
 #################################
 elif len(sys.argv) > 2:
 
-    df = pd.DataFrame(columns = ["policy", "risk_num", "travel_time", "total_fuel_consumption", "mean_fuel_consumption", "dev_accel", "mean_speed", "risk_omission", "ambiguity_omission", "request_time", "reward"])
-    request_target_prob_count = {"DESPOT":[0] * 10, "MYOPIC":[0]*10, "EGOISTIC":[0]*10}
-    risk_prob_count = {"DESPOT":[0] * 10, "MYOPIC":[0]*10, "EGOISTIC":[0]*10}
+    df = pd.DataFrame(columns = ["policy", "risk_num", "travel_time", "total_fuel_consumption", "mean_fuel_consumption", "dev_accel", "mean_speed", "risk_omission", "ambiguity_omission", "request_time", "total_reward"])
+    request_target_prob_count = {"DESPOT":[0] * 10, "MYOPIC":[0]*10, "EGOISTIC":[0]*10, "REFERENCE":[0]*10}
+    risk_prob_count = {"DESPOT":[0] * 10, "MYOPIC":[0]*10, "EGOISTIC":[0]*10, "REFERENCE":[0]*10}
 
     fig, ax = plt.subplots(1, 1, tight_layout=True)
 
@@ -361,7 +361,7 @@ elif len(sys.argv) > 2:
                         risk_omission.append(log[frame_num-1].get("speed"))
 
             ## calculate reward
-            reward.append(CarcReward(log[frame_num-1], log[frame_num]))
+            reward.append(CalcReward(log[frame_num-1], log[frame_num]))
 
             last_ego_position = frame.get("lane_position") 
 
@@ -393,8 +393,10 @@ elif len(sys.argv) > 2:
     plt.show()
     sns.lineplot(data=df, x="risk_num", y="dev_accel", hue="policy", markers=True)
     plt.show()
+    plt.ylim([0.0, 11.2])
     sns.lineplot(data=df, x="risk_num", y="mean_speed", hue="policy", markers=True)
     plt.show()
+    plt.ylim([0.0, 11.2])
     sns.lineplot(data=df, x="risk_num", y="risk_omission", hue="policy", markers=True)
     plt.show()
     sns.lineplot(data=df, x="risk_num", y="ambiguity_omission", hue="policy", markers=True)
@@ -402,6 +404,7 @@ elif len(sys.argv) > 2:
     sns.lineplot(data=df, x="risk_num", y="request_time", hue="policy", markers=True)
     plt.show()
     sns.lineplot(data=df, x="risk_num", y="total_reward", hue="policy", markers=True)
+    plt.show()
 
 
     for policy in risk_prob_count.keys():
@@ -409,6 +412,8 @@ elif len(sys.argv) > 2:
             print(policy, i, len(risk_prob_count))
             if risk_prob_count.get(policy)[i] > 0:
                 request_target_prob_count[policy][i] = request_target_prob_count[policy][i] / risk_prob_count[policy][i]
+
+    plt.show()
 
     fig, ax = plt.subplots(1,3, tight_layout=True)
     sns.barplot(x=np.arange(0.0, 1.0, 0.1), y=request_target_prob_count.get("DESPOT"), ax=ax[0])
