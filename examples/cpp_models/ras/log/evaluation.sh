@@ -44,6 +44,7 @@ policies=(
 
 while read log ; do
     for policy in "${policies[@]}"; do
-        ../build/ras -p ${policy} -l ${log} -d ${${log##*[A-Z]}%_*}
+        buf=${log##*[A-Z]}
+        ../build/ras -p ${policy} -l ${log} -d ${buf%_*}
     done
 done < <(find . -name "*.json" )
