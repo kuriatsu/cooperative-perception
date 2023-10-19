@@ -169,7 +169,7 @@ if len(sys.argv) == 2:
                         crossing_prob += 0.02 
 
                     ax2.bar(crossing_time, crossing_prob, color=color_map(i/len(risk_ids)))
-                    ax2.annotate(id, xy=[crossing_time, crossing_prob], size=10, color="black")
+                    ax2.annotate(id, xy=[crossing_time, crossing_prob], size=10, color= "red" if risk["hidden"] else "black")
                     reserved_time_list.append(crossing_time)
                     continue
 
