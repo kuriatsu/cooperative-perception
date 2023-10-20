@@ -30,11 +30,11 @@ densities=(
 #    0.1
 )
 
-# for density in "${densities[@]}"; do
-#     for i in {1..10}; do
-#         ../build/ras -p DESPOT -d ${density}
-#     done
-# done
+for density in "${densities[@]}"; do
+    for i in {1..20}; do
+        ../build/ras -p DESPOT -d ${density}
+    done
+done
 
 policies=(
     "MYOPIC"

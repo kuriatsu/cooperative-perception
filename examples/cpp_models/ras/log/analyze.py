@@ -286,7 +286,7 @@ if len(sys.argv) == 2:
 #################################
 elif len(sys.argv) > 2:
 
-    df = pd.DataFrame(columns = ["policy", "risk_num", "travel_time", "total_fuel_consumption", "mean_fuel_consumption", "dev_accel", "mean_speed", "risk_omission", "ambiguity_omission", "request_time", "total_reward"])
+    df = pd.DataFrame(columns = ["policy", "date", "risk_num", "travel_time", "total_fuel_consumption", "mean_fuel_consumption", "dev_accel", "mean_speed", "risk_omission", "ambiguity_omission", "request_time", "total_reward"])
     request_target_prob_count = {"DESPOT":[0] * 10, "MYOPIC":[0]*10, "EGOISTIC":[0]*10, "REFERENCE":[0]*10}
     risk_prob_count = {"DESPOT":[0] * 10, "MYOPIC":[0]*10, "EGOISTIC":[0]*10, "REFERENCE":[0]*10}
 
@@ -300,6 +300,7 @@ elif len(sys.argv) > 2:
         log = data.get("log")
 
         policy = re.findall("([A-Z]*)\d", file)[0]
+        date = re.findall("_([\d]*)", file)
         risk_num = float(re.findall("([\d.]*)_", file)[0]) * 2 * 500
         travel_time = 0.0
         fuel_consumption = [] 
@@ -380,7 +381,7 @@ elif len(sys.argv) > 2:
         mean_risk_omission = sum(risk_omission)/len(risk_omission) if risk_omission else 0.0
         mean_ambiguity_omission = sum(ambiguity_omission)/len(ambiguity_omission) if ambiguity_omission else 0.0
 
-        buf_df = pd.DataFrame([[policy, risk_num, travel_time, total_fuel_consumption, mean_fuel_consumption, dev_accel, mean_speed, mean_risk_omission, mean_ambiguity_omission, request_time, total_reward]], columns=df.columns)
+        buf_df = pd.DataFrame([[policy, date, risk_num, travel_time, total_fuel_consumption, mean_fuel_consumption, dev_accel, mean_speed, mean_risk_omission, mean_ambiguity_omission, request_time, total_reward]], columns=df.columns)
         df = pd.concat([df, buf_df], ignore_index=True)
 
 

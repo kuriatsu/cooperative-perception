@@ -35,7 +35,7 @@ private:
     double _acc_time_slope = 0.25;
 
     // vehicle model
-    double _max_speed = 11.2;
+    double _max_speed = 11.2; // 13.8
     double _yield_speed = 2.8;
     double _max_accel = 0.15 * 9.8;
     double _max_decel = 0.3 * 9.8;
