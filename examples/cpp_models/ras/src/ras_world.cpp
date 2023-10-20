@@ -52,7 +52,7 @@ State* RasWorld::Initialize(const std::string log_file) {
     sim->spawnEgoVehicle();
     pomdp_state = new TAState();
     pomdp_state->req_time = 0;
-    pomdp_state->req_target = 0;ras
+    pomdp_state->req_target = 0;
     ta_values = new TAValues(); 
     return NULL;
 }

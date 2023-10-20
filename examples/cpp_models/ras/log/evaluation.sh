@@ -31,7 +31,7 @@ densities=(
 )
 
 for density in "${densities[@]}"; do
-    for i in {1..20}; do
+    for i in {1..50}; do
         ../build/ras -p DESPOT -d ${density}
     done
 done

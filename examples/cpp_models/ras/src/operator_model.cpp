@@ -12,7 +12,7 @@ double OperatorModel::int_acc(const int time) const {
 	else {
 		double acc = acc_time_min + acc_time_slope * (time - min_time);
         // std::cout << "acc :" << acc << ", time : " << time << std::endl;
-		acc = (acc < 1.0) ? acc : 1.0;
+		acc = (acc < max_acc) ? acc : max_acc;
 		return acc;
 	}
 }

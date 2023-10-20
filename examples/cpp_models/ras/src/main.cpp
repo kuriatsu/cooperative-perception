@@ -33,6 +33,7 @@ private:
     double _min_time = 3.0;
     double _acc_time_min = 0.5;
     double _acc_time_slope = 0.25;
+    double _max_acc = 1.0;
 
     // vehicle model
     double _max_speed = 11.2; // 13.8
@@ -51,7 +52,7 @@ public:
     }
 
     // models
-    OperatorModel *_operator_model = new OperatorModel(_min_time, _acc_time_min, _acc_time_slope);
+    OperatorModel *_operator_model = new OperatorModel(_min_time, _acc_time_min, _acc_time_slope, _max_acc);
     VehicleModel *_vehicle_model = new VehicleModel(_max_speed, _yield_speed, _max_accel, _max_decel, _min_decel, _safety_margin, _delta_t);
 
 	DSPOMDP* InitializeModel(option::Option* options) {
