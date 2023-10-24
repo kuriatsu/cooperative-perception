@@ -28,6 +28,10 @@ private:
     int _planning_horizon = 150;
     double _risk_thresh = 0.5;
     double _obstacle_density = 0.01; // density 1ppl/m, 0.1=1ppl per 10m, 0.01=1ppl per 100m
+
+    // perception param
+    double _perception_acc_ave = 0.75;
+    double _perception_acc_dev = 0.1;
  
     // operator_model
     double _min_time = 3.0;
@@ -61,7 +65,7 @@ public:
 	}
 
 	World* InitializeWorld(std::string& _world_type, DSPOMDP* model, option::Option* options) {
-        RasWorld* ras_world = new RasWorld(_vehicle_model, _operator_model, _delta_t, _obstacle_density, _perception_range, _policy_type);
+        RasWorld* ras_world = new RasWorld(_vehicle_model, _operator_model, _delta_t, _obstacle_density, _perception_range, _policy_type, _perception_acc_ave, _perception_acc_dev);
         ras_world->Connect();
         if (_log_file.empty()) 
             ras_world->Initialize();

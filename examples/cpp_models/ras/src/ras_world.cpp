@@ -6,13 +6,13 @@ RasWorld::RasWorld() {
 
 }
 
-RasWorld::RasWorld(VehicleModel *vehicle_model_, OperatorModel *operator_model_, double delta_t, double obstacle_density_, std::vector<double> perception_range, std::string policy_type_) {
+RasWorld::RasWorld(VehicleModel *vehicle_model_, OperatorModel *operator_model_, double delta_t, double obstacle_density, std::vector<double> perception_range, std::string policy_type, double perception_acc_ave, double perception_acc_dev) {
 
     operator_model = operator_model_;
     vehicle_model = vehicle_model_;
-    policy_type = policy_type_;
-    obstacle_density = obstacle_density_;
-    sim = new SumoInterface(vehicle_model, delta_t, obstacle_density_, perception_range);
+    _policy_type = policy_type;
+    _obstacle_density = obstacle_density;
+    sim = new SumoInterface(vehicle_model, delta_t, obstacle_density, perception_range, perception_acc_ave, perception_acc_dev);
 }
 
 bool RasWorld::Connect(){
@@ -247,9 +247,9 @@ void RasWorld::Close() {
 
 void RasWorld::SaveLog(std::string filename) {
 
-    _log["obstacle_density"] = obstacle_density;
-    _log["policy"] = policy_type;
-    _log["delta_t"] =vehicle_model->m_delta_t ;
+    _log["obstacle_density"] = _obstacle_density;
+    _log["policy"] = _policy_type;
+    _log["delta_t"] = vehicle_model->_delta_t ;
 
     std::ofstream o(filename);
     o << std::setw(4) << _log << std::endl;
@@ -259,7 +259,7 @@ void RasWorld::SaveLog(std::string filename) {
 ACT_TYPE RasWorld::MyopicAction() {
 
     // if intervention requested to the target and can request more
-    if (0 < pomdp_state->req_time && pomdp_state->req_time < 6 && pomdp_state->risk_pose[pomdp_state->req_target] > vehicle_model->getDecelDistance(pomdp_state->ego_speed, vehicle_model->m_max_decel, 0.0)) {
+    if (0 < pomdp_state->req_time && pomdp_state->req_time < 6 && pomdp_state->risk_pose[pomdp_state->req_target] > vehicle_model->getDecelDistance(pomdp_state->ego_speed, vehicle_model->_max_decel, 0.0)) {
         return ta_values->getAction(TAValues::REQUEST, pomdp_state->req_target);
     }
 
@@ -267,7 +267,7 @@ ACT_TYPE RasWorld::MyopicAction() {
     int closest_target = -1, min_dist = 100000;
     for (int i=0; i<pomdp_state->risk_pose.size(); i++) {
         int is_in_history = std::count(req_target_history.begin(), req_target_history.end(), perception_target_ids[i]);
-        double request_distance = vehicle_model->getDecelDistance(pomdp_state->ego_pose, vehicle_model->m_min_decel, vehicle_model->m_safety_margin) + vehicle_model->m_yield_speed * (6.0 - vehicle_model->getDecelTime(pomdp_state->ego_speed, vehicle_model->m_min_decel)); 
+        double request_distance = vehicle_model->getDecelDistance(pomdp_state->ego_pose, vehicle_model->_min_decel, vehicle_model->_safety_margin) + vehicle_model->_yield_speed * (6.0 - vehicle_model->getDecelTime(pomdp_state->ego_speed, vehicle_model->_min_decel)); 
        if (is_in_history == 0 && pomdp_state->risk_pose[i] > request_distance) {
             if (pomdp_state->risk_pose[i] < min_dist) {
                min_dist = pomdp_state->risk_pose[i];

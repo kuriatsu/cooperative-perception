@@ -42,7 +42,7 @@ private:
 	int r_comf           = -1;
 	int r_request        = -1;
 
-    int m_max_perception_num = 3;
+    int _max_perception_num = 3;
 
 public:
     TaskAllocation(int planning_horizon, double risk_thresh, VehicleModel* vehicle_model, OperatorModel* operator_model, double delta_t); 
@@ -50,20 +50,20 @@ public:
     TaskAllocation();
 
 	// state transition parameter
-	int    m_planning_horizon;
-	double m_yield_speed;
-	double m_max_speed;
-	double m_risk_thresh;
-    double m_delta_t;
+	int    _planning_horizon;
+	double _yield_speed;
+	double _max_speed;
+	double _risk_thresh;
+    double _delta_t;
 
 	// recognition likelihood of the ADSbelief(belief);::vector<double> risk_recog;
-    std::vector<double> m_recog_likelihood;
-	// std::vector<int> m_risk_positions;
+    std::vector<double> _recog_likelihood;
+	// std::vector<int> _risk_positions;
 
-    VehicleModel* m_vehicle_model;
-    OperatorModel* m_operator_model;
-    TAState* m_start_state;
-    TAValues* m_ta_values;
+    VehicleModel* _vehicle_model;
+    OperatorModel* _operator_model;
+    TAState* _start_state;
+    TAValues* _ta_values;
 
 public:
 	// Essential

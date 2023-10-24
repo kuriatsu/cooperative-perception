@@ -59,9 +59,9 @@ public:
     TADefaultPolicy(const TaskAllocation* model, ParticleLowerBound* bound) : 
         DefaultPolicy(model, bound),
         task_allocation(model), 
-        vehicle_model(model->m_vehicle_model),
-        operator_model(model->m_operator_model),
-        ta_values(model->m_ta_values) {
+        vehicle_model(model->_vehicle_model),
+        operator_model(model->_operator_model),
+        ta_values(model->_ta_values) {
         }
 
     ACT_TYPE Action(const vector<State*>& particles, RandomStreams& streams, History& history) const {
@@ -74,12 +74,12 @@ public:
             // if (ta_values->getActionAttrib(action) == TAValues::REQUEST) { 
             if (ta_state.req_time > 0) { 
 
-                if (task_allocation->m_operator_model->int_acc(ta_state.req_time) <= 0.5) {
+                if (task_allocation->_operator_model->int_acc(ta_state.req_time) <= 0.5) {
                     return ta_values->getAction(TAValues::REQUEST, ta_state.req_target);
                 }
             }
         }
-        return task_allocation->m_ta_values->getAction(TAValues::NO_ACTION, 0);
+        return task_allocation->_ta_values->getAction(TAValues::NO_ACTION, 0);
     }
 };
 
@@ -127,58 +127,58 @@ ScenarioLowerBound* TaskAllocation::CreateScenarioLowerBound(std::string name, s
 
 
 TaskAllocation::TaskAllocation(int planning_horizon, double risk_thresh, VehicleModel* vehicle_model, OperatorModel* operator_model, double delta_t){ 
-    m_planning_horizon = planning_horizon;
-    m_risk_thresh = risk_thresh; 
-    m_vehicle_model = vehicle_model;
-    m_operator_model = operator_model;
-    m_max_speed = m_vehicle_model->m_max_speed;
-    m_yield_speed = m_vehicle_model->m_yield_speed;
-    m_delta_t = delta_t;
+    _planning_horizon = planning_horizon;
+    _risk_thresh = risk_thresh; 
+    _vehicle_model = vehicle_model;
+    _operator_model = operator_model;
+    _max_speed = _vehicle_model->_max_speed;
+    _yield_speed = _vehicle_model->_yield_speed;
+    _delta_t = delta_t;
 }
 
 TaskAllocation::TaskAllocation() {
-    m_planning_horizon = 150;
-    m_risk_thresh = 0.5; 
-    // m_delta_t = Globals::config.time_per_move;
-    m_delta_t = 2.0;
+    _planning_horizon = 150;
+    _risk_thresh = 0.5; 
+    // _delta_t = Globals::config.time_per_move;
+    _delta_t = 2.0;
 
-    m_vehicle_model = new VehicleModel();
-    m_operator_model = new OperatorModel();
-    m_start_state = new TAState();
-    m_ta_values = new TAValues(m_start_state->risk_pose.size());
+    _vehicle_model = new VehicleModel();
+    _operator_model = new OperatorModel();
+    _start_state = new TAState();
+    _ta_values = new TAValues(_start_state->risk_pose.size());
 
-    m_vehicle_model->m_delta_t = m_delta_t;
-    m_max_speed = m_vehicle_model->m_max_speed;
-    m_yield_speed = m_vehicle_model->m_yield_speed;
+    _vehicle_model->_delta_t = _delta_t;
+    _max_speed = _vehicle_model->_max_speed;
+    _yield_speed = _vehicle_model->_yield_speed;
 
-    m_recog_likelihood = {0.4, 0.4, 0.6};
+    _recog_likelihood = {0.4, 0.4, 0.6};
 }
 
 TaskAllocation::TaskAllocation(const double delta_t_, const std::vector<int> risk_pose_, const std::vector<double> risk_likelihood_) {
-    m_planning_horizon = 150;
-    m_risk_thresh = 0.5; 
-    m_delta_t = delta_t_;
+    _planning_horizon = 150;
+    _risk_thresh = 0.5; 
+    _delta_t = delta_t_;
 
-    m_vehicle_model = new VehicleModel();
-    m_operator_model = new OperatorModel();
+    _vehicle_model = new VehicleModel();
+    _operator_model = new OperatorModel();
 
-    m_recog_likelihood = risk_likelihood_;
+    _recog_likelihood = risk_likelihood_;
     std::vector<bool> risk_bin;
-    for (const auto likelihood : m_recog_likelihood) {
-        risk_bin.emplace_back((likelihood >= m_risk_thresh) ? true : false);
+    for (const auto likelihood : _recog_likelihood) {
+        risk_bin.emplace_back((likelihood >= _risk_thresh) ? true : false);
     }
 
-    m_start_state = new TAState(0.0, m_max_speed, risk_bin, 0, 0, risk_bin, risk_pose_);
-    m_ta_values = new TAValues(m_start_state->risk_pose.size());
+    _start_state = new TAState(0.0, _max_speed, risk_bin, 0, 0, risk_bin, risk_pose_);
+    _ta_values = new TAValues(_start_state->risk_pose.size());
 
-    m_vehicle_model->m_delta_t = m_delta_t;
-    m_max_speed = m_vehicle_model->m_max_speed;
-    m_yield_speed = m_vehicle_model->m_yield_speed;
+    _vehicle_model->_delta_t = _delta_t;
+    _max_speed = _vehicle_model->_max_speed;
+    _yield_speed = _vehicle_model->_yield_speed;
 
 }
 
 int TaskAllocation::NumActions() const {
-	return 1 + m_start_state->risk_pose.size();
+	return 1 + _start_state->risk_pose.size();
 }
 
 bool TaskAllocation::Step(State& state, double rand_num, ACT_TYPE action, double& reward, OBS_TYPE& obs)  const {
@@ -188,16 +188,16 @@ bool TaskAllocation::Step(State& state, double rand_num, ACT_TYPE action, double
 
 	// ego state trantion
 	// EgoVehicleTransition(state_curr.ego_pose, state_curr.ego_speed, state_prev.ego_recog, risk_pose, action);
-    m_vehicle_model->getTransition(state_curr.ego_speed, state_curr.ego_pose, state_prev.ego_recog, state_prev.risk_pose);
+    _vehicle_model->getTransition(state_curr.ego_speed, state_curr.ego_pose, state_prev.ego_recog, state_prev.risk_pose);
  
-    int target_idx = m_ta_values->getActionTarget(action);
-    TAValues::ACT ta_action = m_ta_values->getActionAttrib(action);
+    int target_idx = _ta_values->getActionTarget(action);
+    TAValues::ACT ta_action = _ta_values->getActionAttrib(action);
     
     // when action == no_action
     if (ta_action == TAValues::NO_ACTION) {
         // std::cout << "action : NO_ACTION" << std::endl;
         state_curr.req_time = 0;
-        obs = m_operator_model->execIntervention(0, false, rand_num);
+        obs = _operator_model->execIntervention(0, false, rand_num);
     }
     
 	// when action = request intervention
@@ -207,21 +207,21 @@ bool TaskAllocation::Step(State& state, double rand_num, ACT_TYPE action, double
 
 		// request to the same target or started to request
 		if (state_prev.req_target == target_idx || state_prev.req_time == 0) {
-            state_curr.req_time += m_delta_t;
+            state_curr.req_time += _delta_t;
 		} 
 		// change request target 
 		else {
-			state_curr.req_time = m_delta_t;
+			state_curr.req_time = _delta_t;
 		}
 
-        obs = m_operator_model->execIntervention(state_curr.req_time, state_curr.risk_bin[state_curr.req_target], rand_num);
+        obs = _operator_model->execIntervention(state_curr.req_time, state_curr.risk_bin[state_curr.req_target], rand_num);
         state_curr.ego_recog[state_curr.req_target] = obs;
 
 	}
 
 	reward = CalcReward(state_prev, state_curr, action);
 
-	if (state_curr.ego_pose >= m_planning_horizon)
+	if (state_curr.ego_pose >= _planning_horizon)
 		return true;
 	else
 		return false;
@@ -230,8 +230,8 @@ bool TaskAllocation::Step(State& state, double rand_num, ACT_TYPE action, double
 
 double TaskAllocation::ObsProb(OBS_TYPE obs, const State& state, ACT_TYPE action) const {
 
-    int target_idx = m_ta_values->getActionTarget(action);
-    TAValues::ACT ta_action = m_ta_values->getActionAttrib(action);
+    int target_idx = _ta_values->getActionTarget(action);
+    TAValues::ACT ta_action = _ta_values->getActionAttrib(action);
     const TAState& ras_state = static_cast<const TAState&>(state);
 
     if (ta_action == TAValues::NO_ACTION) {
@@ -239,7 +239,7 @@ double TaskAllocation::ObsProb(OBS_TYPE obs, const State& state, ACT_TYPE action
     }
 
     else {
-        double acc = m_operator_model->int_acc(ras_state.req_time);
+        double acc = _operator_model->int_acc(ras_state.req_time);
         return (ras_state.risk_bin[ras_state.req_target] == obs) ? acc : 1.0 - acc;
     }
 }
@@ -250,8 +250,8 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 	const TAState& state_curr = static_cast<const TAState&>(_state_curr);
 	int reward = 0;
 
-    int action_target_idx = m_ta_values->getActionTarget(action);
-    TAValues::ACT ta_action = m_ta_values->getActionAttrib(action);
+    int action_target_idx = _ta_values->getActionTarget(action);
+    TAValues::ACT ta_action = _ta_values->getActionAttrib(action);
 
 	for (auto it=state_curr.risk_pose.begin(), end=state_curr.risk_pose.end(); it != end; ++it) {
 		if (state_prev.ego_pose < *it && *it <= state_curr.ego_pose) {
@@ -267,17 +267,17 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 
 
             if (state_curr.risk_bin[passed_index] == TAValues::RISK) {
-                // reward += (state_curr.ego_speed - m_yield_speed)/(m_max_speed - m_yield_speed) * -10;
-                reward += (m_max_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed) * 100;
+                // reward += (state_curr.ego_speed - _yield_speed)/(_max_speed - _yield_speed) * -10;
+                reward += (_max_speed - state_prev.ego_speed)/(_max_speed - _yield_speed) * 100;
             }
             else {
-                // reward += (m_max_speed - state_prev.ego_speed)/(m_max_speed - m_yield_speed) * -100;
-                reward += (state_curr.ego_speed - m_yield_speed)/(m_max_speed - m_yield_speed) * 100;
+                // reward += (_max_speed - state_prev.ego_speed)/(_max_speed - _yield_speed) * -100;
+                reward += (state_curr.ego_speed - _yield_speed)/(_max_speed - _yield_speed) * 100;
             }
 
             // avoid cheating planner by requesting and change recog in last minute
             if (state_curr.ego_recog[passed_index] == TAValues::RISK) {
-                reward += (state_curr.ego_speed - m_yield_speed)/(m_max_speed - m_yield_speed) * -1000;
+                reward += (state_curr.ego_speed - _yield_speed)/(_max_speed - _yield_speed) * -1000;
             }
             
 		}
@@ -286,7 +286,7 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 	
     // driving efficiency
     // reward += -1;
-    reward += (state_curr.ego_speed - m_yield_speed)/(m_max_speed - m_yield_speed) * 1;
+    reward += (state_curr.ego_speed - _yield_speed)/(_max_speed - _yield_speed) * 1;
 
     // if (ta_action == TAValues::RECOG && state_prev.risk_bin[action_target_idx] != state_prev.ego_recog[action_target_idx])
     //     reward += -100;
@@ -299,7 +299,7 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 	// }
     
     // penalty for initial intervention request
-	if (ta_action == TAValues::REQUEST && (state_curr.req_time == m_delta_t || state_prev.req_target != state_curr.req_target)) {
+	if (ta_action == TAValues::REQUEST && (state_curr.req_time == _delta_t || state_prev.req_target != state_curr.req_target)) {
         reward += -10;
     }
 
@@ -322,7 +322,7 @@ ValuedAction TaskAllocation::GetBestAction() const {
 
 
 State* TaskAllocation::CreateStartState(string type) const {
-    return m_start_state;
+    return _start_state;
 }
 
 Belief* TaskAllocation::InitialBelief(const State* start, string type) const {
@@ -341,14 +341,14 @@ Belief* TaskAllocation::InitialBelief(const State* start, string type) const {
 		// set ego_recog and risk_bin based on threshold
 		for (auto col=row.begin(), end=row.end(); col!=end; col++) {
 			int idx = distance(row.begin(), col);
-			_ego_recog.emplace_back((ta_start_state->ego_recog[idx] < m_risk_thresh) ? false : true);
+			_ego_recog.emplace_back((ta_start_state->ego_recog[idx] < _risk_thresh) ? false : true);
 			if (*col) {
-				prob *= m_recog_likelihood[idx]; 
+				prob *= _recog_likelihood[idx]; 
 				// prob *= 0.5 ; 
 				_risk_bin.emplace_back(true);
 			}
 			else {
-				prob *= 1.0 - m_recog_likelihood[idx]; 
+				prob *= 1.0 - _recog_likelihood[idx]; 
 				// prob *= 0.5; 
 				_risk_bin.emplace_back(false);
 			}
@@ -458,23 +458,23 @@ int TaskAllocation::NumActiveParticles() const {
 
 void TaskAllocation::syncCurrentState(State* state, std::vector<double>& likelihood_list) {
     std::cout << "sync current state" << std::endl;
-    m_start_state = static_cast<TAState*>(state);
+    _start_state = static_cast<TAState*>(state);
     
 //    // target number up to 3
-//    if (m_start_state->risk_pose.size() > m_max_perception_num) {
+//    if (_start_state->risk_pose.size() > _max_perception_num) {
 //        std::vector<double> pose_list;
-//        for (const auto pose : m_start_state->risk_pose) {
+//        for (const auto pose : _start_state->risk_pose) {
 //            pose_list.emplace_back(pose);
 //        }
 //        std::sort(pose_list.begin(), pose_list.end());
 //        
 //        // remove targets farther than the 4th target
-//        m_planning_horizon = pose_list[m_max_perception_num];
-//        for (auto i=0; i<m_start_state->risk_pose.size();) {
-//            if (m_start_state->risk_pose[i] >= m_planning_horizon) {
-//                m_start_state->risk_pose.erase(m_start_state->risk_pose.begin() + i);
-//                m_start_state->risk_bin.erase(m_start_state->risk_bin.begin() + i);
-//                m_start_state->ego_recog.erase(m_start_state->ego_recog.begin() + i);
+//        _planning_horizon = pose_list[_max_perception_num];
+//        for (auto i=0; i<_start_state->risk_pose.size();) {
+//            if (_start_state->risk_pose[i] >= _planning_horizon) {
+//                _start_state->risk_pose.erase(_start_state->risk_pose.begin() + i);
+//                _start_state->risk_bin.erase(_start_state->risk_bin.begin() + i);
+//                _start_state->ego_recog.erase(_start_state->ego_recog.begin() + i);
 //                likelihood_list.erase(likelihood_list.begin() + i);
 //            }
 //            else {
@@ -483,17 +483,17 @@ void TaskAllocation::syncCurrentState(State* state, std::vector<double>& likelih
 //        }
 //    }
 //    else {
-//        m_planning_horizon = 150;
+//        _planning_horizon = 150;
 //    }
 
-    m_ta_values = new TAValues(m_start_state->risk_pose.size());
+    _ta_values = new TAValues(_start_state->risk_pose.size());
 }
 
 std::vector<double> TaskAllocation::getRiskProb(const Belief* belief) {
 	const vector<State*>& particles = static_cast<const ParticleBelief*>(belief)->particles();
 	
 	// double status = 0;
-	vector<double> probs(m_start_state->risk_pose.size(), 0.0);
+	vector<double> probs(_start_state->risk_pose.size(), 0.0);
 	for (int i = 0; i < particles.size(); i++) {
 		State* particle = particles[i];
 		TAState* state = static_cast<TAState*>(particle);
@@ -532,7 +532,7 @@ void TaskAllocation::PrintBelief(const Belief& belief, ostream& out) const {
 	const vector<State*>& particles = static_cast<const ParticleBelief&>(belief).particles();
 	
 	// double status = 0;
-	vector<double> probs(m_start_state->risk_pose.size());
+	vector<double> probs(_start_state->risk_pose.size());
 	for (int i = 0; i < particles.size(); i++) {
 		State* particle = particles[i];
         const TAState* state = static_cast<const TAState*>(particle);
@@ -541,14 +541,14 @@ void TaskAllocation::PrintBelief(const Belief& belief, ostream& out) const {
 		}
 	}
 
-	for (int i = 0; i < m_start_state->risk_pose.size(); i++) {
+	for (int i = 0; i < _start_state->risk_pose.size(); i++) {
 		out << "risk id : " << i << " prob : " << probs[i] << endl;
 	}
 }
 
 void TaskAllocation::PrintAction(ACT_TYPE action, ostream& out) const {
-    int target_idx = m_ta_values->getActionTarget(action);
-    TAValues::ACT ta_action = m_ta_values->getActionAttrib(action);
+    int target_idx = _ta_values->getActionTarget(action);
+    TAValues::ACT ta_action = _ta_values->getActionAttrib(action);
 
 	if (ta_action == TAValues::REQUEST)
 		out << "request to " << target_idx << endl;

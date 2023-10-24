@@ -11,18 +11,25 @@
 using namespace libtraci;
 
 class SumoInterface {
-public:
-    double m_delta_t;
-    double m_density; // 1ppl per 1m
-    std::vector<double> m_perception_range; // x l&r, y_forward
 
-    VehicleModel *m_vehicle_model;
-    std::string m_ego_name = "ego_vehicle";
-    double m_risk_thresh = 0.5;
+private:
+    double _delta_t;
+    double _density; // 1ppl per 1m
+    double _perception_acc_ave;
+    double _perception_acc_dev;
+    std::vector<double> _perception_range; // x l&r, y_forward
+
+    VehicleModel *_vehicle_model;
+    std::string _ego_name = "ego_vehicle";
+
+    std::unordered_map<std::string, Risk> _risks;
+
+    // for logging // deprecated
+    std::vector<std::string> _passed_targets;
 
 public:
     SumoInterface();
-    SumoInterface(VehicleModel *vehicle_model, double delta_t, double density, std::vector<double> perception_range); 
+    SumoInterface(VehicleModel *vehicle_model, double delta_t, double density, std::vector<double> perception_range, double perception_acc_ave, double perception_acc_dev); 
 
     std::vector<std::string> perception();
     void controlEgoVehicle(const std::vector<int>& target_poses, const std::vector<bool> target_risks) const;
@@ -40,10 +47,5 @@ public:
     void log(double& time, Pose& ego_pose, std::vector<double>& other_ego_info, std::vector<Risk>& log_risks);
     bool isTerminate();
     
-private:
-    std::unordered_map<std::string, Risk> m_risks;
-
-    // for logging
-    std::vector<std::string> m_passed_targets;
 
 };
