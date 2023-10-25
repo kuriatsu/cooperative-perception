@@ -4,7 +4,8 @@
 #include "operator_model.h"
 #include "sumo_interface.h"
 #include <unistd.h>
-// #include <boost/program_options.hpp>
+#include <boost/program_options.hpp>
+#include "nlohmann/json.hpp"
 
 using namespace despot;
 
@@ -30,14 +31,14 @@ private:
     double _obstacle_density = 0.01; // density 1ppl/m, 0.1=1ppl per 10m, 0.01=1ppl per 100m
 
     // perception param
-    double _perception_acc_ave = 0.75;
+    double _perception_acc_ave = 0.9;
     double _perception_acc_dev = 0.1;
  
     // operator_model
     double _min_time = 3.0;
-    double _acc_time_min = 0.5;
-    double _acc_time_slope = 0.25;
-    double _max_acc = 1.0;
+    double _min_acc = 0.5;
+    double _slope_acc_time = 0.25;
+    double _max_acc = 0.8;
 
     // vehicle model
     double _max_speed = 11.2; // 13.8
@@ -48,7 +49,6 @@ private:
     int _safety_margin = 20;
 
     double _delta_t = 1.0;
-    double _time_per_move = 1.0;
 
 public:
     MyPlanner(){
@@ -56,7 +56,7 @@ public:
     }
 
     // models
-    OperatorModel *_operator_model = new OperatorModel(_min_time, _acc_time_min, _acc_time_slope, _max_acc);
+    OperatorModel *_operator_model = new OperatorModel(_min_time, _min_acc, _slope_acc_time, _max_acc);
     VehicleModel *_vehicle_model = new VehicleModel(_max_speed, _yield_speed, _max_accel, _max_decel, _min_decel, _safety_margin, _delta_t);
 
 	DSPOMDP* InitializeModel(option::Option* options) {
@@ -78,7 +78,7 @@ public:
     void InitializeDefaultParameters() {
         Globals::config.num_scenarios = 100;
         Globals::config.sim_len = 90;
-        Globals::config.time_per_move = _time_per_move; 
+        Globals::config.time_per_move = _delta_t; 
 	}
 
 	std::string ChooseSolver() {
@@ -136,7 +136,7 @@ public:
 
         std::cout << "update simulator state" << std::endl;
         if (_policy_type == "REFERENCE")
-            ras_world->sim->controlEgoVehicle(start_state->risk_pose, start_state->risk_bin);
+            ras_world->_sim->controlEgoVehicle(start_state->risk_pose, start_state->risk_bin);
         else
             ras_world->UpdateState(action, obs, ta_model->getRiskProb(belief));
 
@@ -151,40 +151,63 @@ public:
         /* =========================
          * initialize parameters
          * =========================*/
-//        using boost::program_options::options_description;
-//        using boost::program_options::value;
-//        using boost::program_options::variables_map;
-//        using boost::program_options::store;
-//        using boost::program_options::parse_command_line;
-//        using boost::program_options::notify;
-//        options_description description("test");
-//        description.add_options()
-//            ("density", value<double>(), "obstacle density")
-//            ("policy", value<std::string>(), "policy")
-//            ("log", value<std::string>(), "output log file")
-//            ;
-//
-//        variables_map vm;
-//        // store(command_line_parser(split_unix(std::string(*argv))).options(description).run(), vm);
-//        store(parse_command_line(argc, argv, description), vm);
-//        notify(vm);
-//
-//        if (vm.count("density"))
-//            _obstacle_density = vm["density"].as<double>();
-//        if (vm.count("policy"))
-//            _policy_type = vm["policy"].as<std::string>();
-//        if (vm.count("log"))
-//            _log_file = vm["log"].as<std::string>();
+        using namespace boost::program_options;
+        options_description description("test");
+        description.add_options()
+            ("density", value<double>(), "obstacle density")
+            ("policy", value<std::string>(), "policy")
+            ("log", value<std::string>(), "output log file")
+            ("param_file", value<std::string>(), "input param file")
+            ;
+        
+        variables_map vm;
+//        store(command_line_parser(split_unix(std::string(*argv))).options(description).run(), vm);
+        store(parse_command_line(argc, argv, description), vm);
+        notify(vm);
 
-         int opt;
-         while ((opt = getopt(argc, argv, "d:p:l:")) != -1) {
-             if (opt == 'd') 
-                 _obstacle_density = std::stof(std::string(optarg));
-             else if (opt == 'p')
-                 _policy_type = std::string(optarg);
-             else if (opt == 'l')
-                 _log_file = std::string(optarg);
-         }
+        if (vm.count("density"))
+            _obstacle_density = vm["density"].as<double>();
+
+        if (vm.count("policy"))
+            _policy_type = vm["policy"].as<std::string>();
+
+        if (vm.count("log"))
+            _log_file = vm["log"].as<std::string>();
+
+        if (vm.count("param_file")) {
+            std::ifstream i(vm["param_file"].as<std::string>());
+            nlohmann::json param_json;
+            i >> param_json;
+            _perception_acc_ave = param_json["perception_acc_ave"];
+            _perception_acc_dev = param_json["perception_acc_dev"];
+            _max_acc = param_json["operator_max_acc"];
+            _slope_acc_time = param_json["operator_slope_acc_time"];
+            _min_acc = param_json["operator_min_acc"];
+            _min_time = param_json["operator_min_time"];
+        }
+        /* no param file -> read param from log */
+        else if (vm.count("log")) {
+            std::ifstream i(_log_file);
+            nlohmann::json param_json;
+            i >> param_json;
+            _perception_acc_ave = param_json["perception_acc_ave"];
+            _perception_acc_dev = param_json["perception_acc_dev"];
+            _max_acc = param_json["operator_max_acc"];
+            _slope_acc_time = param_json["operator_slope_acc_time"];
+            _min_acc = param_json["operator_min_acc"];
+            _min_time = param_json["operator_min_time"];
+
+        }
+
+//         int opt;
+//         while ((opt = getopt(argc, argv, "d:p:l:")) != -1) {
+//             if (opt == 'd') 
+//                 _obstacle_density = std::stof(std::string(optarg));
+//             else if (opt == 'p')
+//                 _policy_type = std::string(optarg);
+//             else if (opt == 'l')
+//         }
+
         argc = 0;
         argv = {};
 

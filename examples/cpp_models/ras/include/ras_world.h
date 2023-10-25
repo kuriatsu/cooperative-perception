@@ -25,9 +25,9 @@ private:
     std::vector<OBS_TYPE> obs_history;
 
 public:
-    SumoInterface* sim;
-    OperatorModel* operator_model;
-    VehicleModel* vehicle_model;
+    SumoInterface* _sim;
+    OperatorModel* _operator_model;
+    VehicleModel* _vehicle_model;
     TAValues* ta_values;
 
 public:

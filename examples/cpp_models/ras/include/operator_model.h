@@ -5,28 +5,28 @@
 
 class OperatorModel {
 public:
-    double min_time;
-    double acc_time_min;
-    double acc_time_slope;
-    double max_acc;
+    double _min_time;
+    double _min_acc;
+    double _slope_acc_time;
+    double _max_acc;
     
 public:
     OperatorModel():
-        min_time(3.0),
-        acc_time_min(0.5),
-        acc_time_slope(0.25),
-        max_acc(1.0){
+        _min_time(3.0),
+        _min_acc(0.5),
+        _slope_acc_time(0.25),
+        _max_acc(1.0){
         }
 
-    OperatorModel(int _min_time, double _acc_time_min, double _acc_time_slope, double _max_acc):
-        min_time(_min_time),
-        acc_time_min(_acc_time_min),
-        acc_time_slope(_acc_time_slope),
-        max_acc(_max_acc){
+    OperatorModel(int min_time, double min_acc, double slope_acc_time, double max_acc):
+        _min_time(min_time),
+        _min_acc(min_acc),
+        _slope_acc_time(slope_acc_time),
+        _max_acc(max_acc){
         }
     ~OperatorModel();
 	
-	double int_acc(const int time) const;
+	double intAcc(const int time) const;
     int execIntervention(const int time, const bool risk) const;
     int execIntervention(const int time, const bool risk, const double rand_num) const;
     

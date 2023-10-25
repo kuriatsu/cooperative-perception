@@ -4,15 +4,15 @@
 OperatorModel::~OperatorModel(){
 }
 
-double OperatorModel::int_acc(const int time) const {
+double OperatorModel::intAcc(const int time) const {
 
-	if (time < min_time) {
+	if (time < _min_time) {
 		return 0.5;
 	}
 	else {
-		double acc = acc_time_min + acc_time_slope * (time - min_time);
+		double acc = _min_acc + _slope_acc_time * (time - _min_time);
         // std::cout << "acc :" << acc << ", time : " << time << std::endl;
-		acc = (acc < max_acc) ? acc : max_acc;
+		acc = (acc < _max_acc) ? acc : _max_acc;
 		return acc;
 	}
 }
@@ -24,7 +24,7 @@ int OperatorModel::execIntervention(const int time, const bool risk) const {
     }
     else {
         double rand_num = despot::Random::RANDOM.NextDouble();
-        double acc = int_acc(time);
+        double acc = intAcc(time);
     
         // TODO: is this output is okay? especially "else" section
         if (rand_num < acc) {
@@ -43,7 +43,7 @@ int OperatorModel::execIntervention(const int time, const bool risk, const doubl
         return TAValues::RISK;
     }
     else {
-        double acc = int_acc(time);
+        double acc = intAcc(time);
     
         // TODO: is this output is okay? especially "else" section
         if (rand_num <= acc) {

@@ -74,7 +74,7 @@ public:
             // if (ta_values->getActionAttrib(action) == TAValues::REQUEST) { 
             if (ta_state.req_time > 0) { 
 
-                if (task_allocation->_operator_model->int_acc(ta_state.req_time) <= 0.5) {
+                if (task_allocation->_operator_model->intAcc(ta_state.req_time) <= 0.5) {
                     return ta_values->getAction(TAValues::REQUEST, ta_state.req_target);
                 }
             }
@@ -239,7 +239,7 @@ double TaskAllocation::ObsProb(OBS_TYPE obs, const State& state, ACT_TYPE action
     }
 
     else {
-        double acc = _operator_model->int_acc(ras_state.req_time);
+        double acc = _operator_model->intAcc(ras_state.req_time);
         return (ras_state.risk_bin[ras_state.req_target] == obs) ? acc : 1.0 - acc;
     }
 }
@@ -300,10 +300,12 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
     
     // penalty for initial intervention request
 	if (ta_action == TAValues::REQUEST && (state_curr.req_time == _delta_t || state_prev.req_target != state_curr.req_target)) {
-        reward += -10;
+        reward += -1;
     }
 
+    /* end of the request */
     if (state_prev.req_time > 0 && (ta_action != TAValues::REQUEST || state_curr.req_target != state_prev.req_target)) {
+        /* when operator took mistake <- if no penalty, bet 0.5 of obs = no-risk if it want to keep speed*/
         if (state_curr.risk_bin[state_prev.req_target] != state_curr.ego_recog[state_prev.req_target]) {
             reward += -1000;
         }

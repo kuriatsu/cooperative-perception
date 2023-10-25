@@ -131,12 +131,12 @@ void SumoInterface::spawnPedestrians() {
 
     double interval = 1/_density;
 
-    // Generate random value
+    /* Generate random value */
     std::mt19937 mt{std::random_device{}()};
     std::uniform_real_distribution<double> position_noise(-interval, interval), rand(0, 1);
-    std::normal_distribution<double> prob(_perception_acc_ave, _perception_acc_dev);
+    std::normal_distribution<double> prob(_perception_acc_ave*10.0, _perception_acc_dev*10.0); /* normal distribution with average 0.x doesn't work */ 
 
-    // add peds for each lane
+    /* add peds for each lane */
     auto lane_list = Lane::getIDList();
     for (std::string& lane_id : lane_list) {
 
@@ -146,7 +146,7 @@ void SumoInterface::spawnPedestrians() {
         std::string edge = Lane::getEdgeID(lane_id);
         double lane_length = Lane::getLength(lane_id);
 
-        // add peds
+        /* add pedestrians */
         for (int i=0; i<lane_length; i+=(int)interval) {
             double position = i + position_noise(mt);
             if (std::abs(position) > lane_length) continue;
@@ -158,16 +158,19 @@ void SumoInterface::spawnPedestrians() {
             Person::appendWaitingStage(ped_id, 1000);
             Person::setSpeed(ped_id, 0.8);
 
-            /* target risk probability */
-            double risk_prob = prob(mt);
-            while (0.5 <= risk_prob && risk_prob <= 1.0)
-                risk_prob = prob(mt);
+            /* target risk probability, average of likelihood represents accuracy of the perception system */
+            /* risk_prob > 0.5 most of the time (perception acc > 0.5) */
+            double risk_prob = prob(mt)*0.1;
+            while (risk_prob < 0.5 || 1.0 < risk_prob)
+                risk_prob = prob(mt)*0.1;
 
-            /* target risk is randomly assigned */
-            /* if target is risk, risk_prob > 0.5, or risk_prob < 0.5 */
+            /* randomly assign risk/no-risk and flip risk_prob if risk */
             risk_prob = (rand(mt) < 0.5) ? risk_prob : (1.0 - risk_prob);
-
+            /* risk_prob = p(risk=risk) */
             bool risk = (rand(mt) < risk_prob) ? true : false;
+
+            // std::cout << "risk_prob : " << risk_prob << " risk : " << risk << std::endl;
+
             _risks[ped_id] = Risk(ped_id, risk, risk_prob); 
         }
     }

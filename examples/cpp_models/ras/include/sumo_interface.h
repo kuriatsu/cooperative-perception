@@ -15,8 +15,6 @@ class SumoInterface {
 private:
     double _delta_t;
     double _density; // 1ppl per 1m
-    double _perception_acc_ave;
-    double _perception_acc_dev;
     std::vector<double> _perception_range; // x l&r, y_forward
 
     VehicleModel *_vehicle_model;
@@ -28,6 +26,9 @@ private:
     std::vector<std::string> _passed_targets;
 
 public:
+    double _perception_acc_ave;
+    double _perception_acc_dev;
+
     SumoInterface();
     SumoInterface(VehicleModel *vehicle_model, double delta_t, double density, std::vector<double> perception_range, double perception_acc_ave, double perception_acc_dev); 
 
