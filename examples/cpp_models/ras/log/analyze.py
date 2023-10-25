@@ -289,6 +289,7 @@ elif len(sys.argv) > 2:
     df = pd.DataFrame(columns = ["policy", "date", "risk_num", "travel_time", "total_fuel_consumption", "mean_fuel_consumption", "dev_accel", "mean_speed", "risk_omission", "ambiguity_omission", "request_time", "total_reward"])
     request_target_prob_count = {"DESPOT":[0] * 10, "MYOPIC":[0]*10, "EGOISTIC":[0]*10, "REFERENCE":[0]*10}
     risk_prob_count = {"DESPOT":[0] * 10, "MYOPIC":[0]*10, "EGOISTIC":[0]*10, "REFERENCE":[0]*10}
+    prob_speed_count = pd.DataFrame(columns = ["policy", "date", "density", "prob", "speed"])
 
     fig, ax = plt.subplots(1, 1, tight_layout=True)
 
@@ -349,7 +350,7 @@ elif len(sys.argv) > 2:
 
                 request_history.append(target)
 
-            ## risk ambiguity omission and risk omission
+            ## when ego_vehivle and risk crossed 
             for risk in frame.get("risks"):
                 position = risk.get("lane_position") if risk.get("id")[0] != "-" else 500.0 - risk.get("lane_position")
                 if last_ego_position < position <= frame.get("lane_position"):
@@ -360,6 +361,9 @@ elif len(sys.argv) > 2:
                     ## passing speed to RISK obstacle
                     if risk.get("hidden"):
                         risk_omission.append(log[frame_num-1].get("speed"))
+
+                    buf_prob_speed_count = pd.DataFrame([[policy, date, density, risk.get("prob"), log[frame_num-1].get("speed")]], columus=prob_speed_count.columus)
+                    prob_speed_count = pd.concat([prob_speed_count, buf_prob_speed_count], ignore_index=True)
 
             ## calculate reward
             reward.append(CalcReward(log[frame_num-1], log[frame_num]))
@@ -425,5 +429,12 @@ elif len(sys.argv) > 2:
         a.set_ylim(0.0, 1.0)
         a.set_xlabel("risk probability")
         a.set_ylabel("intervention request rate")
+
+    plt.show()
+
+    # speed - prob scatter prot
+    fig, ax = plt.subplots(1, 4, tight_layout = True)
+    for i, policy in enumerate(["REFERENCE", "EGOISTIC", "MYOPIC", "POMDP"]):
+        sns.scatterplot(data=prob_speed_count[prob_speed_count["policy"]==policy], x="prob", y="speed", hue="density", ax=ax[i])
 
     plt.show()
