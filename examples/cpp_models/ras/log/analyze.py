@@ -362,7 +362,8 @@ elif len(sys.argv) > 2:
                     if risk.get("hidden"):
                         risk_omission.append(log[frame_num-1].get("speed"))
 
-                    buf_prob_speed_count = pd.DataFrame([[policy, date, risk_num, risk.get("prob"), log[frame_num-1].get("speed")]], columns=prob_speed_count.columns)
+                    buf_prob_speed_count = pd.DataFrame([[policy, date, risk_num, int(risk.get("prob")*10)*0.1, log[frame_num-1].get("speed")]], columns=prob_speed_count.columns)
+                    # buf_prob_speed_count = pd.DataFrame([[policy, date, risk_num, risk.get("prob"), log[frame_num-1].get("speed")]], columns=prob_speed_count.columns)
                     prob_speed_count = pd.concat([prob_speed_count, buf_prob_speed_count], ignore_index=True)
 
             ## calculate reward
@@ -433,8 +434,17 @@ elif len(sys.argv) > 2:
     plt.show()
 
     # speed - prob scatter prot
-    fig, ax = plt.subplots(1, 4, tight_layout = True)
-    for i, policy in enumerate(["REFERENCE", "EGOISTIC", "MYOPIC", "DESPOT"]):
+    fig, ax = plt.subplots(1, len(prob_speed_count["policy"].unique()), tight_layout = True)
+    for i, policy in enumerate(prob_speed_count["policy"].unique()):
         sns.scatterplot(data=prob_speed_count[prob_speed_count["policy"]==policy], x="prob", y="speed", hue="risk_num", ax=ax[i])
+        ax[i].set_title(f"{policy}")
+
+    plt.show()
+    
+    fig, ax = plt.subplots(len(prob_speed_count["risk_num"].unique()), len(prob_speed_count["policy"].unique()), tight_layout = True)
+    for i, policy in enumerate(prob_speed_count["policy"].unique()):
+        for j, risk_num in enumerate(prob_speed_count["risk_num"].unique()):
+            sns.boxplot(data=prob_speed_count[(prob_speed_count["policy"]==policy)&(prob_speed_count["risk_num"]==risk_num)], x="prob", y="speed", ax=ax[j][i])
+            ax[j][i].set_title(f"{policy}-{risk_num}")
 
     plt.show()
