@@ -157,7 +157,7 @@ public:
             ("density", value<double>(), "obstacle density")
             ("policy", value<std::string>(), "policy")
             ("log", value<std::string>(), "output log file")
-            ("param_file", value<std::string>(), "input param file")
+            ("param", value<std::string>(), "input param file")
             ;
         
         variables_map vm;
@@ -174,8 +174,8 @@ public:
         if (vm.count("log"))
             _log_file = vm["log"].as<std::string>();
 
-        if (vm.count("param_file")) {
-            std::ifstream i(vm["param_file"].as<std::string>());
+        if (vm.count("param")) {
+            std::ifstream i(vm["param"].as<std::string>());
             nlohmann::json param_json;
             i >> param_json;
             _perception_acc_ave = param_json["perception_acc_ave"];
