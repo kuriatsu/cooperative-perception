@@ -266,7 +266,8 @@ void RasWorld::SaveLog(std::string filename) {
 ACT_TYPE RasWorld::MyopicAction() {
 
     // if intervention requested to the target and can request more
-    if (0 < pomdp_state->req_time && pomdp_state->req_time < 6 && pomdp_state->risk_pose[pomdp_state->req_target] > _vehicle_model->getDecelDistance(pomdp_state->ego_speed, _vehicle_model->_max_decel, 0.0)) {
+    int request_time = 5;
+    if (0 < pomdp_state->req_time && pomdp_state->req_time < request_time && pomdp_state->risk_pose[pomdp_state->req_target] > _vehicle_model->getDecelDistance(pomdp_state->ego_speed, _vehicle_model->_max_decel, 0.0)) {
         return ta_values->getAction(TAValues::REQUEST, pomdp_state->req_target);
     }
 
@@ -274,7 +275,7 @@ ACT_TYPE RasWorld::MyopicAction() {
     int closest_target = -1, min_dist = 100000;
     for (int i=0; i<pomdp_state->risk_pose.size(); i++) {
         int is_in_history = std::count(req_target_history.begin(), req_target_history.end(), perception_target_ids[i]);
-        double request_distance = _vehicle_model->getDecelDistance(pomdp_state->ego_pose, _vehicle_model->_min_decel, _vehicle_model->_safety_margin) + _vehicle_model->_yield_speed * (6.0 - _vehicle_model->getDecelTime(pomdp_state->ego_speed, _vehicle_model->_min_decel)); 
+        double request_distance = _vehicle_model->getDecelDistance(pomdp_state->ego_pose, _vehicle_model->_min_decel, _vehicle_model->_safety_margin) + _vehicle_model->_yield_speed * (request_time - _vehicle_model->getDecelTime(pomdp_state->ego_speed, _vehicle_model->_min_decel)); 
        if (is_in_history == 0 && pomdp_state->risk_pose[i] > request_distance) {
             if (pomdp_state->risk_pose[i] < min_dist) {
                min_dist = pomdp_state->risk_pose[i];

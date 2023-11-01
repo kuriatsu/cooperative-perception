@@ -290,6 +290,8 @@ elif len(sys.argv) > 2:
     request_target_prob_count = {"DESPOT":[0] * 10, "MYOPIC":[0]*10, "EGOISTIC":[0]*10, "REFERENCE":[0]*10}
     risk_prob_count = {"DESPOT":[0] * 10, "MYOPIC":[0]*10, "EGOISTIC":[0]*10, "REFERENCE":[0]*10}
     prob_speed_count = pd.DataFrame(columns = ["policy", "date", "risk_num", "prob", "speed"])
+    recog_evaluation = pd.DataFrame(columns = ["hidden", "pred", "prob"])
+
 
     fig, ax = plt.subplots(1, 1, tight_layout=True)
 
@@ -317,10 +319,15 @@ elif len(sys.argv) > 2:
 
         if log[0].get("risks") is not None:
             for risk in log[0].get("risks"):
+                ## intervention target risk probaility distribution
                 if risk.get("prob") == 1.0:
                     risk_prob_count.get(policy)[-1] += 1
                 else:
                     risk_prob_count.get(policy)[math.floor(risk.get("prob")*10)] += 1
+
+                ## add recog evaluation
+                buf_recog_evaluation = pd.DataFrame([[risk.get("hidden"), risk.get("pred"), risk.get("prob")]], columns=recog_evaluation.columns)
+                recog_evaluation = pd.concat([recog_evaluation, buf_recog_evaluation], ignore_index=True)
 
         for frame_num in range(1, len(log)):
             frame = log[frame_num]
@@ -362,8 +369,8 @@ elif len(sys.argv) > 2:
                     if risk.get("hidden"):
                         risk_omission.append(log[frame_num-1].get("speed"))
 
-                    buf_prob_speed_count = pd.DataFrame([[policy, date, risk_num, int(risk.get("prob")*10)*0.1, log[frame_num-1].get("speed")]], columns=prob_speed_count.columns)
-                    # buf_prob_speed_count = pd.DataFrame([[policy, date, risk_num, risk.get("prob"), log[frame_num-1].get("speed")]], columns=prob_speed_count.columns)
+                    # buf_prob_speed_count = pd.DataFrame([[policy, date, risk_num, int(risk.get("prob")*10)*0.1, log[frame_num-1].get("speed")]], columns=prob_speed_count.columns)
+                    buf_prob_speed_count = pd.DataFrame([[policy, date, risk_num, risk.get("prob"), log[frame_num-1].get("speed")]], columns=prob_speed_count.columns)
                     prob_speed_count = pd.concat([prob_speed_count, buf_prob_speed_count], ignore_index=True)
 
             ## calculate reward
@@ -441,10 +448,33 @@ elif len(sys.argv) > 2:
 
     plt.show()
     
-    fig, ax = plt.subplots(len(prob_speed_count["risk_num"].unique()), len(prob_speed_count["policy"].unique()), tight_layout = True)
-    for i, policy in enumerate(prob_speed_count["policy"].unique()):
-        for j, risk_num in enumerate(prob_speed_count["risk_num"].unique()):
-            sns.boxplot(data=prob_speed_count[(prob_speed_count["policy"]==policy)&(prob_speed_count["risk_num"]==risk_num)], x="prob", y="speed", ax=ax[j][i])
-            ax[j][i].set_title(f"{policy}-{risk_num}")
+#    fig, ax = plt.subplots(len(prob_speed_count["risk_num"].unique()), len(prob_speed_count["policy"].unique()), tight_layout = True)
+#    for i, policy in enumerate(prob_speed_count["policy"].unique()):
+#        for j, risk_num in enumerate(prob_speed_count["risk_num"].unique()):
+#            sns.boxplot(data=prob_speed_count[(prob_speed_count["policy"]==policy)&(prob_speed_count["risk_num"]==risk_num)], x="prob", y="speed", ax=ax[j][i])
+#            ax[j][i].set_title(f"{policy}-{risk_num}")
+#
+#    plt.show()
 
+    fig, ax = plt.subplots(1, 2, tight_layout=True)
+    correct = np.array([0]*10)
+    count = np.array([0]*10)
+    for index, row in recog_evaluation.iterrows():
+        if row["prob"] == 1.0:
+            correct[-1] += (row["hidden"] == row["pred"])
+            count[-1] += 1
+        else:
+            correct[int(row["prob"]*10)] += (row["hidden"] == row["pred"])
+            count[int(row["prob"]*10)] += 1
+
+    for index in np.where(count==0):
+        count[index] = 1
+        correct[index] = 1
+
+    sns.lineplot(x=np.arange(0.0, 1.0, 0.1), y=correct/count, ax=ax[0])
+    sns.barplot(x=np.arange(0.0, 1.0, 0.1), y=count, ax=ax[1])
+    ax[0].set_ylim(0.0, 1.0)
+    ax[0].set_xticks([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
+    ax[0].set_xticklabels([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
+    ax[1].set_xticklabels([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
     plt.show()
