@@ -17,8 +17,8 @@ densities=(
     0.017
     0.019
     0.02
-    0.025
-    0.03
+#    0.025
+#    0.03
 #    0.035
 #    0.04
 #    0.045
@@ -30,9 +30,11 @@ densities=(
 #    0.1
 )
 
+param_file="../param1.json"
+
 for density in "${densities[@]}"; do
-    for i in {1..50}; do
-        ../build/ras -policy DESPOT -density ${density} -param_file ../param.json
+    for i in {1..10}; do
+        ../build/ras --policy DESPOT --density ${density} --param ${param_file} 
     done
 done
 
@@ -45,6 +47,6 @@ policies=(
 while read log ; do
     for policy in "${policies[@]}"; do
         buf=${log##*[A-Z]}
-        ../build/ras -policy ${policy} -log_file ${log} -density ${buf%_*} -param_file ../param.json
+        ../build/ras --policy ${policy} --log ${log} --density ${buf%_*} --param ${param_file} 
     done
 done < <(find . -name "*.json" )
