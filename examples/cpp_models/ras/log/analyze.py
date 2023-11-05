@@ -7,6 +7,9 @@ import math
 import pandas as pd
 import re
 
+palette = {"REFERENCE": "orangered","EGOISTIC": "indigo", "MYOPIC": "dodgerblue", "DESPOT": "forestgreen"}
+LANE_LENGTH = 500
+
 def CalcReward(state_prev, state_curr):
     reward = 0
     for risk in state_curr["risks"]:
@@ -359,8 +362,8 @@ elif len(sys.argv) > 2:
 
             ## when ego_vehivle and risk crossed 
             for risk in frame.get("risks"):
-                position = risk.get("lane_position") if risk.get("id")[0] != "-" else 500.0 - risk.get("lane_position")
-                if last_ego_position < position <= frame.get("lane_position"):
+                position = risk.get("lane_position") if risk.get("id")[0] != "-" else LANE_LENGTH - risk.get("lane_position")
+                if last_ego_position <= position < frame.get("lane_position") and position < LANE_LENGTH-5.0:
 
                     ## risk ambiguity
                     ambiguity_omission.append(0.5 - abs(0.5 - risk.get("prob")))
@@ -377,6 +380,8 @@ elif len(sys.argv) > 2:
                         distance = (risk.get("prob"))**2 + ((11.2 - log[frame_num-1].get("speed"))/11.2)**2
 
                     # buf_prob_speed_count = pd.DataFrame([[policy, date, risk_num, int(risk.get("prob")*10)*0.1, log[frame_num-1].get("speed")]], columns=prob_speed_count.columns)
+                    if risk.get("prob") == 1.0 and log[frame_num-1].get("speed") > 3.0:
+                        print(date, risk_num, risk.get("id"), position, frame.get("lane_position"), travel_time, log[frame_num-1].get("speed"))
                     buf_prob_speed_count = pd.DataFrame([[policy, date, risk_num, risk.get("prob"), log[frame_num-1].get("speed"), distance]], columns=prob_speed_count.columns)
                     prob_speed_count = pd.concat([prob_speed_count, buf_prob_speed_count], ignore_index=True)
 
@@ -404,29 +409,46 @@ elif len(sys.argv) > 2:
         df = pd.concat([df, buf_df], ignore_index=True)
 
 
-    print(df["policy"])
-    sns.lineplot(data=df, x="risk_num", y="travel_time", hue="policy", markers=True)
+    sns.lineplot(data=df, x="risk_num", y="travel_time", hue="policy", markers=True, palette=palette)
     plt.savefig("travel_time.svg", transparent=True)
-    sns.lineplot(data=df, x="risk_num", y="total_fuel_consumption", hue="policy", markers=True)
+    plt.clf()
+
+    sns.lineplot(data=df, x="risk_num", y="total_fuel_consumption", hue="policy", markers=True, palette=palette)
     plt.savefig("total_fuel_consumption.svg", transparent=True)
-    sns.lineplot(data=df, x="risk_num", y="mean_fuel_consumption", hue="policy", markers=True)
+    plt.clf()
+
+    sns.lineplot(data=df, x="risk_num", y="mean_fuel_consumption", hue="policy", markers=True, palette=palette)
     plt.savefig("mean_fuel_consumption.svg", transparent=True)
-    sns.lineplot(data=df, x="risk_num", y="dev_accel", hue="policy", markers=True)
+    plt.clf()
+
+    sns.lineplot(data=df, x="risk_num", y="dev_accel", hue="policy", markers=True, palette=palette)
     plt.ylim([0.0, 11.2])
     plt.savefig("accel.svg", transparent=True)
-    sns.lineplot(data=df, x="risk_num", y="mean_speed", hue="policy", markers=True)
+    plt.clf()
+
+    sns.lineplot(data=df, x="risk_num", y="mean_speed", hue="policy", markers=True, palette=palette)
     plt.ylim([0.0, 11.2])
     plt.savefig("mean_speed.svg", transparent=True)
-    sns.lineplot(data=df, x="risk_num", y="risk_omission", hue="policy", markers=True)
+    plt.clf()
+
+    sns.lineplot(data=df, x="risk_num", y="risk_omission", hue="policy", markers=True, palette=palette)
     plt.savefig("risk_pass_time.svg", transparent=True)
-    sns.lineplot(data=df, x="risk_num", y="ambiguity_omission", hue="policy", markers=True)
+    plt.clf()
+    
+    sns.lineplot(data=df, x="risk_num", y="ambiguity_omission", hue="policy", markers=True, palette=palette)
     plt.savefig("ambiguity_omission.svg", transparent=True)
-    sns.lineplot(data=df, x="risk_num", y="request_time", hue="policy", markers=True)
+    plt.clf()
+
+    sns.lineplot(data=df, x="risk_num", y="request_time", hue="policy", markers=True, palette=palette)
     plt.savefig("request_time.svg", transparent=True)
-    sns.lineplot(data=df, x="risk_num", y="total_reward", hue="policy", markers=True)
+    plt.clf()
+
+    sns.lineplot(data=df, x="risk_num", y="total_reward", hue="policy", markers=True, palette=palette)
     plt.savefig("reward.svg", transparent=True)
+    plt.clf()
 
 
+    ## risk prob - intervention request
     for policy in risk_prob_count.keys():
         for i in range(0, len(risk_prob_count.get(policy))):
             print(policy, i, len(risk_prob_count))
@@ -445,14 +467,21 @@ elif len(sys.argv) > 2:
 
     plt.savefig("request_prob.svg", transparent=True)
 
-    # speed - prob scatter prot
+    # speed - prob scatter plot
     fig, ax = plt.subplots(1, len(prob_speed_count["policy"].unique()), tight_layout = True)
     for i, policy in enumerate(prob_speed_count["policy"].unique()):
         sns.scatterplot(data=prob_speed_count[prob_speed_count["policy"]==policy], x="prob", y="speed", hue="risk_num", ax=ax[i])
         ax[i].set_title(f"{policy}")
 
     plt.savefig("speed_prob.svg", transparent=True)
+    plt.clf()
     
+    # speed - prob distance plot
+    fig, ax = plt.subplots(tight_layout = True)
+    sns.lineplot(data=prob_speed_count, x="risk_num", y="distance", hue="policy", ax=ax, palette=palette)
+
+    plt.savefig("speed_prob_distance.svg", transparent=True)
+
 #    fig, ax = plt.subplots(len(prob_speed_count["risk_num"].unique()), len(prob_speed_count["policy"].unique()), tight_layout = True)
 #    for i, policy in enumerate(prob_speed_count["policy"].unique()):
 #        for j, risk_num in enumerate(prob_speed_count["risk_num"].unique()):
@@ -461,6 +490,7 @@ elif len(sys.argv) > 2:
 #
 #    plt.show()
 
+    ## visualize recognition simulation 
     fig, ax = plt.subplots(1, 2, tight_layout=True)
     correct = np.array([0]*10)
     count = np.array([0]*10)
