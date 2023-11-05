@@ -54,12 +54,14 @@ public:
     MyPlanner(){
 
     }
-
     // models
-    OperatorModel *_operator_model = new OperatorModel(_min_time, _min_acc, _slope_acc_time, _max_acc);
-    VehicleModel *_vehicle_model = new VehicleModel(_max_speed, _yield_speed, _max_accel, _max_decel, _min_decel, _safety_margin, _delta_t);
+    OperatorModel *_operator_model;
+    VehicleModel *_vehicle_model;
+
 
 	DSPOMDP* InitializeModel(option::Option* options) {
+        _operator_model = new OperatorModel(_min_time, _min_acc, _slope_acc_time, _max_acc);
+        _vehicle_model = new VehicleModel(_max_speed, _yield_speed, _max_accel, _max_decel, _min_decel, _safety_margin, _delta_t);
 		DSPOMDP* model = new TaskAllocation(_planning_horizon, _risk_thresh, _vehicle_model, _operator_model, _delta_t);
 		return model;
 	}

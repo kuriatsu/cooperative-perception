@@ -10,12 +10,12 @@ def nd(x, u, si):
     return np.exp(-(x-u)**2/(2*si))/(2*np.pi*si)**0.5
 
 
-u = 0.7
+u = 0.68
 si = 0.1
 data = np.random.normal(u, si, size=10000)
 plt.hist(data, bins=50, color="#ff7f00", alpha=0.5)
-data = np.random.normal((1.0-u), si, size=10000)
-plt.hist(data, bins=50, color="#ff7f00", alpha=0.5)
+# data = np.random.normal((1.0-u), si, size=10000)
+# plt.hist(data, bins=50, color="#ff7f00", alpha=0.5)
 plt.xlim([0.0, 1.0])
 plt.xlabel("likelihood")
 plt.ylabel("count")

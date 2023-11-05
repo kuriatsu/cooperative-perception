@@ -289,7 +289,9 @@ elif len(sys.argv) > 2:
     df = pd.DataFrame(columns = ["policy", "date", "risk_num", "travel_time", "total_fuel_consumption", "mean_fuel_consumption", "dev_accel", "mean_speed", "risk_omission", "ambiguity_omission", "request_time", "total_reward"])
     request_target_prob_count = {"DESPOT":[0] * 10, "MYOPIC":[0]*10, "EGOISTIC":[0]*10, "REFERENCE":[0]*10}
     risk_prob_count = {"DESPOT":[0] * 10, "MYOPIC":[0]*10, "EGOISTIC":[0]*10, "REFERENCE":[0]*10}
-    prob_speed_count = pd.DataFrame(columns = ["policy", "date", "risk_num", "prob", "speed"])
+    prob_speed_count = pd.DataFrame(columns = ["policy", "date", "risk_num", "prob", "speed", "distance"])
+    recog_evaluation = pd.DataFrame(columns = ["hidden", "pred", "prob"])
+
 
     fig, ax = plt.subplots(1, 1, tight_layout=True)
 
@@ -317,10 +319,15 @@ elif len(sys.argv) > 2:
 
         if log[0].get("risks") is not None:
             for risk in log[0].get("risks"):
+                ## intervention target risk probaility distribution
                 if risk.get("prob") == 1.0:
                     risk_prob_count.get(policy)[-1] += 1
                 else:
                     risk_prob_count.get(policy)[math.floor(risk.get("prob")*10)] += 1
+
+                ## add recog evaluation
+                buf_recog_evaluation = pd.DataFrame([[risk.get("hidden"), risk.get("pred"), risk.get("prob")]], columns=recog_evaluation.columns)
+                recog_evaluation = pd.concat([recog_evaluation, buf_recog_evaluation], ignore_index=True)
 
         for frame_num in range(1, len(log)):
             frame = log[frame_num]
@@ -362,8 +369,15 @@ elif len(sys.argv) > 2:
                     if risk.get("hidden"):
                         risk_omission.append(log[frame_num-1].get("speed"))
 
-                    buf_prob_speed_count = pd.DataFrame([[policy, date, risk_num, int(risk.get("prob")*10)*0.1, log[frame_num-1].get("speed")]], columns=prob_speed_count.columns)
-                    # buf_prob_speed_count = pd.DataFrame([[policy, date, risk_num, risk.get("prob"), log[frame_num-1].get("speed")]], columns=prob_speed_count.columns)
+                    ## distance from ideal prob-speed 
+                    distance = 0.0
+                    if risk.get("prob") >= 0.5:
+                        distance = (1.0 - risk.get("prob"))**2 + (log[frame_num-1].get("speed")/11.2)**2
+                    else:
+                        distance = (risk.get("prob"))**2 + ((11.2 - log[frame_num-1].get("speed"))/11.2)**2
+
+                    # buf_prob_speed_count = pd.DataFrame([[policy, date, risk_num, int(risk.get("prob")*10)*0.1, log[frame_num-1].get("speed")]], columns=prob_speed_count.columns)
+                    buf_prob_speed_count = pd.DataFrame([[policy, date, risk_num, risk.get("prob"), log[frame_num-1].get("speed"), distance]], columns=prob_speed_count.columns)
                     prob_speed_count = pd.concat([prob_speed_count, buf_prob_speed_count], ignore_index=True)
 
             ## calculate reward
@@ -392,25 +406,25 @@ elif len(sys.argv) > 2:
 
     print(df["policy"])
     sns.lineplot(data=df, x="risk_num", y="travel_time", hue="policy", markers=True)
-    plt.show()
+    plt.savefig("travel_time.svg", transparent=True)
     sns.lineplot(data=df, x="risk_num", y="total_fuel_consumption", hue="policy", markers=True)
-    plt.show()
+    plt.savefig("total_fuel_consumption.svg", transparent=True)
     sns.lineplot(data=df, x="risk_num", y="mean_fuel_consumption", hue="policy", markers=True)
-    plt.show()
+    plt.savefig("mean_fuel_consumption.svg", transparent=True)
     sns.lineplot(data=df, x="risk_num", y="dev_accel", hue="policy", markers=True)
-    plt.show()
     plt.ylim([0.0, 11.2])
+    plt.savefig("accel.svg", transparent=True)
     sns.lineplot(data=df, x="risk_num", y="mean_speed", hue="policy", markers=True)
-    plt.show()
     plt.ylim([0.0, 11.2])
+    plt.savefig("mean_speed.svg", transparent=True)
     sns.lineplot(data=df, x="risk_num", y="risk_omission", hue="policy", markers=True)
-    plt.show()
+    plt.savefig("risk_pass_time.svg", transparent=True)
     sns.lineplot(data=df, x="risk_num", y="ambiguity_omission", hue="policy", markers=True)
-    plt.show()
+    plt.savefig("ambiguity_omission.svg", transparent=True)
     sns.lineplot(data=df, x="risk_num", y="request_time", hue="policy", markers=True)
-    plt.show()
+    plt.savefig("request_time.svg", transparent=True)
     sns.lineplot(data=df, x="risk_num", y="total_reward", hue="policy", markers=True)
-    plt.show()
+    plt.savefig("reward.svg", transparent=True)
 
 
     for policy in risk_prob_count.keys():
@@ -418,8 +432,6 @@ elif len(sys.argv) > 2:
             print(policy, i, len(risk_prob_count))
             if risk_prob_count.get(policy)[i] > 0:
                 request_target_prob_count[policy][i] = request_target_prob_count[policy][i] / risk_prob_count[policy][i]
-
-    plt.show()
 
     fig, ax = plt.subplots(1,3, tight_layout=True)
     sns.barplot(x=np.arange(0.0, 1.0, 0.1), y=request_target_prob_count.get("DESPOT"), ax=ax[0])
@@ -431,7 +443,7 @@ elif len(sys.argv) > 2:
         a.set_xlabel("risk probability")
         a.set_ylabel("intervention request rate")
 
-    plt.show()
+    plt.savefig("request_prob.svg", transparent=True)
 
     # speed - prob scatter prot
     fig, ax = plt.subplots(1, len(prob_speed_count["policy"].unique()), tight_layout = True)
@@ -439,12 +451,35 @@ elif len(sys.argv) > 2:
         sns.scatterplot(data=prob_speed_count[prob_speed_count["policy"]==policy], x="prob", y="speed", hue="risk_num", ax=ax[i])
         ax[i].set_title(f"{policy}")
 
-    plt.show()
+    plt.savefig("speed_prob.svg", transparent=True)
     
-    fig, ax = plt.subplots(len(prob_speed_count["risk_num"].unique()), len(prob_speed_count["policy"].unique()), tight_layout = True)
-    for i, policy in enumerate(prob_speed_count["policy"].unique()):
-        for j, risk_num in enumerate(prob_speed_count["risk_num"].unique()):
-            sns.boxplot(data=prob_speed_count[(prob_speed_count["policy"]==policy)&(prob_speed_count["risk_num"]==risk_num)], x="prob", y="speed", ax=ax[j][i])
-            ax[j][i].set_title(f"{policy}-{risk_num}")
+#    fig, ax = plt.subplots(len(prob_speed_count["risk_num"].unique()), len(prob_speed_count["policy"].unique()), tight_layout = True)
+#    for i, policy in enumerate(prob_speed_count["policy"].unique()):
+#        for j, risk_num in enumerate(prob_speed_count["risk_num"].unique()):
+#            sns.boxplot(data=prob_speed_count[(prob_speed_count["policy"]==policy)&(prob_speed_count["risk_num"]==risk_num)], x="prob", y="speed", ax=ax[j][i])
+#            ax[j][i].set_title(f"{policy}-{risk_num}")
+#
+#    plt.show()
 
-    plt.show()
+    fig, ax = plt.subplots(1, 2, tight_layout=True)
+    correct = np.array([0]*10)
+    count = np.array([0]*10)
+    for index, row in recog_evaluation.iterrows():
+        if row["prob"] == 1.0:
+            correct[-1] += (row["hidden"] == row["pred"])
+            count[-1] += 1
+        else:
+            correct[int(row["prob"]*10)] += (row["hidden"] == row["pred"])
+            count[int(row["prob"]*10)] += 1
+
+    for index in np.where(count==0):
+        count[index] = 1
+        correct[index] = 1
+
+    sns.lineplot(x=np.arange(0.0, 1.0, 0.1), y=correct/count, ax=ax[0])
+    sns.barplot(x=np.arange(0.0, 1.0, 0.1), y=count, ax=ax[1])
+    ax[0].set_ylim(0.0, 1.0)
+    ax[0].set_xticks([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
+    ax[0].set_xticklabels([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
+    ax[1].set_xticklabels([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
+    plt.savefig("recog_stat.svg", transparent=True)
