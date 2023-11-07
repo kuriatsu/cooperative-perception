@@ -292,7 +292,7 @@ elif len(sys.argv) > 2:
     df = pd.DataFrame(columns = ["policy", "date", "risk_num", "travel_time", "total_fuel_consumption", "mean_fuel_consumption", "dev_accel", "mean_speed", "risk_omission", "ambiguity_omission", "request_time", "total_reward"])
     request_target_prob_count = {"DESPOT":[0] * 10, "MYOPIC":[0]*10, "EGOISTIC":[0]*10, "REFERENCE":[0]*10}
     risk_prob_count = {"DESPOT":[0] * 10, "MYOPIC":[0]*10, "EGOISTIC":[0]*10, "REFERENCE":[0]*10}
-    prob_speed_count = pd.DataFrame(columns = ["policy", "date", "risk_num", "prob", "speed", "distance"])
+    prob_speed_count = pd.DataFrame(columns = ["policy", "date", "risk_num", "prob", "speed", "distance_pred_speed", "distance_prob_speed", "distance_risk_speed"])
     recog_evaluation = pd.DataFrame(columns = ["hidden", "pred", "prob"])
 
 
@@ -307,7 +307,7 @@ elif len(sys.argv) > 2:
 
         policy = re.findall("([A-Z]*)\d", file)[0]
         date = re.findall("_([\d]*)", file)
-        risk_num = float(re.findall("([\d.]*)_", file)[0]) * 2 * 500
+        risk_num = float(re.findall("([\d.]*)_", file)[0]) * 2.0 * 500.0
         travel_time = 0.0
         fuel_consumption = [] 
         accel = []
@@ -372,17 +372,32 @@ elif len(sys.argv) > 2:
                     if risk.get("hidden"):
                         risk_omission.append(log[frame_num-1].get("speed"))
 
-                    ## distance from ideal prob-speed 
-                    distance = 0.0
-                    if risk.get("prob") >= 0.5:
-                        distance = (1.0 - risk.get("prob"))**2 + (log[frame_num-1].get("speed")/11.2)**2
+                    ## distance from ideal speed based on hidden risk
+                    distance_pred_speed = 0.0
+                    if risk.get("pred"):
+                        distance_pred_speed = log[frame_num-1].get("speed")/11.2
                     else:
-                        distance = (risk.get("prob"))**2 + ((11.2 - log[frame_num-1].get("speed"))/11.2)**2
+                        distance_pred_speed = (11.2 - log[frame_num-1].get("speed"))/11.2
+
+                    ## distance from ideal prob-speed 
+                    distance_prob_speed = 0.0
+                    if risk.get("prob") >= 0.5:
+                        distance_prob_speed = (1.0 - risk.get("prob"))**2 + (log[frame_num-1].get("speed")/11.2)**2
+                    else:
+                        distance_prob_speed = (risk.get("prob"))**2 + ((11.2 - log[frame_num-1].get("speed"))/11.2)**2
+
+                    ## distance from ideal speed based on hidden risk
+                    distance_risk_speed = 0.0
+                    if risk.get("hidden"):
+                        distance_risk_speed = log[frame_num-1].get("speed")/11.2
+                    else:
+                        distance_risk_speed = (11.2 - log[frame_num-1].get("speed"))/11.2
+
 
                     # buf_prob_speed_count = pd.DataFrame([[policy, date, risk_num, int(risk.get("prob")*10)*0.1, log[frame_num-1].get("speed")]], columns=prob_speed_count.columns)
                     if risk.get("prob") == 1.0 and log[frame_num-1].get("speed") > 3.0:
                         print(date, risk_num, risk.get("id"), position, frame.get("lane_position"), travel_time, log[frame_num-1].get("speed"))
-                    buf_prob_speed_count = pd.DataFrame([[policy, date, risk_num, risk.get("prob"), log[frame_num-1].get("speed"), distance]], columns=prob_speed_count.columns)
+                    buf_prob_speed_count = pd.DataFrame([[policy, date, risk_num, risk.get("prob"), log[frame_num-1].get("speed"), distance_pred_speed, distance_prob_speed, distance_risk_speed]], columns=prob_speed_count.columns)
                     prob_speed_count = pd.concat([prob_speed_count, buf_prob_speed_count], ignore_index=True)
 
             ## calculate reward
@@ -465,7 +480,7 @@ elif len(sys.argv) > 2:
         a.set_xlabel("risk probability")
         a.set_ylabel("intervention request rate")
 
-    plt.savefig("request_prob.svg", transparent=True)
+    plt.savefig("request_prob.svg", transparent=True, bbox_inches="tight")
 
     # speed - prob scatter plot
     fig, ax = plt.subplots(1, len(prob_speed_count["policy"].unique()), tight_layout = True)
@@ -476,11 +491,23 @@ elif len(sys.argv) > 2:
     plt.savefig("speed_prob.svg", transparent=True)
     plt.clf()
     
-    # speed - prob distance plot
+    # speed - prediction distance plot
     fig, ax = plt.subplots(tight_layout = True)
-    sns.lineplot(data=prob_speed_count, x="risk_num", y="distance", hue="policy", ax=ax, palette=palette)
+    sns.lineplot(data=prob_speed_count, x="risk_num", y="speed_pred_distance", hue="policy", ax=ax, palette=palette)
+
+    plt.savefig("speed_pred_distance.svg", transparent=True)
+
+    # speed - probability distance plot
+    fig, ax = plt.subplots(tight_layout = True)
+    sns.lineplot(data=prob_speed_count, x="risk_num", y="speed_prob_distance", hue="policy", ax=ax, palette=palette)
 
     plt.savefig("speed_prob_distance.svg", transparent=True)
+
+    # speed - hidden risk distance plot
+    fig, ax = plt.subplots(tight_layout = True)
+    sns.lineplot(data=prob_speed_count, x="risk_num", y="speed_risk_distance", hue="policy", ax=ax, palette=palette)
+
+    plt.savefig("speed_risk_distance.svg", transparent=True)
 
 #    fig, ax = plt.subplots(len(prob_speed_count["risk_num"].unique()), len(prob_speed_count["policy"].unique()), tight_layout = True)
 #    for i, policy in enumerate(prob_speed_count["policy"].unique()):
