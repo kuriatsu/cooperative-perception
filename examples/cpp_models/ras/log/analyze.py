@@ -493,19 +493,19 @@ elif len(sys.argv) > 2:
     
     # speed - prediction distance plot
     fig, ax = plt.subplots(tight_layout = True)
-    sns.lineplot(data=prob_speed_count, x="risk_num", y="speed_pred_distance", hue="policy", ax=ax, palette=palette)
+    sns.lineplot(data=prob_speed_count, x="risk_num", y="distance_pred_speed", hue="policy", ax=ax, palette=palette)
 
     plt.savefig("speed_pred_distance.svg", transparent=True)
 
     # speed - probability distance plot
     fig, ax = plt.subplots(tight_layout = True)
-    sns.lineplot(data=prob_speed_count, x="risk_num", y="speed_prob_distance", hue="policy", ax=ax, palette=palette)
+    sns.lineplot(data=prob_speed_count, x="risk_num", y="distance_prob_speed", hue="policy", ax=ax, palette=palette)
 
     plt.savefig("speed_prob_distance.svg", transparent=True)
 
     # speed - hidden risk distance plot
     fig, ax = plt.subplots(tight_layout = True)
-    sns.lineplot(data=prob_speed_count, x="risk_num", y="speed_risk_distance", hue="policy", ax=ax, palette=palette)
+    sns.lineplot(data=prob_speed_count, x="risk_num", y="distance_risk_speed", hue="policy", ax=ax, palette=palette)
 
     plt.savefig("speed_risk_distance.svg", transparent=True)
 

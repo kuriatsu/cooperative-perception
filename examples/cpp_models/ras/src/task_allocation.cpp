@@ -272,7 +272,7 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
             }
             else {
                 // reward += (_max_speed - state_prev.ego_speed)/(_max_speed - _yield_speed) * -100;
-                reward += (state_curr.ego_speed - _yield_speed)/(_max_speed - _yield_speed) * 100;
+                reward += (state_curr.ego_speed - _yield_speed)/(_max_speed - _yield_speed) * 10;
             }
 
             // avoid cheating planner by requesting and change recog in last minute
@@ -285,8 +285,7 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 
 	
     // driving efficiency
-    // reward += -1;
-    reward += (state_curr.ego_speed - _yield_speed)/(_max_speed - _yield_speed) * 1;
+    // reward += (state_curr.ego_speed - _yield_speed)/(_max_speed - _yield_speed) * 1;
 
     // if (ta_action == TAValues::RECOG && state_prev.risk_bin[action_target_idx] != state_prev.ego_recog[action_target_idx])
     //     reward += -100;
