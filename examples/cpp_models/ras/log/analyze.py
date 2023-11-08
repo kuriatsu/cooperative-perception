@@ -289,11 +289,12 @@ if len(sys.argv) == 2:
 #################################
 elif len(sys.argv) > 2:
 
-    df = pd.DataFrame(columns = ["policy", "date", "risk_num", "travel_time", "total_fuel_consumption", "mean_fuel_consumption", "dev_accel", "mean_speed", "risk_omission", "ambiguity_omission", "request_time", "total_reward"])
+    df = pd.DataFrame(columns = ["policy", "date", "risk_num", "travel_time", "total_fuel_consumption", "mean_fuel_consumption", "dev_accel", "mean_speed", "risk_omission", "ambiguity_omission", "request_time", "total_reward", "acc"])
     request_target_prob_count = {"DESPOT":[0] * 10, "MYOPIC":[0]*10, "EGOISTIC":[0]*10, "REFERENCE":[0]*10}
     risk_prob_count = {"DESPOT":[0] * 10, "MYOPIC":[0]*10, "EGOISTIC":[0]*10, "REFERENCE":[0]*10}
-    prob_speed_count = pd.DataFrame(columns = ["policy", "date", "risk_num", "prob", "speed", "distance_pred_speed", "distance_prob_speed", "distance_risk_speed"])
+    prob_speed_count = pd.DataFrame(columns = ["policy", "date", "risk_num", "prob", "hidden", "pred", "speed", "distance_pred_speed", "distance_prob_speed", "distance_risk_speed"])
     recog_evaluation = pd.DataFrame(columns = ["hidden", "pred", "prob"])
+    total_acc_df = pd.DataFrame(columns=["policy", "date", "risk_num", "acc"])
 
 
     fig, ax = plt.subplots(1, 1, tight_layout=True)
@@ -306,7 +307,7 @@ elif len(sys.argv) > 2:
         log = data.get("log")
 
         policy = re.findall("([A-Z]*)\d", file)[0]
-        date = re.findall("_([\d]*)", file)
+        date = re.findall("_([\d]*)", file)[0]
         risk_num = float(re.findall("([\d.]*)_", file)[0]) * 2.0 * 500.0
         travel_time = 0.0
         fuel_consumption = [] 
@@ -317,6 +318,8 @@ elif len(sys.argv) > 2:
         request_time = 0.0
         request_history = []
         reward = [0]
+        correct_pred = 0
+        passed_target = 0
 
         last_ego_position = 0.0
 
@@ -393,11 +396,14 @@ elif len(sys.argv) > 2:
                     else:
                         distance_risk_speed = (11.2 - log[frame_num-1].get("speed"))/11.2
 
+                    correct_pred += (risk.get("hidden") == risk.get("pred"))
+                    passed_target += 1
+
 
                     # buf_prob_speed_count = pd.DataFrame([[policy, date, risk_num, int(risk.get("prob")*10)*0.1, log[frame_num-1].get("speed")]], columns=prob_speed_count.columns)
                     if risk.get("prob") == 1.0 and log[frame_num-1].get("speed") > 3.0:
                         print(date, risk_num, risk.get("id"), position, frame.get("lane_position"), travel_time, log[frame_num-1].get("speed"))
-                    buf_prob_speed_count = pd.DataFrame([[policy, date, risk_num, risk.get("prob"), log[frame_num-1].get("speed"), distance_pred_speed, distance_prob_speed, distance_risk_speed]], columns=prob_speed_count.columns)
+                    buf_prob_speed_count = pd.DataFrame([[policy, date, risk_num, risk.get("prob"), risk.get("hidden"), risk.get("pred"), log[frame_num-1].get("speed"), distance_pred_speed, distance_prob_speed, distance_risk_speed]], columns=prob_speed_count.columns)
                     prob_speed_count = pd.concat([prob_speed_count, buf_prob_speed_count], ignore_index=True)
 
             ## calculate reward
@@ -419,8 +425,10 @@ elif len(sys.argv) > 2:
 
         mean_risk_omission = sum(risk_omission)/len(risk_omission) if risk_omission else 0.0
         mean_ambiguity_omission = sum(ambiguity_omission)/len(ambiguity_omission) if ambiguity_omission else 0.0
+        
+        acc = correct_pred / passed_target if passed_target > 0 else 0.0
 
-        buf_df = pd.DataFrame([[policy, date, risk_num, travel_time, total_fuel_consumption, mean_fuel_consumption, dev_accel, mean_speed, mean_risk_omission, mean_ambiguity_omission, request_time, total_reward]], columns=df.columns)
+        buf_df = pd.DataFrame([[policy, date, risk_num, travel_time, total_fuel_consumption, mean_fuel_consumption, dev_accel, mean_speed, mean_risk_omission, mean_ambiguity_omission, request_time, total_reward, acc]], columns=df.columns)
         df = pd.concat([df, buf_df], ignore_index=True)
 
 
@@ -446,10 +454,6 @@ elif len(sys.argv) > 2:
     plt.savefig("mean_speed.svg", transparent=True)
     plt.clf()
 
-    sns.lineplot(data=df, x="risk_num", y="risk_omission", hue="policy", markers=True, palette=palette)
-    plt.savefig("risk_pass_time.svg", transparent=True)
-    plt.clf()
-    
     sns.lineplot(data=df, x="risk_num", y="ambiguity_omission", hue="policy", markers=True, palette=palette)
     plt.savefig("ambiguity_omission.svg", transparent=True)
     plt.clf()
@@ -462,6 +466,10 @@ elif len(sys.argv) > 2:
     plt.savefig("reward.svg", transparent=True)
     plt.clf()
 
+    sns.lineplot(data=df, x="risk_num", y="acc", hue="policy", markers=True, palette=palette)
+    ax.set_ylim([0.0, 1.0])
+    plt.savefig("total_acc.svg", transparent=True)
+    plt.clf()
 
     ## risk prob - intervention request
     for policy in risk_prob_count.keys():
@@ -509,6 +517,14 @@ elif len(sys.argv) > 2:
 
     plt.savefig("speed_risk_distance.svg", transparent=True)
 
+    # speed - hidden risk speed plot
+    fig, ax = plt.subplots(tight_layout = True)
+    sns.lineplot(data=prob_speed_count, x="risk_num", y="speed", hue="policy", style="hidden", ax=ax, markers=True, palette=palette)
+    ax.set_ylim(0.0, 12.0)
+    plt.savefig("pass_speed.svg", transparent=True)
+    plt.clf()
+    
+
 #    fig, ax = plt.subplots(len(prob_speed_count["risk_num"].unique()), len(prob_speed_count["policy"].unique()), tight_layout = True)
 #    for i, policy in enumerate(prob_speed_count["policy"].unique()):
 #        for j, risk_num in enumerate(prob_speed_count["risk_num"].unique()):
@@ -516,6 +532,9 @@ elif len(sys.argv) > 2:
 #            ax[j][i].set_title(f"{policy}-{risk_num}")
 #
 #    plt.show()
+
+
+
 
     ## visualize recognition simulation 
     fig, ax = plt.subplots(1, 2, tight_layout=True)
@@ -538,5 +557,3 @@ elif len(sys.argv) > 2:
     ax[0].set_ylim(0.0, 1.0)
     ax[0].set_xticks([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
     ax[0].set_xticklabels([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
-    ax[1].set_xticklabels([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
-    plt.savefig("recog_stat.svg", transparent=True)

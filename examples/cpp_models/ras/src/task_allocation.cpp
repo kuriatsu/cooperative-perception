@@ -272,7 +272,7 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
             }
             else {
                 // reward += (_max_speed - state_prev.ego_speed)/(_max_speed - _yield_speed) * -100;
-                reward += (state_curr.ego_speed - _yield_speed)/(_max_speed - _yield_speed) * 10;
+                reward += (state_curr.ego_speed - _yield_speed)/(_max_speed - _yield_speed) * 100;
             }
 
             // avoid cheating planner by requesting and change recog in last minute
