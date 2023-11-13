@@ -281,7 +281,9 @@ if len(sys.argv) == 2:
     ax2.set_ylabel("intervention request")
     ax2.set_xlabel("travel distance [m]")
 
-    plt.show()
+    filename = re.findall("([.\w]*).json", sys.argv[1])[0]
+
+    plt.savefig(f"{filename}.svg", transparent=True)
 
 
 #################################
@@ -426,48 +428,48 @@ elif len(sys.argv) > 2:
         mean_risk_omission = sum(risk_omission)/len(risk_omission) if risk_omission else 0.0
         mean_ambiguity_omission = sum(ambiguity_omission)/len(ambiguity_omission) if ambiguity_omission else 0.0
         
-        acc = correct_pred / passed_target if passed_target > 0 else 0.0
+        acc = correct_pred / passed_target if passed_target > 0 else None 
 
         buf_df = pd.DataFrame([[policy, date, risk_num, travel_time, total_fuel_consumption, mean_fuel_consumption, dev_accel, mean_speed, mean_risk_omission, mean_ambiguity_omission, request_time, total_reward, acc]], columns=df.columns)
         df = pd.concat([df, buf_df], ignore_index=True)
 
 
-    sns.lineplot(data=df, x="risk_num", y="travel_time", hue="policy", markers=True, palette=palette)
+    sns.lineplot(data=df, x="risk_num", y="travel_time", hue="policy", style="policy", markers=True, palette=palette)
     plt.savefig("travel_time.svg", transparent=True)
     plt.clf()
 
-    sns.lineplot(data=df, x="risk_num", y="total_fuel_consumption", hue="policy", markers=True, palette=palette)
+    sns.lineplot(data=df, x="risk_num", y="total_fuel_consumption", hue="policy", style="policy", markers=True, palette=palette)
     plt.savefig("total_fuel_consumption.svg", transparent=True)
     plt.clf()
 
-    sns.lineplot(data=df, x="risk_num", y="mean_fuel_consumption", hue="policy", markers=True, palette=palette)
+    sns.lineplot(data=df, x="risk_num", y="mean_fuel_consumption", hue="policy", style="policy", markers=True, palette=palette)
     plt.savefig("mean_fuel_consumption.svg", transparent=True)
     plt.clf()
 
-    sns.lineplot(data=df, x="risk_num", y="dev_accel", hue="policy", markers=True, palette=palette)
+    sns.lineplot(data=df, x="risk_num", y="dev_accel", hue="policy", style="policy", markers=True, palette=palette)
     plt.ylim([0.0, 11.2])
     plt.savefig("accel.svg", transparent=True)
     plt.clf()
 
-    sns.lineplot(data=df, x="risk_num", y="mean_speed", hue="policy", markers=True, palette=palette)
+    sns.lineplot(data=df, x="risk_num", y="mean_speed", hue="policy", style="policy", markers=True, palette=palette)
     plt.ylim([0.0, 11.2])
     plt.savefig("mean_speed.svg", transparent=True)
     plt.clf()
 
-    sns.lineplot(data=df, x="risk_num", y="ambiguity_omission", hue="policy", markers=True, palette=palette)
+    sns.lineplot(data=df, x="risk_num", y="ambiguity_omission", hue="policy", style="policy", markers=True, palette=palette)
     plt.savefig("ambiguity_omission.svg", transparent=True)
     plt.clf()
 
-    sns.lineplot(data=df, x="risk_num", y="request_time", hue="policy", markers=True, palette=palette)
+    sns.lineplot(data=df, x="risk_num", y="request_time", hue="policy", style="policy", markers=True, palette=palette)
     plt.savefig("request_time.svg", transparent=True)
     plt.clf()
 
-    sns.lineplot(data=df, x="risk_num", y="total_reward", hue="policy", markers=True, palette=palette)
+    sns.lineplot(data=df, x="risk_num", y="total_reward", hue="policy", style="policy", markers=True, palette=palette)
     plt.savefig("reward.svg", transparent=True)
     plt.clf()
 
-    sns.lineplot(data=df, x="risk_num", y="acc", hue="policy", markers=True, palette=palette)
-    ax.set_ylim([0.0, 1.0])
+    sns.lineplot(data=df, x="risk_num", y="acc", hue="policy", style="policy", markers=True, palette=palette)
+    plt.set_ylim([0.0, 1.0])
     plt.savefig("total_acc.svg", transparent=True)
     plt.clf()
 
@@ -501,25 +503,25 @@ elif len(sys.argv) > 2:
     
     # speed - prediction distance plot
     fig, ax = plt.subplots(tight_layout = True)
-    sns.lineplot(data=prob_speed_count, x="risk_num", y="distance_pred_speed", hue="policy", ax=ax, palette=palette)
+    sns.lineplot(data=prob_speed_count, x="risk_num", y="distance_pred_speed", hue="policy", style="policy", markers=True, ax=ax, palette=palette)
 
     plt.savefig("speed_pred_distance.svg", transparent=True)
 
     # speed - probability distance plot
     fig, ax = plt.subplots(tight_layout = True)
-    sns.lineplot(data=prob_speed_count, x="risk_num", y="distance_prob_speed", hue="policy", ax=ax, palette=palette)
+    sns.lineplot(data=prob_speed_count, x="risk_num", y="distance_prob_speed", hue="policy", style="policy", markers=True, ax=ax, palette=palette)
 
     plt.savefig("speed_prob_distance.svg", transparent=True)
 
     # speed - hidden risk distance plot
     fig, ax = plt.subplots(tight_layout = True)
-    sns.lineplot(data=prob_speed_count, x="risk_num", y="distance_risk_speed", hue="policy", ax=ax, palette=palette)
+    sns.lineplot(data=prob_speed_count, x="risk_num", y="distance_risk_speed", hue="policy", style="policy", markers=True, ax=ax, palette=palette)
 
     plt.savefig("speed_risk_distance.svg", transparent=True)
 
     # speed - hidden risk speed plot
     fig, ax = plt.subplots(tight_layout = True)
-    sns.lineplot(data=prob_speed_count, x="risk_num", y="speed", hue="policy", style="hidden", ax=ax, markers=True, palette=palette)
+    sns.lineplot(data=prob_speed_count, x="risk_num", y="speed", hue="policy", style="hidden", markers=True, ax=ax, palette=palette)
     ax.set_ylim(0.0, 12.0)
     plt.savefig("pass_speed.svg", transparent=True)
     plt.clf()
@@ -552,7 +554,7 @@ elif len(sys.argv) > 2:
         count[index] = 1
         correct[index] = 1
 
-    sns.lineplot(x=np.arange(0.0, 1.0, 0.1), y=correct/count, ax=ax[0])
+    sns.lineplot(x=np.arange(0.0, 1.0, 0.1), y=correct/count, ax=ax[0], marker="o")
     sns.barplot(x=np.arange(0.0, 1.0, 0.1), y=count, ax=ax[1])
     ax[0].set_ylim(0.0, 1.0)
     ax[0].set_xticks([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
