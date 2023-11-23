@@ -296,7 +296,6 @@ elif len(sys.argv) > 2:
     risk_prob_count = {"DESPOT":[0] * 10, "MYOPIC":[0]*10, "EGOISTIC":[0]*10, "REFERENCE":[0]*10}
     prob_speed_count = pd.DataFrame(columns = ["policy", "date", "risk_num", "prob", "hidden", "pred", "speed", "distance_pred_speed", "distance_prob_speed", "distance_risk_speed"])
     recog_evaluation = pd.DataFrame(columns = ["hidden", "pred", "prob"])
-    total_acc_df = pd.DataFrame(columns=["policy", "date", "risk_num", "acc"])
 
 
     fig, ax = plt.subplots(1, 1, tight_layout=True)
@@ -469,7 +468,7 @@ elif len(sys.argv) > 2:
     plt.clf()
 
     sns.lineplot(data=df, x="risk_num", y="acc", hue="policy", style="policy", markers=True, palette=palette)
-    plt.set_ylim([0.0, 1.0])
+    plt.ylim([0.0, 1.0])
     plt.savefig("total_acc.svg", transparent=True)
     plt.clf()
 
@@ -559,3 +558,4 @@ elif len(sys.argv) > 2:
     ax[0].set_ylim(0.0, 1.0)
     ax[0].set_xticks([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
     ax[0].set_xticklabels([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
+
