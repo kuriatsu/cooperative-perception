@@ -277,7 +277,7 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 
             // avoid cheating planner by requesting and change recog in last minute
             if (state_curr.ego_recog[passed_index] == TAValues::RISK) {
-                reward += (state_curr.ego_speed - _yield_speed)/(_max_speed - _yield_speed) * -1000;
+                reward += (state_curr.ego_speed - _yield_speed)/(_max_speed - _yield_speed) * -100;
             }
             
 		}
@@ -306,7 +306,7 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
     if (state_prev.req_time > 0 && (ta_action != TAValues::REQUEST || state_curr.req_target != state_prev.req_target)) {
         /* when operator took mistake <- if no penalty, bet 0.5 of obs = no-risk if it want to keep speed*/
         if (state_curr.risk_bin[state_prev.req_target] != state_curr.ego_recog[state_prev.req_target]) {
-            reward += -1000;
+            reward += -100;
         }
     }
 
