@@ -397,7 +397,12 @@ elif len(sys.argv) > 2:
                     else:
                         distance_risk_speed = (11.2 - log[frame_num-1].get("speed"))/11.2
 
-                    correct_pred += (risk.get("hidden") == risk.get("pred"))
+                    ## accuracy
+                    if policy == "REFERENCE":
+                        correct_pred += 1
+                    else:
+                        correct_pred += (risk.get("hidden") == risk.get("pred"))
+
                     passed_target += 1
 
 
