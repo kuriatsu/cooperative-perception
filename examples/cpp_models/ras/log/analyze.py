@@ -378,24 +378,39 @@ elif len(sys.argv) > 2:
 
                     ## distance from ideal speed based on hidden risk
                     distance_pred_speed = 0.0
-                    if risk.get("pred"):
-                        distance_pred_speed = log[frame_num-1].get("speed")/11.2
+                    if policy == "REFERENCE":
+                        if risk.get("hidden"):
+                            distance_pred_speed = abs(log[frame_num-1].get("speed")/11.2)
+                        else:
+                            distance_pred_speed = abs((11.2 - log[frame_num-1].get("speed"))/11.2)
                     else:
-                        distance_pred_speed = (11.2 - log[frame_num-1].get("speed"))/11.2
+                        if risk.get("pred"):
+                            distance_pred_speed = abs(log[frame_num-1].get("speed")/11.2)
+                        else:
+                            distance_pred_speed = abs((11.2 - log[frame_num-1].get("speed"))/11.2)
 
                     ## distance from ideal prob-speed 
                     distance_prob_speed = 0.0
-                    if risk.get("prob") >= 0.5:
-                        distance_prob_speed = (1.0 - risk.get("prob"))**2 + (log[frame_num-1].get("speed")/11.2)**2
+                    if policy == "REFERENCE":
+                        if risk.get("hidden"):
+                            distance_prob_speed = abs(log[frame_num-1].get("speed")/11.2)
+                        else:
+                            distance_prob_speed = abs((11.2 - log[frame_num-1].get("speed"))/11.2)
+
                     else:
-                        distance_prob_speed = (risk.get("prob"))**2 + ((11.2 - log[frame_num-1].get("speed"))/11.2)**2
+                        if risk.get("prob") >= 0.5:
+                            distance_prob_speed = (1.0 - risk.get("prob"))**2 + (log[frame_num-1].get("speed")/11.2)**2
+                            distance_prob_speed = distance_prob_speed**0.5
+                        else:
+                            distance_prob_speed = (risk.get("prob"))**2 + ((11.2 - log[frame_num-1].get("speed"))/11.2)**2
+                            distance_prob_speed = distance_prob_speed**0.5
 
                     ## distance from ideal speed based on hidden risk
                     distance_risk_speed = 0.0
                     if risk.get("hidden"):
                         distance_risk_speed = log[frame_num-1].get("speed")/11.2
                     else:
-                        distance_risk_speed = (11.2 - log[frame_num-1].get("speed"))/11.2
+                        distance_risk_speed = abs(11.2 - log[frame_num-1].get("speed"))/11.2)
 
                     ## accuracy
                     if policy == "REFERENCE":
