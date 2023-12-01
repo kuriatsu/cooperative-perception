@@ -128,6 +128,10 @@ if len(sys.argv) == 2:
         ego_vel.append(frame.get("speed"))
     
     ax[0].plot(elapse_time_list, ego_vel, ".", linestyle="-")
+    ax[0].text(elapse_time-30, 14.0, f"travel time: {elapse_time:.1f} s", size=10, color="black")
+    ax[0].text(elapse_time-30, 13.0, f"average speed: {sum(ego_vel)/len(ego_vel):.1f} m/s", size=10, color="black")
+    ax[0].set_xlim(0, (len(log) + 1.0) * data.get("delta_t"))
+    ax[0].set_ylabel("vehicle speed [m/s]")
 
     risk_ids = [] 
     risk_num = len(log[0].get("risks"))
@@ -154,6 +158,7 @@ if len(sys.argv) == 2:
 
                 print(risk)
                 if id != risk.get("id"): continue
+
 
                 last_prob = risk.get("prob")
                 position = risk.get("lane_position") if id[0] != "-" else 500.0 - risk.get("lane_position")
@@ -197,6 +202,7 @@ if len(sys.argv) == 2:
     buf_prob = []
     buf_time = []
     reward = [0]
+    request_time = 0
 
     ## first log
     if log[0].get("action") == "REQUEST":
@@ -215,6 +221,7 @@ if len(sys.argv) == 2:
         target = frame.get("action_target")
 
         if frame.get("action") == "REQUEST":
+            request_time += data.get("delta_t")
 
             ## keep intervention request
             if last_action_target == target:
@@ -271,12 +278,11 @@ if len(sys.argv) == 2:
         ## reward
         reward.append(CalcReward(log[frame_num-1], log[frame_num]))
 
-    ax[0].set_xlim(0, (len(log) + 1.0) * data.get("delta_t"))
-    ax[0].set_ylabel("vehicle speed [m/s]")
+    ax[0].text(elapse_time-30, 12.0, f"reward: {sum(reward):.1f}", size=10, color="black")
+    ax[1].text(elapse_time-30, 1.02, f"request time: {request_time} s", size=10, color="black")
     ax[1].set_xlim(0, (len(log) + 1.0) * data.get("delta_t"))
     ax[1].set_ylim(0, 1.0)
     ax[1].set_ylabel("risk probs")
-    ax[0].annotate(f"reward: \n{sum(reward):.1f}", xy=[len(log)-8, 1], size=10, color="black")
     ax2.set_ylim(0, 1.0)
     ax2.set_ylabel("intervention request")
     ax2.set_xlabel("travel distance [m]")
@@ -289,11 +295,11 @@ if len(sys.argv) == 2:
 #################################
 # print("summary")
 #################################
-elif len(sys.argv) > 2:
+elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
 
     df = pd.DataFrame(columns = ["policy", "date", "risk_num", "travel_time", "total_fuel_consumption", "mean_fuel_consumption", "dev_accel", "mean_speed", "risk_omission", "ambiguity_omission", "request_time", "total_reward", "acc"])
-    request_target_prob_count = {"DESPOT":[0] * 10, "MYOPIC":[0]*10, "EGOISTIC":[0]*10, "REFERENCE":[0]*10}
-    risk_prob_count = {"DESPOT":[0] * 10, "MYOPIC":[0]*10, "EGOISTIC":[0]*10, "REFERENCE":[0]*10}
+    target_count = pd.DataFrame(columns = ["id", "prob", "is_requsted", "policy", "risk_num", "date"]) 
+    # risk_prob_count = {"DESPOT":[0] * 10, "MYOPIC":[0]*10, "EGOISTIC":[0]*10, "REFERENCE":[0]*10}
     prob_speed_count = pd.DataFrame(columns = ["policy", "date", "risk_num", "prob", "hidden", "pred", "speed", "distance_pred_speed", "distance_prob_speed", "distance_risk_speed"])
     recog_evaluation = pd.DataFrame(columns = ["hidden", "pred", "prob"])
 
@@ -317,7 +323,6 @@ elif len(sys.argv) > 2:
         risk_omission = [] 
         ambiguity_omission = [] 
         request_time = 0.0
-        request_history = []
         reward = [0]
         correct_pred = 0
         passed_target = 0
@@ -326,15 +331,18 @@ elif len(sys.argv) > 2:
 
         if log[0].get("risks") is not None:
             for risk in log[0].get("risks"):
-                ## intervention target risk probaility distribution
-                if risk.get("prob") == 1.0:
-                    risk_prob_count.get(policy)[-1] += 1
-                else:
-                    risk_prob_count.get(policy)[math.floor(risk.get("prob")*10)] += 1
 
                 ## add recog evaluation
                 buf_recog_evaluation = pd.DataFrame([[risk.get("hidden"), risk.get("pred"), risk.get("prob")]], columns=recog_evaluation.columns)
                 recog_evaluation = pd.concat([recog_evaluation, buf_recog_evaluation], ignore_index=True)
+
+                quantized_prob = 0.0
+                if risk.get("prob") == 1.0:
+                    quantized_prob = 0.9 
+                else:
+                    quantized_prob = math.floor(risk.get("prob")*10) * 0.1 
+                buf_target_count = pd.DataFrame([[risk.get("id"), quantized_prob, False, policy, risk_num, date]], columns=target_count.columns)
+                target_count = pd.concat([target_count, buf_target_count], ignore_index=True)
 
         for frame_num in range(1, len(log)):
             frame = log[frame_num]
@@ -351,18 +359,9 @@ elif len(sys.argv) > 2:
             if frame.get("action") == "REQUEST":
                 ## add request time
                 request_time += data.get("delta_t") 
-                ## update request-target_prob list
-                target = frame.get("action_target")
-                if target not in request_history:
-                    for risk in log[0].get("risks"):
-                        if target == risk.get("id"):
-                            if risk.get("prob") == 1.0:
-                                request_target_prob_count.get(policy)[-1] += 1
-                            else:
-                                request_target_prob_count.get(policy)[math.floor(risk.get("prob")*10)] += 1
-                            break
-
-                request_history.append(target)
+                ## flag target count "is_requested"
+                target_index = target_count.index[(target_count.id == frame.get("action_target")) & (target_count.policy == policy) & (target_count.risk_num == risk_num) & (target_count.date == date)].tolist()[0]
+                target_count.iloc[target_index, 2] = True
 
             ## when ego_vehivle and risk crossed 
             for risk in frame.get("risks"):
@@ -410,7 +409,7 @@ elif len(sys.argv) > 2:
                     if risk.get("hidden"):
                         distance_risk_speed = log[frame_num-1].get("speed")/11.2
                     else:
-                        distance_risk_speed = abs(11.2 - log[frame_num-1].get("speed"))/11.2)
+                        distance_risk_speed = abs(11.2 - log[frame_num-1].get("speed")/11.2)
 
                     ## accuracy
                     if policy == "REFERENCE":
@@ -421,10 +420,7 @@ elif len(sys.argv) > 2:
                     passed_target += 1
 
 
-                    # buf_prob_speed_count = pd.DataFrame([[policy, date, risk_num, int(risk.get("prob")*10)*0.1, log[frame_num-1].get("speed")]], columns=prob_speed_count.columns)
-                    if risk.get("prob") == 1.0 and log[frame_num-1].get("speed") > 3.0:
-                        print(date, risk_num, risk.get("id"), position, frame.get("lane_position"), travel_time, log[frame_num-1].get("speed"))
-                    buf_prob_speed_count = pd.DataFrame([[policy, date, risk_num, risk.get("prob"), risk.get("hidden"), risk.get("pred"), log[frame_num-1].get("speed"), distance_pred_speed, distance_prob_speed, distance_risk_speed]], columns=prob_speed_count.columns)
+                    buf_prob_speed_count = pd.DataFrame([[policy, date, risk_num, int(risk.get("prob")*10)*0.1, risk.get("hidden"), risk.get("pred"), log[frame_num-1].get("speed"), distance_pred_speed, distance_prob_speed, distance_risk_speed]], columns=prob_speed_count.columns)
                     prob_speed_count = pd.concat([prob_speed_count, buf_prob_speed_count], ignore_index=True)
 
             ## calculate reward
@@ -493,31 +489,30 @@ elif len(sys.argv) > 2:
     plt.clf()
 
     ## risk prob - intervention request
-    for policy in risk_prob_count.keys():
-        for i in range(0, len(risk_prob_count.get(policy))):
-            print(policy, i, len(risk_prob_count))
-            if risk_prob_count.get(policy)[i] > 0:
-                request_target_prob_count[policy][i] = request_target_prob_count[policy][i] / risk_prob_count[policy][i]
+    request_rate = pd.DataFrame(columns=("policy", "risk_num", "prob", "rate"))
+    for rn in target_count.risk_num.drop_duplicates():
+        for pol in target_count.policy.drop_duplicates():
+            for pro in target_count.prob.drop_duplicates():
+                target = target_count[(target_count.policy==pol) & (target_count.risk_num==rn) & (target_count.prob==pro)]
+                if len(target) > 0:
+                    buf_request_rate = pd.DataFrame([[pol, rn, pro, target.is_requsted.sum()/len(target)]], columns=request_rate.columns) 
+                    request_rate = pd.concat([request_rate, buf_request_rate], ignore_index=True)
 
-    fig, ax = plt.subplots(1,3, tight_layout=True)
-    sns.barplot(x=np.arange(0.0, 1.0, 0.1), y=request_target_prob_count.get("DESPOT"), ax=ax[0])
-    sns.barplot(x=np.arange(0.0, 1.0, 0.1), y=request_target_prob_count.get("MYOPIC"), ax=ax[1])
-    sns.barplot(x=np.arange(0.0, 1.0, 0.1), y=request_target_prob_count.get("EGOISTIC"), ax=ax[2])
-    for a in ax:
-        a.set_xticklabels([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
-        a.set_ylim(0.0, 1.0)
-        a.set_xlabel("risk probability")
-        a.set_ylabel("intervention request rate")
+    fig, ax = plt.subplots(tight_layout=True)
+    sns.lineplot(x="policy", y="rate", data=request_rate, hue="risk_num", markers=True, ax=ax)
+    ax.set_ylim(0.0, 1.0)
+    ax.set_xlabel("risk probability")
+    ax.set_ylabel("intervention request rate")
 
-    plt.savefig("request_prob.svg", transparent=True, bbox_inches="tight")
+    plt.savefig("request_rate.svg", transparent=True, bbox_inches="tight")
+    request_rate.to_csv("request_rate.csv")
 
     # speed - prob scatter plot
-    fig, ax = plt.subplots(1, len(prob_speed_count["policy"].unique()), tight_layout = True)
-    for i, policy in enumerate(prob_speed_count["policy"].unique()):
-        sns.scatterplot(data=prob_speed_count[prob_speed_count["policy"]==policy], x="prob", y="speed", hue="risk_num", ax=ax[i])
-        ax[i].set_title(f"{policy}")
+    fig, ax = plt.subplots(tight_layout = True)
+    sns.lineplot(data=prob_speed_count, x="policy", y="speed", hue="risk_num", style="hidden", markers=True, ax=ax, label="_nolegend_")
 
-    plt.savefig("speed_prob.svg", transparent=True)
+    plt.savefig("pass_speed_ypolicy.svg", transparent=True)
+    prob_speed_count.to_csv("prob_speed_count.csv")
     plt.clf()
     
     # speed - prediction distance plot
@@ -579,3 +574,24 @@ elif len(sys.argv) > 2:
     ax[0].set_xticks([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
     ax[0].set_xticklabels([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
 
+
+elif len(sys.argv) > 2 and sys.argv[1].endswith("csv"):
+    
+    for file in sys.argv[1:]:
+        df = pd.read_csv(file)
+
+        if "speed" in df.columns:
+            # speed - prob scatter plot
+            fig, ax = plt.subplots(tight_layout = True)
+            sns.lineplot(data=df, x="scenario", y="speed", hue="risk_num", style="hidden", markers=True, ax=ax, label="_nolegend_")
+            plt.savefig("pass_speed_ypolicy.svg", transparent=True)
+
+        else if "rate" in df.columns:
+
+            fig, ax = plt.subplots(tight_layout=True)
+            sns.lineplot(x="scenario", y="rate", data=request_rate, hue="risk_num", markers=True, ax=ax)
+            ax.set_ylim(0.0, 1.0)
+            ax.set_xlabel("risk probability")
+            ax.set_ylabel("intervention request rate")
+
+            plt.savefig("request_rate.svg", transparent=True, bbox_inches="tight")
