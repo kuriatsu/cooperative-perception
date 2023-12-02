@@ -409,7 +409,7 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
                     if risk.get("hidden"):
                         distance_risk_speed = log[frame_num-1].get("speed")/11.2
                     else:
-                        distance_risk_speed = abs(11.2 - log[frame_num-1].get("speed")/11.2)
+                        distance_risk_speed = abs((11.2 - log[frame_num-1].get("speed"))/11.2)
 
                     ## accuracy
                     if policy == "REFERENCE":
