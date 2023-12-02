@@ -18,16 +18,19 @@ def CalcReward(state_prev, state_curr):
             if risk["hidden"] == "RISK":
                 reward += (state_curr["speed"] - 2.8) / (11.2 - 2.8) * -100
             else:
-                reward += (state_curr["speed"] - 2.8) / (11.2 - 2.8) * 100
+                reward += (11.2 - state_curr["speed"]) / (11.2 - 2.8) * -10
+            
+            if risk["pred"] == "RISK":
+                reward += (state_curr["speed"] - 2.8) / (11.2 - 2.8) * -100
 
-    reward += (state_curr["speed"] - 2.8) / (11.2 - 2.8) * 1
-
+    ## request penalty
     if state_prev["action"] == "REQUEST" and (state_prev["action"] != "REQUEST" or state_prev["action_target"] != state_curr["action_target"]):
-        reward += -10
+        reward += -1
 
+    ## when operator mistake
     if state_prev["action"] == "REQUEST" and (state_prev["action"] != "REQUEST" or state_prev["action_target"] != state_curr["action_target"]):
         if risk["hidden"] != risk["pred"]:
-            reward += -1000
+            reward += -100
 
     return reward
 
@@ -107,7 +110,7 @@ def CalcReward(state_prev, state_curr):
 #
 #    plt.show()
 
-if len(sys.argv) == 2:
+if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
     fig, ax = plt.subplots(2, 1, tight_layout=True)
 
     with open(sys.argv[1], "r") as f:
@@ -575,7 +578,7 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
     ax[0].set_xticklabels([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
 
 
-elif len(sys.argv) > 2 and sys.argv[1].endswith("csv"):
+elif sys.argv[1].endswith("csv"):
     
     for file in sys.argv[1:]:
         df = pd.read_csv(file)
@@ -586,10 +589,10 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("csv"):
             sns.lineplot(data=df, x="scenario", y="speed", hue="risk_num", style="hidden", markers=True, ax=ax, label="_nolegend_")
             plt.savefig("pass_speed_ypolicy.svg", transparent=True)
 
-        else if "rate" in df.columns:
+        elif "rate" in df.columns:
 
             fig, ax = plt.subplots(tight_layout=True)
-            sns.lineplot(x="scenario", y="rate", data=request_rate, hue="risk_num", markers=True, ax=ax)
+            sns.lineplot(x="scenario", y="rate", data=df, hue="risk_num", markers=True, ax=ax)
             ax.set_ylim(0.0, 1.0)
             ax.set_xlabel("risk probability")
             ax.set_ylabel("intervention request rate")
