@@ -281,8 +281,8 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
     reward += (state_curr.ego_speed - _yield_speed)/(_max_speed - _yield_speed) * 1;
 
     // driving comfort
-    deceleration = (state_curr.ego_speed - state_prev.ego_speed)/delta_t_ if state_curr.ego_speed < state_prev.ego_speed else 0.0
-    reward += -100 if deceleration < -_max_decel else 0.0
+    double deceleration = (state_curr.ego_speed < state_prev.ego_speed) ? (state_curr.ego_speed - state_prev.ego_speed)/_delta_t : 0.0;
+    reward += (deceleration < -_vehicle_model->_max_decel) ? -100 : 0.0;
 
     // if (ta_action == TAValues::RECOG && state_prev.risk_bin[action_target_idx] != state_prev.ego_recog[action_target_idx])
     //     reward += -100;

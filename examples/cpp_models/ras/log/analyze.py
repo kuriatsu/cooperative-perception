@@ -17,20 +17,32 @@ def CalcReward(state_prev, state_curr):
 
             if risk["hidden"] == "RISK":
                 reward += (state_curr["speed"] - 2.8) / (11.2 - 2.8) * -100
-            else:
-                reward += (11.2 - state_curr["speed"]) / (11.2 - 2.8) * -10
+            # else:
+            #     reward += (11.2 - state_curr["speed"]) / (11.2 - 2.8) * -10
             
-            if risk["pred"] == "RISK":
-                reward += (state_curr["speed"] - 2.8) / (11.2 - 2.8) * -100
+            # if risk["pred"] == "RISK":
+            #     reward += (state_curr["speed"] - 2.8) / (11.2 - 2.8) * -100
 
     ## request penalty
-    if state_prev["action"] == "REQUEST" and (state_prev["action"] != "REQUEST" or state_prev["action_target"] != state_curr["action_target"]):
+    # if state_prev["action"] == "REQUEST" and (state_prev["action"] != "REQUEST" or state_prev["action_target"] != state_curr["action_target"]):
+    #     reward += -1
+
+    ## deceleration penalty
+    deceleration = state_prev["speed"] - state_prev["speed"]
+    reward += -100 if deceleration < -0.3 * 9.8 else 0.0
+
+    ## driving efficiency 
+    reward += (state_curr["speed"] - 2.8) / (11.2 - 2.8) * 1;
+
+    ## intervention request
+    if state_curr["action"] == "REQUEST" and (state_prev["action_target"] != state_curr["action_target"]):
         reward += -1
 
     ## when operator mistake
-    if state_prev["action"] == "REQUEST" and (state_prev["action"] != "REQUEST" or state_prev["action_target"] != state_curr["action_target"]):
-        if risk["hidden"] != risk["pred"]:
-            reward += -100
+    if state_prev["action"] == "REQUEST" and (state_prev["action_target"] != state_curr["action_target"]):
+        for risk in state_curr["risks"]:
+            if risk["id"] == state_prev["action_target"]:
+                reward += -100 if risk["hidden"] != risk["pred"] else 0.0
 
     return reward
 
