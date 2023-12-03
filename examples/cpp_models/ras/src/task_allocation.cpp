@@ -257,35 +257,32 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 		if (state_prev.ego_pose < *it && *it <= state_curr.ego_pose) {
             int passed_index = distance(state_curr.risk_pose.begin(), it);
 
-			// driving safety
-            // reward += (state_curr.risk_bin[passed_index] == state_curr.ego_recog[passed_index]) ? 10 : -10;
-            
-            //if (state_prev.ego_recog[target_index] == TAValues::NO_RISK)
-            //    reward += (state_prev.risk_bin[target_index] == TAValues::NO_RISK) ? 100 : -100;
-            // else 
-            //    reward += (state_prev.risk_bin[target_index] == TAValues::RISK) ? 100 : -100;
-
 
             if (state_curr.risk_bin[passed_index] == TAValues::RISK) {
                 reward += (state_curr.ego_speed - _yield_speed)/(_max_speed - _yield_speed) * -100;
                 // reward += (_max_speed - state_prev.ego_speed)/(_max_speed - _yield_speed) * 100;
             }
-            else {
-                reward += (_max_speed - state_prev.ego_speed)/(_max_speed - _yield_speed) * -10;
+            /* driving efficiency */
+            // else {
+            //     reward += (_max_speed - state_prev.ego_speed)/(_max_speed - _yield_speed) * -10;
                 // reward += (state_curr.ego_speed - _yield_speed)/(_max_speed - _yield_speed) * 10;
-            }
+            // }
 
-            // avoid cheating planner by requesting and change recog in last minute
-            if (state_curr.ego_recog[passed_index] == TAValues::RISK) {
-                reward += (state_curr.ego_speed - _yield_speed)/(_max_speed - _yield_speed) * -100;
-            }
+            /* avoid cheating planner by requesting and change recog in last minute */
+            // if (state_curr.ego_recog[passed_index] == TAValues::RISK) {
+            //     reward += (state_curr.ego_speed - _yield_speed)/(_max_speed - _yield_speed) * -100;
+            // }
             
 		}
 	}
 
 	
     // driving efficiency
-    // reward += (state_curr.ego_speed - _yield_speed)/(_max_speed - _yield_speed) * 1;
+    reward += (state_curr.ego_speed - _yield_speed)/(_max_speed - _yield_speed) * 1;
+
+    // driving comfort
+    deceleration = (state_curr.ego_speed - state_prev.ego_speed)/delta_t_ if state_curr.ego_speed < state_prev.ego_speed else 0.0
+    reward += -100 if deceleration < -_max_decel else 0.0
 
     // if (ta_action == TAValues::RECOG && state_prev.risk_bin[action_target_idx] != state_prev.ego_recog[action_target_idx])
     //     reward += -100;

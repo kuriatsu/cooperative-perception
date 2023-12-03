@@ -49,12 +49,9 @@ double VehicleModel::getAccel(const double speed, const int pose, const std::vec
             double a = (std::pow(_yield_speed, 2.0) - std::pow(speed, 2.0))/(2.0*(distance+_safety_margin));
             acc_list.emplace_back(a);
         }
-        else if (distance > emergency_decel_dist) {
+        else {
             double a = (std::pow(_yield_speed, 2.0) - std::pow(speed, 2.0))/(2.0*(distance));
             acc_list.emplace_back(a);
-        }
-        else {
-            acc_list.emplace_back(-_max_decel);
         }
 
         // std::cout << pose << " decel_dist" << emergency_decel_dist << " comf_decel" << comf_decel_dist  << " distance: " << distance << ", accel : " << a << std::endl;
@@ -89,8 +86,6 @@ double VehicleModel::clipSpeed(const double acc, const double v0) const{
     // std::cout << "acc : " << acc << " : max_decel : " << _max_decel << " v0 : " << v0 << " yield: " << _yield_speed << std::endl;
     if (acc >= 0.0 && acc > _max_accel)
         clipped_acc = _max_accel;
-    else if (acc < 0.0 && acc < -_max_decel)
-        clipped_acc = -_max_decel;
 
     // double speed = v0 + clipped_acc * _delta_t; 
     double speed = v0 + clipped_acc; 
