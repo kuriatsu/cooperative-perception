@@ -33,7 +33,7 @@ densities=(
 param_file="../param1.json"
 
 for density in "${densities[@]}"; do
-    for i in {1..10}; do
+    for i in {1..5}; do
         ../build/ras --policy DESPOT --density ${density} --param ${param_file} 
     done
 done
@@ -49,4 +49,8 @@ while read log ; do
         buf=${log##*[A-Z]}
         ../build/ras --policy ${policy} --log ${log} --density ${buf%_*} --param ${param_file} 
     done
+done < <(find . -name "*.json" )
+
+while read log ; do
+    python3 analyze.py ${log} 
 done < <(find . -name "*.json" )
