@@ -51,7 +51,7 @@ tl_black_list = [
 opposite_anno_list = ["3_16_259tl", "3_16_258tl", "3_16_249tl"]
 
 log_data = None
-data_path = "/home/kuriatsu/Dropbox/data/pie202203"
+data_path = "/run/media/kuriatsu/KuriBuffaloPSM/PIE/experiment/PIE_202203/log202203"
 for file in glob.glob(os.path.join(data_path, "log*.csv")):
     buf = pd.read_csv(file)
     filename =file.split("/")[-1]
@@ -121,7 +121,7 @@ for file in glob.glob(os.path.join(data_path, "log*.csv")):
     if log_data is None:
         log_data = buf
     else:
-        log_data = log_data.append(buf, ignore_index=True)
+        log_data = pd.concat([log_data, buf], ignore_index=True)
 
 task_list = {"int": "crossing intention", "tl": "traffic light", "traj":"trajectory"}
 subject_data = pd.DataFrame(columns=["subject", "task", "acc", "int_length", "missing"])
@@ -140,44 +140,59 @@ for subject in log_data.subject.drop_duplicates():
 # sns.barplot(x="task", y="acc", hue="int_length", data=subject_data, ci="sd")
 # sns.barplot(x="task", y="acc", data=subject_data, ci="sd")
 
-for task in log_data.subject.drop_duplicates():
-    for length in log_data.int_length.drop_duplicates():
-        acc = log_data[(log_data.task==task) & (log_data.length == length)].mean()
+for task in subject_data.task.drop_duplicates():
+    for length in subject_data.int_length.drop_duplicates():
+        acc = subject_data[(subject_data.task==task) & (subject_data.int_length == length)].acc.mean()
         print(f"task : {task}, length : {length}, acc = {acc}")
 
 fig, ax = plt.subplots()
-sns.pointplot(x="int_length", y="acc", data=subject_data, hue="task", hue_order=hue_order, ax=ax, capsize=0.1, ci="sd")
+print_data = subject_data[subject_data.task!="trajectory"]
+sns.pointplot(x="int_length", y="acc", data=print_data, hue="task", ax=ax, capsize=0.1)
 ax.set_ylim(0.0, 1.0)
-ax.set_xlabel("request time [s]", fontsize=18)
-ax.set_ylabel("accuracy [%]", fontsize=18)
+ax.set_xlabel("Request time [s]", fontsize=14)
+ax.set_ylabel("Accuracy [%]", fontsize=14)
 ax.tick_params(labelsize=14)
 ax.legend(fontsize=14)
 plt.savefig("accuracy_pie_experiment.svg")
+plt.clf()
 
 
 def nd(x, u, si):
     return np.exp(-(x-u)**2/(2*si))/(2*np.pi*si)**0.5
 
 
-u = 0.68
-si = 0.1
+
+fig, ax = plt.subplots(1, 2, tight_layout=True)
+ax2 = ax[0].twinx()
+ax3 = ax[1].twinx()
+
+#pie_result = pd.read_csv("/run/media/kuriatsu/KuriBuffaloPSM/PIE/experiment/PIE_202203/pie_predict_result_valid.csv")
+pie_result = pd.read_csv("/run/media/kuriatsu/KuriBuffaloPSM/PIE/experiment/PIE_202203/pie_predict.csv")
+ax2.hist(pie_result["likelihood"], bins=50, alpha=0.5, label="prediction")
+u = pie_result["likelihood"].mean()
+si = pie_result["likelihood"].std()
+print(f"pie result mean={u}, si={si}")
 data = np.random.normal(u, si, size=10000)
-plt.hist(data, bins=50, color="#ff7f00", alpha=0.5, label="pie simulation")
+ax[0].hist(data, bins=50, color="#ff7f00", alpha=0.5, label="simulation")
 
-u = 0.95
-si = 0.1
+tlr_result = pd.read_csv("/run/media/kuriatsu/KuriBuffaloPSM/PIE/experiment/PIE_202203/tlr_result.csv")
+ax3.hist(tlr_result["likelihood"], bins=50, alpha=0.5, label="prediction")
+u = tlr_result["likelihood"].mean()
+si = tlr_result["likelihood"].std()
+print(f"tlr result mean={u}, si={si}")
 data = np.random.normal(u, si, size=10000)
-plt.hist(data, bins=50, color="#ff7f00", alpha=0.5, label="tl simulation")
+data = [i for i in data if i<=1.0] 
+ax[1].hist(data, bins=50, color="#ff7f00", alpha=0.5, label="simulation")
 
-tlr_result = pd.read_csv("tlr_result.csv")
-plt.hist(tlr_result["likelihood"], bins=50, alpha=0.5, label="tlr result")
-pie_result = pd.read_csv("pie_predict_result_valid.csv")
-plt.hist(pie_result["likelihood"], bins=50, alpha=0.5, label="pie result")
-
-plt.xlim([0.0, 1.0])
-plt.xlabel("likelihood")
-plt.ylabel("count")
+fig.legend(fontsize=14)
+ax[0].set_ylabel("count", fontsize=14)
+ax[1].set_ylabel("count", fontsize=14)
+ax[0].set_xlim([0.0, 1.0])
+ax[1].set_xlim([0.0, 1.0])
+ax[0].set_xlabel("likelihood", fontsize=14)
+ax[1].set_xlabel("likelihood", fontsize=14)
 plt.savefig("likelihood_hist.svg")
+plt.clf()
 
 def operator_model(time):
     min_time = 1.0
