@@ -38,7 +38,6 @@ State* RasWorld::Initialize(const std::string log_file) {
     for (auto risk : log_json["log"][0]["risks"]) {
         Risk obj;
         obj.id = risk["id"];
-        obj.risk_hidden = risk["hidden"];
         obj.risk_prob = risk["prob"];
         obj.risk_pred = risk["pred"];
         obj.pose.x = risk["x"];
@@ -266,7 +265,7 @@ void RasWorld::SaveLog(std::string filename) {
 ACT_TYPE RasWorld::MyopicAction() {
 
     // if intervention requested to the target and can request more
-    int request_time = 6;
+    int request_time = 3;
     if (0 < pomdp_state->req_time && pomdp_state->req_time < request_time && pomdp_state->risk_pose[pomdp_state->req_target] > _vehicle_model->getDecelDistance(pomdp_state->ego_speed, _vehicle_model->_max_decel, 0.0)) {
         return ta_values->getAction(TAValues::REQUEST, pomdp_state->req_target);
     }
