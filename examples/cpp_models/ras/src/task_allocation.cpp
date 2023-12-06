@@ -307,7 +307,7 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
         }
     }
 
-	return reward;
+    return reward;
 }
 
 double TaskAllocation::GetMaxReward() const {
