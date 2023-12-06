@@ -266,7 +266,7 @@ void RasWorld::SaveLog(std::string filename) {
 ACT_TYPE RasWorld::MyopicAction() {
 
     // if intervention requested to the target and can request more
-    int request_time = 3;
+    int request_time = 6;
     if (0 < pomdp_state->req_time && pomdp_state->req_time < request_time && pomdp_state->risk_pose[pomdp_state->req_target] > _vehicle_model->getDecelDistance(pomdp_state->ego_speed, _vehicle_model->_max_decel, 0.0)) {
         return ta_values->getAction(TAValues::REQUEST, pomdp_state->req_target);
     }
