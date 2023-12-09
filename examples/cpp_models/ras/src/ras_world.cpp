@@ -38,6 +38,7 @@ State* RasWorld::Initialize(const std::string log_file) {
     for (auto risk : log_json["log"][0]["risks"]) {
         Risk obj;
         obj.id = risk["id"];
+        obj.risk_hidden = risk["hidden"];
         obj.risk_prob = risk["prob"];
         obj.risk_pred = risk["pred"];
         obj.pose.x = risk["x"];
