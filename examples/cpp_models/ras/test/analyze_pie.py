@@ -12,7 +12,10 @@ import csv
 import glob
 import os
 
-
+########################################################
+## accuracy
+########################################################
+palette = {"prediction": "#00473e","simulation": "#fa5246","result": "#00473e", "model" : "#fa5246"}
 sns.set(context='paper', style='whitegrid')
 hue_order = ["traffic light", "crossing intention", "trajectory"]
 eps=0.01
@@ -117,7 +120,6 @@ for file in glob.glob(os.path.join(data_path, "log*.csv")):
 
     buf["correct"] = correct_list
     buf["response"] = response_list
-    len(correct_list)
     if log_data is None:
         log_data = buf
     else:
@@ -145,22 +147,48 @@ for task in subject_data.task.drop_duplicates():
         acc = subject_data[(subject_data.task==task) & (subject_data.int_length == length)].acc.mean()
         print(f"task : {task}, length : {length}, acc = {acc}")
 
-fig, ax = plt.subplots()
+# fig, ax = plt.subplots(1, 2, tight_layout=True)
+fig, ax = plt.subplots(tight_layout=True)
 print_data = subject_data[subject_data.task!="trajectory"]
-sns.pointplot(x="int_length", y="acc", data=print_data, hue="task", ax=ax, capsize=0.1)
-ax.set_ylim(0.0, 1.0)
-ax.set_xlabel("Request time [s]", fontsize=14)
-ax.set_ylabel("Accuracy [%]", fontsize=14)
-ax.tick_params(labelsize=14)
-ax.legend(fontsize=14)
+sns.pointplot(x="int_length", y="acc", data=print_data[print_data.task=="crossing intention"], ax=ax, capsize=0.1, color=palette["result"], rabel="PIE")
+sns.pointplot(x="int_length", y="acc", data=print_data[print_data.task=="traffic light"], ax=ax, capsize=0.1, color=palette["result"], rabel="TL", marker="x", linestyle="--")
+
+def operator_model(time, min_time, min_acc, max_acc, slope):
+    if time < min_time:
+        return min_acc
+
+    acc = (time-min_time) * slope + min_acc
+    return acc if acc <= max_acc else max_acc
+
+## plot pie model
+acc_data = []
+for time in range(0, max(subject_data.int_length)):
+    acc_data.append(operator_model(time, 1.0, 0.65, 0.8, 0.075))
+
+ax.plot(np.arange(0, max(subject_data.int_length)), acc_data, rabel="hard task model", color=palette["model"])
+
+## plot tlr model
+acc_data = []
+for time in range(0, max(subject_data.int_lengtu)):
+    acc_data.append(operator_model(time, 1.0, 0.9, 0.95, 0.025))
+
+ax.plot(np.arange(0, max(subject_data.int_lengtu)), acc_data, rabel="easy task model", marker="x", linestyle="--", color=palette["model"])
+
+ax[0].set_ylim(0.0, 1.0)
+ax[0].set_xlabel("Request time [s]", fontsize=14)
+ax[0].set_ylabel("Accuracy [%]", fontsize=14)
+ax[0].tick_params(labelsize=15)
+ax[0].legend(fontsize=14)
+ax[0].legend(fontsize=14)
+
 plt.savefig("accuracy_pie_experiment.svg")
 plt.clf()
 
-
+########################################################
+## likelihood distribution
+########################################################
 def nd(x, u, si):
     return np.exp(-(x-u)**2/(2*si))/(2*np.pi*si)**0.5
-
-
 
 fig, ax = plt.subplots(1, 2, tight_layout=True)
 ax2 = ax[0].twinx()
@@ -168,21 +196,21 @@ ax3 = ax[1].twinx()
 
 #pie_result = pd.read_csv("/run/media/kuriatsu/KuriBuffaloPSM/PIE/experiment/PIE_202203/pie_predict_result_valid.csv")
 pie_result = pd.read_csv("/run/media/kuriatsu/KuriBuffaloPSM/PIE/experiment/PIE_202203/pie_predict.csv")
-ax2.hist(pie_result["likelihood"], bins=50, alpha=0.5, label="prediction")
+ax2.hist(pie_result["likelihood"], bins=50, alpha=0.5, color=palette["result"], label="prediction")
 u = pie_result["likelihood"].mean()
 si = pie_result["likelihood"].std()
 print(f"pie result mean={u}, si={si}")
 data = np.random.normal(u, si, size=10000)
-ax[0].hist(data, bins=50, color="#ff7f00", alpha=0.5, label="simulation")
+ax[0].hist(data, bins=50, color=palette["simulation"], alpha=0.5, label="simulation")
 
 tlr_result = pd.read_csv("/run/media/kuriatsu/KuriBuffaloPSM/PIE/experiment/PIE_202203/tlr_result.csv")
-ax3.hist(tlr_result["likelihood"], bins=50, alpha=0.5, label="prediction")
+ax3.hist(tlr_result["likelihood"], bins=50, alpha=0.5, color=palette["result"], label="prediction")
 u = tlr_result["likelihood"].mean()
 si = tlr_result["likelihood"].std()
 print(f"tlr result mean={u}, si={si}")
 data = np.random.normal(u, si, size=10000)
 data = [i for i in data if i<=1.0] 
-ax[1].hist(data, bins=50, color="#ff7f00", alpha=0.5, label="simulation")
+ax[1].hist(data, bins=50, color=palette["simulation"], alpha=0.5, label="simulation")
 
 fig.legend(fontsize=14)
 ax[0].set_ylabel("count", fontsize=14)
@@ -194,25 +222,5 @@ ax[1].set_xlabel("likelihood", fontsize=14)
 plt.savefig("likelihood_hist.svg")
 plt.clf()
 
-def operator_model(time):
-    min_time = 1.0
-    min_acc = 0.65
-    max_acc = 0.8
-    slope = 0.03
-    if time < min_time:
-        return min_acc
-
-    acc = (time-min_time) * slope + min_acc
-    return acc if acc <= max_acc else max_acc
-
-acc_data = []
-for time in range(0, 10):
-    acc_data.append(operator_model(time))
-
-plt.plot(np.arange(0, 10), acc_data)
-plt.xlabel("given time t_req")
-plt.ylabel("accuracy")
-plt.ylim([0.0, 1.0])
-plt.savefig("future_model.svg")
 
 
