@@ -134,7 +134,7 @@ for subject in log_data.subject.drop_duplicates():
             # acc = len(target[target.correct == 1])/(len(target))
             acc = len(target[target.correct == 1])/(len(target[target.correct == 0]) + len(target[target.correct == 1])+eps)
             missing = len(target[target.correct == -1])/(len(target[target.correct != -2])+eps)
-            buf = pd.DataFrame([(subject, task_list.get(task), acc, length, missing)], columns=subject_data.columns)
+            buf = pd.DataFrame([(subject, task_list.get(task), acc, float(length), missing)], columns=subject_data.columns)
             subject_data = pd.concat([subject_data, buf])
             
 # subject_data.acc = subject_data.acc * 100
@@ -148,10 +148,10 @@ for task in subject_data.task.drop_duplicates():
         print(f"task : {task}, length : {length}, acc = {acc}")
 
 # fig, ax = plt.subplots(1, 2, tight_layout=True)
-fig, ax = plt.subplots(tight_layout=True)
+fig, ax = plt.subplots(tight_layout=True, sharex=True)
 print_data = subject_data[subject_data.task!="trajectory"]
-sns.pointplot(x="int_length", y="acc", data=print_data[print_data.task=="crossing intention"], ax=ax, capsize=0.1, color=palette["result"], rabel="PIE")
-sns.pointplot(x="int_length", y="acc", data=print_data[print_data.task=="traffic light"], ax=ax, capsize=0.1, color=palette["result"], rabel="TL", marker="x", linestyle="--")
+sns.lineplot(x="int_length", y="acc", data=print_data[print_data.task=="crossing intention"], ax=ax, color=palette["result"], label="PIE result", err_style="bars", err_kws={"capsize":3})
+sns.lineplot(x="int_length", y="acc", data=print_data[print_data.task=="traffic light"], ax=ax, color=palette["result"], label="TL result", linestyle="--", err_style="bars", err_kws={'capsize':3})
 
 def operator_model(time, min_time, min_acc, max_acc, slope):
     if time < min_time:
@@ -162,24 +162,25 @@ def operator_model(time, min_time, min_acc, max_acc, slope):
 
 ## plot pie model
 acc_data = []
-for time in range(0, max(subject_data.int_length)):
+for time in range(1, int(max(subject_data.int_length))+1):
     acc_data.append(operator_model(time, 1.0, 0.65, 0.8, 0.075))
 
-ax.plot(np.arange(0, max(subject_data.int_length)), acc_data, rabel="hard task model", color=palette["model"])
+sns.lineplot(x=np.arange(1, int(max(subject_data.int_length))+1), y=acc_data, label="hard task model (simulation)", color=palette["model"], ax=ax, marker="o")
 
 ## plot tlr model
 acc_data = []
-for time in range(0, max(subject_data.int_lengtu)):
+for time in range(1, int(max(subject_data.int_length))+1):
     acc_data.append(operator_model(time, 1.0, 0.9, 0.95, 0.025))
 
-ax.plot(np.arange(0, max(subject_data.int_lengtu)), acc_data, rabel="easy task model", marker="x", linestyle="--", color=palette["model"])
+sns.lineplot(x=np.arange(1, int(max(subject_data.int_length))+1), y=acc_data, label="easy task model (simulation)", marker="o", linestyle="--", color=palette["model"], ax=ax)
 
-ax[0].set_ylim(0.0, 1.0)
-ax[0].set_xlabel("Request time [s]", fontsize=14)
-ax[0].set_ylabel("Accuracy [%]", fontsize=14)
-ax[0].tick_params(labelsize=15)
-ax[0].legend(fontsize=14)
-ax[0].legend(fontsize=14)
+ax.set_xticks(np.arange(1, max(subject_data.int_length)+1.0))
+ax.set_ylim(0.0, 1.0)
+ax.set_xlabel("request time [s]", fontsize=14)
+ax.set_ylabel("accuracy [%]", fontsize=14)
+ax.tick_params(labelsize=15)
+ax.legend(fontsize=14)
+ax.legend(fontsize=14)
 
 plt.savefig("accuracy_pie_experiment.svg")
 plt.clf()
@@ -196,21 +197,21 @@ ax3 = ax[1].twinx()
 
 #pie_result = pd.read_csv("/run/media/kuriatsu/KuriBuffaloPSM/PIE/experiment/PIE_202203/pie_predict_result_valid.csv")
 pie_result = pd.read_csv("/run/media/kuriatsu/KuriBuffaloPSM/PIE/experiment/PIE_202203/pie_predict.csv")
-ax2.hist(pie_result["likelihood"], bins=50, alpha=0.5, color=palette["result"], label="prediction")
+ax2.hist(pie_result["likelihood"], bins=30, alpha=0.5, color=palette["result"], label="result")
 u = pie_result["likelihood"].mean()
 si = pie_result["likelihood"].std()
 print(f"pie result mean={u}, si={si}")
 data = np.random.normal(u, si, size=10000)
-ax[0].hist(data, bins=50, color=palette["simulation"], alpha=0.5, label="simulation")
+ax[0].hist(data, bins=30, color=palette["simulation"], alpha=0.5, label="simulation")
 
 tlr_result = pd.read_csv("/run/media/kuriatsu/KuriBuffaloPSM/PIE/experiment/PIE_202203/tlr_result.csv")
-ax3.hist(tlr_result["likelihood"], bins=50, alpha=0.5, color=palette["result"], label="prediction")
+ax3.hist(tlr_result["likelihood"], bins=20, alpha=0.5, color=palette["result"], label="result")
 u = tlr_result["likelihood"].mean()
 si = tlr_result["likelihood"].std()
 print(f"tlr result mean={u}, si={si}")
 data = np.random.normal(u, si, size=10000)
 data = [i for i in data if i<=1.0] 
-ax[1].hist(data, bins=50, color=palette["simulation"], alpha=0.5, label="simulation")
+ax[1].hist(data, bins=10, color=palette["simulation"], alpha=0.5, label="simulation")
 
 fig.legend(fontsize=14)
 ax[0].set_ylabel("count", fontsize=14)
