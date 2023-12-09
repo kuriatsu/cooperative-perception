@@ -524,7 +524,8 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
 
     # speed - prob scatter plot
     fig, ax = plt.subplots(tight_layout = True)
-    sns.lineplot(data=prob_speed_count, x="policy", y="speed", hue="risk_num", style="hidden", markers=True, ax=ax, label="_nolegend_")
+    # sns.lineplot(data=prob_speed_count, x="policy", y="speed", hue="risk_num", style="hidden", markers=True, ax=ax, label="_nolegend_")
+    sns.lineplot(data=prob_speed_count, x="policy", y="speed", hue="risk_num", style="hidden", markers=True, ax=ax)
 
     plt.savefig("pass_speed_ypolicy.svg", transparent=True)
     prob_speed_count.to_csv("prob_speed_count.csv")
