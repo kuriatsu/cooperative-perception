@@ -116,7 +116,8 @@ void SumoInterface::spawnEgoVehicle() {
     Vehicle::setColor("ego_vehicle", libsumo::TraCIColor(0, 200, 0));
     Vehicle::setMaxSpeed("ego_vehicle", _vehicle_model->_max_speed);
     Vehicle::setAccel("ego_vehicle", _vehicle_model->_max_accel);
-    Vehicle::setDecel("ego_vehicle", _vehicle_model->_max_decel);
+    Vehicle::setDecel("ego_vehicle", 0.5*9.8);
+    // Vehicle::setDecel("ego_vehicle", _vehicle_model->_max_decel);
     std::cout << "spawned ego vehicle" << std::endl;
 
     // GUI::track(_ego_name, "View #0");
