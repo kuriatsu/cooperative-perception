@@ -41,16 +41,13 @@ double VehicleModel::getAccel(const double speed, const int pose, const std::vec
         double emergency_decel_dist = getDecelDistance(speed, _max_decel, _safety_margin);
         double comf_decel_dist = getDecelDistance(speed, _min_decel, _safety_margin);
 
-        // std::cout << pose << " decel_dist" << emergency_decel_dist << " comf_decel" << comf_decel_dist  << " distance: " << distance << std::endl;
-        // if (distance < 0 || *itr == false) continue;
-        // if (distance < 0 || emergency_decel_dist > distance || *itr == false) continue;
-        if (distance < 0 || comf_decel_dist + 10 < distance || *itr == false) continue;
-        if (distance > comf_decel_dist) {
-            double a = (std::pow(_yield_speed, 2.0) - std::pow(speed, 2.0))/(2.0*(distance+_safety_margin));
+        if (distance < 0 || distance > comf_decel_dist + 10 || *itr == false) continue;
+	else if (distance > _safety_margin) {
+            double a = -(std::pow(speed, 2.0))/(2.0*(distance-_safety_margin));
             acc_list.emplace_back(a);
-        }
+	}
         else {
-            double a = (std::pow(_yield_speed, 2.0) - std::pow(speed, 2.0))/(2.0*(distance));
+            double a = -(std::pow(speed, 2.0))/(2.0*(distance));
             acc_list.emplace_back(a);
         }
 

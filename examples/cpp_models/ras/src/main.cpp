@@ -46,7 +46,7 @@ private:
     double _max_accel = 0.15 * 9.8;
     double _max_decel = 0.3 * 9.8;
     double _min_decel = 0.2 * 9.8;
-    int _safety_margin = 20;
+    int _safety_margin = 5;
 
     double _delta_t = 1.0;
 
