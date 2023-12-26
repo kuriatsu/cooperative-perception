@@ -263,10 +263,10 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
                 // reward += (_max_speed - state_prev.ego_speed)/(_max_speed - _yield_speed) * 100;
             }
             /* driving efficiency */
-            // else {
-            //     reward += (_max_speed - state_prev.ego_speed)/(_max_speed - _yield_speed) * -10;
+            else {
+                reward += (_max_speed - state_prev.ego_speed)/(_max_speed - _yield_speed) * -10;
                 // reward += (state_curr.ego_speed - _yield_speed)/(_max_speed - _yield_speed) * 10;
-            // }
+            }
 
             /* avoid cheating planner by requesting and change recog in last minute */
             // if (state_curr.ego_recog[passed_index] == TAValues::RISK) {
@@ -278,7 +278,7 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 
 	
     // driving efficiency
-    reward += (state_curr.ego_speed - _yield_speed)/(_max_speed - _yield_speed) * 1;
+    // reward += (state_curr.ego_speed - _yield_speed)/(_max_speed - _yield_speed) * 1;
 
     // driving comfort
     double deceleration = (state_curr.ego_speed < state_prev.ego_speed) ? (state_curr.ego_speed - state_prev.ego_speed)/_delta_t : 0.0;
