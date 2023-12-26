@@ -1,6 +1,6 @@
 {
-    "perception_acc_ave": 0.68,
-    "perception_acc_dev": 0.1,
+    "perception_acc_ave": 0.61,
+    "perception_acc_dev": 0.094,
     "operator_max_acc": 0.8,
     "operator_slope_acc_time": 0.075,
     "operator_min_acc": 0.65,
