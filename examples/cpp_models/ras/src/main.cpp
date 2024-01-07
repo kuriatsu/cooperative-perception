@@ -31,8 +31,9 @@ private:
     double _obstacle_density = 0.01; // density 1ppl/m, 0.1=1ppl per 10m, 0.01=1ppl per 100m
 
     // perception param
-    double _perception_acc_ave = 0.9;
-    double _perception_acc_dev = 0.1;
+    std::vector<double> _obstacle_rate = {0.5, 0.5}
+    std::vector<double> _perception_acc_ave = {0.6, 0.9};
+    std::vector<double> _perception_acc_dev = {0.1, 0.1};
  
     // operator_model
     double _min_time = 3.0;

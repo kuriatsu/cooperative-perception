@@ -9,11 +9,12 @@ SumoInterface::SumoInterface() {
     _vehicle_model = new VehicleModel();
 }
 
-SumoInterface::SumoInterface(VehicleModel *vehicle_model, double delta_t, double density, std::vector<double> perception_range, double perception_acc_ave, double perception_acc_dev) {
+SumoInterface::SumoInterface(VehicleModel *vehicle_model, double delta_t, double density, std::vector<double> perception_range, std::vector<double> obstacle_rate, std::vector<double> perception_acc_ave, std::vector<double> perception_acc_dev) {
     _vehicle_model = vehicle_model;
     _density = density;
     _delta_t = delta_t;
     _perception_range = perception_range;
+    _obstacle_rate = obstacle_rate;
     _perception_acc_ave = perception_acc_ave;
     _perception_acc_dev = perception_acc_dev;
 }
@@ -135,7 +136,11 @@ void SumoInterface::spawnPedestrians() {
     /* Generate random value */
     std::mt19937 mt{std::random_device{}()};
     std::uniform_real_distribution<double> position_noise(-interval, interval), rand(0, 1);
-    std::normal_distribution<double> prob(_perception_acc_ave*10.0, _perception_acc_dev*10.0); /* normal distribution with average 0.x doesn't work */ 
+    std::vector<std::normal_distribution<double>> prob;
+    for (int i; i < len(_perception_acc_ave); i++) {
+        std::normal_distribution<double> dist(_perception_acc_ave[i]*10.0, _perception_acc_dev[i]*10.0)
+        prob.emplace_back(dist) /* normal distribution with average 0.x doesn't work */ 
+    }
 
     /* add peds for each lane */
     auto lane_list = Lane::getIDList();
@@ -161,7 +166,15 @@ void SumoInterface::spawnPedestrians() {
 
             /* target risk probability, average of likelihood represents accuracy of the perception system */
             /* risk_prob > 0.5 most of the time (perception acc > 0.5) */
-            double risk_prob = prob(mt)*0.1;
+            double obstacle_select_rate = rand(mt);
+            int obstacle_index = 0;
+            for (int i=0; i<len(_obstacle_rate); i++) {
+                if (obstacle_select_rate < _obstacle_rate[i]) {
+                    obstacle_index = i;
+                    break;
+                }
+            }
+            double risk_prob = prob[obstacle_index](mt)*0.1;
             while (risk_prob < 0.5 || 1.0 < risk_prob)
                 risk_prob = prob(mt)*0.1;
 
