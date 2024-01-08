@@ -10,39 +10,31 @@ namespace despot {
 
 class TAState : public State {
 public:
-	int ego_pose;
+    int ego_pose;
     double ego_speed;
-	std::vector<bool> ego_recog;
-	int req_time;
-	int req_target;
+    std::vector<bool> ego_recog;
+    int req_time;
+    int req_target;
     std::vector<int> risk_pose;
 
-	// hidden state
-	std::vector<bool> risk_bin;
+    // hidden state
+    std::vector<bool> risk_bin;
     
     TAState();
     TAState(int _ego_pose, float _ego_speed, std::vector<bool> _ego_recog, int _req_time, int _req_target, std::vector<bool> _risk_bin, std::vector<int> _risk_pose); 
 	~TAState();
 	
-	std::string text() const;
+    std::string text() const;
 };
 
 class TaskAllocation: public DSPOMDP {
 protected:
-	mutable MemoryPool<TAState>      memory_pool;
-	std::vector<TAState*>            states;
-	mutable std::vector<ValuedAction> mdp_policy;
-	OperatorModel                     operator_model;
+     mutable MemoryPool<TAState>      memory_pool;
+     std::vector<TAState*>            states;
+     mutable std::vector<ValuedAction> mdp_policy;
+     OperatorModel                     operator_model;
 	
 private:
-	// reward
-	int r_false_positive = -50;
-	int r_false_negative = -100;
-	int r_eff            = 10;
-	int r_comf           = -1;
-	int r_request        = -1;
-
-    int _max_perception_num = 3;
 
 public:
     TaskAllocation(int planning_horizon, double risk_thresh, VehicleModel* vehicle_model, OperatorModel* operator_model, double delta_t); 
@@ -50,10 +42,8 @@ public:
     TaskAllocation();
 
 	// state transition parameter
-	int    _planning_horizon;
-	double _yield_speed;
-	double _max_speed;
-	double _risk_thresh;
+    int    _planning_horizon;
+    double _risk_thresh;
     double _delta_t;
 
 	// recognition likelihood of the ADSbelief(belief);::vector<double> risk_recog;

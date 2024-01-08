@@ -1,13 +1,10 @@
 #include "vehicle_model.h"
 
 VehicleModel::VehicleModel() :
-        _max_speed(11.2),
-        _yield_speed(2.8),
-        _max_accel(0.15*9.8),
-        _max_decel(0.3*9.8),
-        _min_decel(0.2*9.8),
-        _safety_margin(5),
-        _delta_t(1.0) {
+        }
+
+VehicleModel::VehicleModel(double delta_t) :
+        _delta_t(delta_t) {
         }
 
 VehicleModel::VehicleModel(double max_speed, double yield_speed, double max_accel, double max_decel, double min_decel, double safety_margin, double delta_t) :

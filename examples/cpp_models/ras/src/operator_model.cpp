@@ -1,30 +1,33 @@
 #include <iostream>
 #include <operator_model.h>
 
+OperatorModel::OperatorModel(std::map<std::string, PerceptionPerformance> *perception_performance) :
+    _performance(perception_performance) {
+    }
 OperatorModel::~OperatorModel(){
 }
 
-double OperatorModel::intAcc(const int time) const {
+double OperatorModel::intAcc(const int time, const int type) const {
 
-	if (time < _min_time) {
-		return 0.5;
-	}
-	else {
-		double acc = _min_acc + _slope_acc_time * (time - _min_time);
+    if (time < _performance.at(type).ope_min_time) {
+	return 0.5;
+    }
+    else {
+	double acc = _performance.at(type).ope_min_acc + _performance.at(type).ope_slope_acc_time * (time - _performance.at(type).ope_min_time);
         // std::cout << "acc :" << acc << ", time : " << time << std::endl;
-		acc = (acc < _max_acc) ? acc : _max_acc;
-		return acc;
-	}
+	acc = (acc < _performance.at(type).ope_max_acc) ? acc : _performance.at(type).ope_max_acc;
+	return acc;
+    }
 }
 
-int OperatorModel::execIntervention(const int time, const bool risk) const {
+int OperatorModel::execIntervention(const int time, const bool risk, const int type) const {
 
     if (time == 0) {
         return TAValues::RISK;
     }
     else {
         double rand_num = despot::Random::RANDOM.NextDouble();
-        double acc = intAcc(time);
+        double acc = intAcc(time, type);
     
         // TODO: is this output is okay? especially "else" section
         if (rand_num < acc) {
@@ -37,13 +40,13 @@ int OperatorModel::execIntervention(const int time, const bool risk) const {
     }
 }
 
-int OperatorModel::execIntervention(const int time, const bool risk, const double rand_num) const {
+int OperatorModel::execIntervention(const int time, const bool risk, const double rand_num, const int type) const {
 
     if (time == 0) {
         return TAValues::RISK;
     }
     else {
-        double acc = intAcc(time);
+        double acc = intAcc(time, type);
     
         // TODO: is this output is okay? especially "else" section
         if (rand_num <= acc) {

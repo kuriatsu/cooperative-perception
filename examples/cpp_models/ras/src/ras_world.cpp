@@ -6,13 +6,13 @@ RasWorld::RasWorld() {
 
 }
 
-RasWorld::RasWorld(VehicleModel *vehicle_model, OperatorModel *operator_model, double delta_t, double obstacle_density, std::vector<double> perception_range, std::string policy_type, double perception_acc_ave, double perception_acc_dev) {
+RasWorld::RasWorld(VehicleModel *vehicle_model, OperatorModel *operator_model, double delta_t, double obstacle_density, std::vector<double> perception_range, std::string policy_type, std::map<std::string, PerceptionPerformance> perception_performance, std::map<std::string, double> obstacle_type_rate) {
 
     _operator_model = operator_model;
     _vehicle_model = vehicle_model;
     _policy_type = policy_type;
     _obstacle_density = obstacle_density;
-    _sim = new SumoInterface(_vehicle_model, delta_t, obstacle_density, perception_range, perception_acc_ave, perception_acc_dev);
+    _sim = new SumoInterface(_vehicle_model, delta_t, obstacle_density, perception_range, perception_performance, obstacle_type_rate);
 }
 
 bool RasWorld::Connect(){

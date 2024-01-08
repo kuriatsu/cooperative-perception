@@ -2,7 +2,6 @@
 #include "task_allocation.h"
 #include "ras_world.h"
 #include "operator_model.h"
-#include "sumo_interface.h"
 #include <unistd.h>
 #include <boost/program_options.hpp>
 #include "nlohmann/json.hpp"
@@ -21,36 +20,29 @@ private:
     string _belief_type = "DEFAULT";
     option::Option *options;
     string _policy_type = "DESPOT"; // DESPOT, MYOPIC, EGOISTIC, REFERENCE
+    int _planning_horizon = 150;
                                     
     // log
     string _log_file = "";
     
     // simulation params
-    int _planning_horizon = 150;
     double _risk_thresh = 0.5;
     double _obstacle_density = 0.01; // density 1ppl/m, 0.1=1ppl per 10m, 0.01=1ppl per 100m
-
-    // perception param
-    std::vector<double> _obstacle_rate = {0.5, 0.5}
-    std::vector<double> _perception_acc_ave = {0.6, 0.9};
-    std::vector<double> _perception_acc_dev = {0.1, 0.1};
- 
-    // operator_model
-    double _min_time = 3.0;
-    double _min_acc = 0.5;
-    double _slope_acc_time = 0.25;
-    double _max_acc = 0.8;
-
-    // vehicle model
-    double _max_speed = 11.2; // 13.8
-    double _yield_speed = 2.8;
-    double _max_accel = 0.15 * 9.8;
-    double _max_decel = 0.3 * 9.8;
-    double _min_decel = 0.2 * 9.8;
-    int _safety_margin = 5;
-
     double _delta_t = 1.0;
 
+    // perception param
+    std::map<std::string, double> *_obstacle_type_rate{
+	    {"easy", 0.5},
+	    {"hard", 0.5},
+	    {"hard_plus", 0.0},
+    }
+
+    std::map<std::string, PerceptionPerformance> *_perception_performance{
+        {"easy", {0.1, 0.9, 0.025, 0.95, 0.9, 0.1}},
+        {"hard", {1.0, 0.65, 0.075, 0.8, 0.6, 0.1}},
+        {"hard_plus", {1.0, 0.65, 0.03, 0.8, 0.6, 0.1}},
+    }
+ 
 public:
     MyPlanner(){
 
@@ -60,15 +52,24 @@ public:
     VehicleModel *_vehicle_model;
 
 
-	DSPOMDP* InitializeModel(option::Option* options) {
-        _operator_model = new OperatorModel(_min_time, _min_acc, _slope_acc_time, _max_acc);
-        _vehicle_model = new VehicleModel(_max_speed, _yield_speed, _max_accel, _max_decel, _min_decel, _safety_margin, _delta_t);
-		DSPOMDP* model = new TaskAllocation(_planning_horizon, _risk_thresh, _vehicle_model, _operator_model, _delta_t);
-		return model;
-	}
+    DSPOMDP* InitializeModel(option::Option* options) {
+        _operator_model = new OperatorModel(_perception_performance);
+        _vehicle_model = new VehicleModel(_delta_t);
+	DSPOMDP* model = new TaskAllocation(_planning_horizon, _risk_thresh, _vehicle_model, _operator_model, _delta_t);
+	return model;
+    }
 
-	World* InitializeWorld(std::string& _world_type, DSPOMDP* model, option::Option* options) {
-        RasWorld* ras_world = new RasWorld(_vehicle_model, _operator_model, _delta_t, _obstacle_density, _perception_range, _policy_type, _perception_acc_ave, _perception_acc_dev);
+    World* InitializeWorld(std::string& _world_type, DSPOMDP* model, option::Option* options) {
+	RasWorld* ras_world = new RasWorld(
+			_vehicle_model, 
+			_operator_model, 
+			_delta_t, 
+			_obstacle_density, 
+			_perception_range, 
+			_policy_type, 
+			_perception_performance,
+			_obstacle_type_rate
+			);
         ras_world->Connect();
         if (_log_file.empty()) 
             ras_world->Initialize();

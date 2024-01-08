@@ -6,6 +6,15 @@
 
 using namespace libtraci;
 
+struct PerceptionPerformance {
+    double opr_min_time;
+    double opr_min_acc;
+    double opr_slope_acc_time;
+    double opr_max_acc;
+    double ads_mean_acc;
+    double ads_dev_acc;
+};
+
 class Pose {
 public:
     double x, y;
@@ -86,23 +95,26 @@ public:
     bool risk_hidden;
     Pose pose;
     double distance;
+    std::string type;
 
 public:
-    Risk(std::string id_, bool true_risk_, double p_risk_) {
+    Risk(std::string id_, bool true_risk_, double p_risk_, std::string type_) {
         id = id_;
         risk_prob = p_risk_;
         risk_pred = risk_prob >= 0.5;
         risk_hidden = true_risk_; 
         distance = -100;
+	type = type_;
     }
 
-    Risk(std::string id_, bool true_risk_, double p_risk_, Pose pose_) {
+    Risk(std::string id_, bool true_risk_, double p_risk_, Pose pose_, std::stringtype_){
         id = id_;
         risk_prob = p_risk_;
         risk_pred = p_risk_ >= 0.5;
         risk_hidden = true_risk_;
         pose = pose_;
         distance = -100;
+	type = type_;
     }        
     
     Risk() {

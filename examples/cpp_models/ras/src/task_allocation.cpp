@@ -15,22 +15,21 @@ TAState::TAState() {
     ego_speed = 0;
     req_time = 0;
     req_target = 0;
-    // ego_recog = {false, true, true};
-    // risk_pose = {80, 100, 120};
-    // risk_bin = {true, true, false};
     ego_recog = {false, false, true};
     risk_pose = {60, 100, 120};
     risk_bin = {false, false, true};
+    risk_type = {"easy", "easy", "hard"};
 }
 
-TAState::TAState(int _ego_pose, float _ego_speed, std::vector<bool> _ego_recog, int _req_time, int _req_target, std::vector<bool> _risk_bin, std::vector<int> _risk_pose) :
+TAState::TAState(int _ego_pose, float _ego_speed, std::vector<bool> _ego_recog, int _req_time, int _req_target, std::vector<bool> _risk_bin, std::vector<int> _risk_pose, std::vector<std::string> _risk_type) :
 		ego_pose(_ego_pose),
 		ego_speed(_ego_speed),
 		ego_recog(_ego_recog),
 		req_time(_req_time),
 		req_target(_req_target),
 		risk_pose(_risk_pose),
-		risk_bin(_risk_bin)	{
+		risk_bin(_risk_bin),
+		risk_type(_risk_type)	{
 }
 
 TAState::~TAState() {
@@ -43,7 +42,8 @@ string TAState::text() const {
 	 	   "req_time: " + to_string(req_time) + "\n" +
 	 	   "req_target: " + to_string(req_target) + "\n" +
 	 	   "risk_pose: " + to_string(risk_pose) + "\n" +
-	 	   "risk_bin: " + to_string(risk_bin) + "\n"; 
+	 	   "risk_bin: " + to_string(risk_bin) + "\n"+ 
+	 	   "risk_type: " + to_string(risk_type) + "\n"; 
     // return "";
 }
 
@@ -74,7 +74,7 @@ public:
             // if (ta_values->getActionAttrib(action) == TAValues::REQUEST) { 
             if (ta_state.req_time > 0) { 
 
-                if (task_allocation->_operator_model->intAcc(ta_state.req_time) <= 0.5) {
+                if (task_allocation->_operator_model->intAcc(ta_state.req_time, ta_state.risk_type[ta_state.req_target]) <= 0.5) {
                     return ta_values->getAction(TAValues::REQUEST, ta_state.req_target);
                 }
             }
@@ -131,8 +131,6 @@ TaskAllocation::TaskAllocation(int planning_horizon, double risk_thresh, Vehicle
     _risk_thresh = risk_thresh; 
     _vehicle_model = vehicle_model;
     _operator_model = operator_model;
-    _max_speed = _vehicle_model->_max_speed;
-    _yield_speed = _vehicle_model->_yield_speed;
     _delta_t = delta_t;
 }
 
@@ -148,8 +146,6 @@ TaskAllocation::TaskAllocation() {
     _ta_values = new TAValues(_start_state->risk_pose.size());
 
     _vehicle_model->_delta_t = _delta_t;
-    _max_speed = _vehicle_model->_max_speed;
-    _yield_speed = _vehicle_model->_yield_speed;
 
     _recog_likelihood = {0.4, 0.4, 0.6};
 }
@@ -168,12 +164,10 @@ TaskAllocation::TaskAllocation(const double delta_t_, const std::vector<int> ris
         risk_bin.emplace_back((likelihood >= _risk_thresh) ? true : false);
     }
 
-    _start_state = new TAState(0.0, _max_speed, risk_bin, 0, 0, risk_bin, risk_pose_);
+    _start_state = new TAState(0.0, _vehicle_model->_max_speed, risk_bin, 0, 0, risk_bin, risk_pose_);
     _ta_values = new TAValues(_start_state->risk_pose.size());
 
     _vehicle_model->_delta_t = _delta_t;
-    _max_speed = _vehicle_model->_max_speed;
-    _yield_speed = _vehicle_model->_yield_speed;
 
 }
 
@@ -197,7 +191,7 @@ bool TaskAllocation::Step(State& state, double rand_num, ACT_TYPE action, double
     if (ta_action == TAValues::NO_ACTION) {
         // std::cout << "action : NO_ACTION" << std::endl;
         state_curr.req_time = 0;
-        obs = _operator_model->execIntervention(0, false, rand_num);
+        obs = _operator_model->execIntervention(0, false, rand_num, "");
     }
     
 	// when action = request intervention
@@ -214,7 +208,7 @@ bool TaskAllocation::Step(State& state, double rand_num, ACT_TYPE action, double
 			state_curr.req_time = _delta_t;
 		}
 
-        obs = _operator_model->execIntervention(state_curr.req_time, state_curr.risk_bin[state_curr.req_target], rand_num);
+        obs = _operator_model->execIntervention(state_curr.req_time, state_curr.risk_bin[state_curr.req_target], rand_num, state_curr.risk_type[state_curr.req_target]);
         state_curr.ego_recog[state_curr.req_target] = obs;
 
 	}
@@ -239,7 +233,7 @@ double TaskAllocation::ObsProb(OBS_TYPE obs, const State& state, ACT_TYPE action
     }
 
     else {
-        double acc = _operator_model->intAcc(ras_state.req_time);
+        double acc = _operator_model->intAcc(ras_state.req_time, ras_state.risk_type[ras_state.req_target]);
         return (ras_state.risk_bin[ras_state.req_target] == obs) ? acc : 1.0 - acc;
     }
 }
@@ -259,12 +253,12 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 
 
             if (state_curr.risk_bin[passed_index] == TAValues::RISK) {
-                reward += (state_curr.ego_speed - _yield_speed)/(_max_speed - _yield_speed) * -100;
+                reward += (state_curr.ego_speed - _vehivle_model->_yield_speed)/(_vehivle_model->_max_speed - _vehivle_model->_yield_speed) * -100;
                 // reward += (_max_speed - state_prev.ego_speed)/(_max_speed - _yield_speed) * 100;
             }
             /* driving efficiency */
             else {
-                reward += (_max_speed - state_prev.ego_speed)/(_max_speed - _yield_speed) * -10;
+                reward += (_vehivle_model->_max_speed - state_prev.ego_speed)/(_vehivle_model->_max_speed - _vehivle_model->_yield_speed) * -10;
                 // reward += (state_curr.ego_speed - _yield_speed)/(_max_speed - _yield_speed) * 10;
             }
 

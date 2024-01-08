@@ -2,21 +2,13 @@
 
 using namespace libtraci;
 
-SumoInterface::SumoInterface() {
-    _delta_t = 1.0;
-    _density = 0.1;
-    _perception_range = {50, 150};
-    _vehicle_model = new VehicleModel();
-}
-
-SumoInterface::SumoInterface(VehicleModel *vehicle_model, double delta_t, double density, std::vector<double> perception_range, std::vector<double> obstacle_rate, std::vector<double> perception_acc_ave, std::vector<double> perception_acc_dev) {
+SumoInterface::SumoInterface(VehicleModel *vehicle_model, double delta_t, double density, std::vector<double> perception_range, std::map<std::string, PerceptionPerformance> perception_performance, std::map<std::string, double> obstacle_type_rate) {
     _vehicle_model = vehicle_model;
     _density = density;
     _delta_t = delta_t;
     _perception_range = perception_range;
-    _obstacle_rate = obstacle_rate;
-    _perception_acc_ave = perception_acc_ave;
-    _perception_acc_dev = perception_acc_dev;
+    _perception_performance = perception_performance;
+    _obstacle_type_rate = obstacle_type_rate;
 }
 
 std::vector<std::string> SumoInterface::perception() {
@@ -136,10 +128,11 @@ void SumoInterface::spawnPedestrians() {
     /* Generate random value */
     std::mt19937 mt{std::random_device{}()};
     std::uniform_real_distribution<double> position_noise(-interval, interval), rand(0, 1);
-    std::vector<std::normal_distribution<double>> prob;
-    for (int i; i < len(_perception_acc_ave); i++) {
-        std::normal_distribution<double> dist(_perception_acc_ave[i]*10.0, _perception_acc_dev[i]*10.0)
-        prob.emplace_back(dist) /* normal distribution with average 0.x doesn't work */ 
+
+    std::map<std::string, std::normal_distribution<double>> type_prob;
+    for (const auto &itr: _perception_performance) {
+        std::normal_distribution<double> buf_dist(itr.second.ads_mean_acc*10.0, itr.second.ads_dev_acc*10.0);
+        type_prob[itr.first] = buf_dist; /* normal distribution with average 0.x doesn't work */ 
     }
 
     /* add peds for each lane */
@@ -166,26 +159,28 @@ void SumoInterface::spawnPedestrians() {
 
             /* target risk probability, average of likelihood represents accuracy of the perception system */
             /* risk_prob > 0.5 most of the time (perception acc > 0.5) */
-            double obstacle_select_rate = rand(mt);
-            int obstacle_index = 0;
-            for (int i=0; i<len(_obstacle_rate); i++) {
-                if (obstacle_select_rate < _obstacle_rate[i]) {
-                    obstacle_index = i;
+            double select_randval = rand(mt);
+	    std::string type;
+            for (const auto &itr : _obstacle_type_rate) {
+                if (obstacle_select_rate < itr.second) {
+                    type = itr.first;
                     break;
                 }
             }
-            double risk_prob = prob[obstacle_index](mt)*0.1;
-            while (risk_prob < 0.5 || 1.0 < risk_prob)
-                risk_prob = prob(mt)*0.1;
+
+            double prob = type_prob[type](mt)*0.1;
+            while (prob < 0.5 || 1.0 < prob) {
+                prob = type_prob[type](mt)*0.1;
+	    }
 
             /* randomly assign risk/no-risk and flip risk_prob if risk */
-            risk_prob = (rand(mt) < 0.5) ? risk_prob : (1.0 - risk_prob);
+            risk_prob = (rand(mt) < 0.5) ? prob : (1.0 - prob);
             /* risk_prob = p(risk=risk) */
-            bool risk = (rand(mt) < risk_prob) ? true : false;
+            bool risk = (rand(mt) < prob) ? true : false;
 
             // std::cout << "risk_prob : " << risk_prob << " risk : " << risk << std::endl;
 
-            _risks[ped_id] = Risk(ped_id, risk, risk_prob); 
+            _risks[ped_id] = Risk(ped_id, risk, risk_prob, type); 
         }
     }
     std::cout << "spawned pedestrian" << _risks.size() << std::endl;
@@ -299,4 +294,3 @@ int main(int argc, char* argv[]) {
         sim.controlEgoVehicle(targets);
     Simulation::close();
 }
-*/

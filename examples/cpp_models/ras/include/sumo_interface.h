@@ -24,10 +24,10 @@ private:
 
     // for logging // deprecated
     std::vector<std::string> _passed_targets;
+    std::map<std::string, PerceptionPerformance> _perception_performance;
+    std::map<std::string, double> _obstacle_type_rate;
 
 public:
-    double _perception_acc_ave;
-    double _perception_acc_dev;
 
     SumoInterface();
     SumoInterface(VehicleModel *vehicle_model, double delta_t, double density, std::vector<double> perception_range, double perception_acc_ave, double perception_acc_dev); 
