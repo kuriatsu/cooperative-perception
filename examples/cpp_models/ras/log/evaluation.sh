@@ -31,11 +31,12 @@ densities=(
 )
 
 param_files=(
-"../param0.json"
-"../param1.json"
-"../param2.json"
-"../param3.json"
-"../param4.json"
+"../param/param0.json"
+"../param/param1.json"
+"../param/param2.json"
+"../param/param3.json"
+"../param/param4.json"
+"../param/param5.json"
 )
 
 for density in "${densities[@]}"; do
