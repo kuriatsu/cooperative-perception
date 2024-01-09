@@ -32,7 +32,7 @@ public:
 
 public:
     RasWorld();
-    RasWorld(VehicleModel *vehicle_model_, OperatorModel *operator_model_, double delta_t, double obstacle_density, std::vector<double> perception_range, std::string policy_type, std::map<std::string, PerceptionPerformance> *perception_performance);
+    RasWorld(VehicleModel *vehicle_model, OperatorModel *operator_model, const double delta_t, const double obstacle_density, const std::vector<double> perception_range, const std::string policy_type, const std::map<std::string, PerceptionPerformance> &perception_performance, const std::map<std::string, double> &obstacle_type_rate);
     bool Connect();
     State* Initialize();
     State* Initialize(const std::string log_file);

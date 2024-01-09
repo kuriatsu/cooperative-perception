@@ -7,10 +7,10 @@
 using namespace libtraci;
 
 struct PerceptionPerformance {
-    double opr_min_time;
-    double opr_min_acc;
-    double opr_slope_acc_time;
-    double opr_max_acc;
+    double ope_min_time;
+    double ope_min_acc;
+    double ope_slope_acc_time;
+    double ope_max_acc;
     double ads_mean_acc;
     double ads_dev_acc;
 };
@@ -104,17 +104,17 @@ public:
         risk_pred = risk_prob >= 0.5;
         risk_hidden = true_risk_; 
         distance = -100;
-	type = type_;
+        type = type_;
     }
 
-    Risk(std::string id_, bool true_risk_, double p_risk_, Pose pose_, std::stringtype_){
+    Risk(std::string id_, bool true_risk_, double p_risk_, Pose pose_, std::string type_){
         id = id_;
         risk_prob = p_risk_;
         risk_pred = p_risk_ >= 0.5;
         risk_hidden = true_risk_;
         pose = pose_;
         distance = -100;
-	type = type_;
+        type = type_;
     }        
     
     Risk() {
@@ -249,5 +249,5 @@ public:
         else {
             std::cout << "obs value is out of range" << std::endl;
         }
-    };
+    }
 };

@@ -1,9 +1,9 @@
 #include "vehicle_model.h"
 
-VehicleModel::VehicleModel() :
+VehicleModel::VehicleModel() {
         }
 
-VehicleModel::VehicleModel(double delta_t) :
+VehicleModel::VehicleModel(const double delta_t) :
         _delta_t(delta_t) {
         }
 

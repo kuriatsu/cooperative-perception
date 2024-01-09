@@ -31,17 +31,17 @@ private:
     double _delta_t = 1.0;
 
     // perception param
-    std::map<std::string, double> *_obstacle_type_rate{
+    std::map<std::string, double> _obstacle_type_rate{
 	    {"easy", 0.5},
 	    {"hard", 0.5},
 	    {"hard_plus", 0.0},
-    }
+    };
 
-    std::map<std::string, PerceptionPerformance> *_perception_performance{
+    std::map<std::string, PerceptionPerformance> _perception_performance{
         {"easy", {0.1, 0.9, 0.025, 0.95, 0.9, 0.1}},
         {"hard", {1.0, 0.65, 0.075, 0.8, 0.6, 0.1}},
         {"hard_plus", {1.0, 0.65, 0.03, 0.8, 0.6, 0.1}},
-    }
+    };
  
 public:
     MyPlanner(){
@@ -182,24 +182,18 @@ public:
             std::ifstream i(vm["param"].as<std::string>());
             nlohmann::json param_json;
             i >> param_json;
-            _perception_acc_ave = param_json["perception_acc_ave"];
-            _perception_acc_dev = param_json["perception_acc_dev"];
-            _max_acc = param_json["operator_max_acc"];
-            _slope_acc_time = param_json["operator_slope_acc_time"];
-            _min_acc = param_json["operator_min_acc"];
-            _min_time = param_json["operator_min_time"];
+            _obstacle_type_rate["easy"] = param_json["easy"];
+            _obstacle_type_rate["hard"] = param_json["hard"];
+            _obstacle_type_rate["hard_plus"] = param_json["hard_plus"];
         }
         /* no param file -> read param from log */
         else if (vm.count("log")) {
             std::ifstream i(_log_file);
             nlohmann::json param_json;
             i >> param_json;
-            _perception_acc_ave = param_json["perception_acc_ave"];
-            _perception_acc_dev = param_json["perception_acc_dev"];
-            _max_acc = param_json["operator_max_acc"];
-            _slope_acc_time = param_json["operator_slope_acc_time"];
-            _min_acc = param_json["operator_min_acc"];
-            _min_time = param_json["operator_min_time"];
+            _obstacle_type_rate["easy"] = param_json["easy"];
+            _obstacle_type_rate["hard"] = param_json["hard"];
+            _obstacle_type_rate["hard_plus"] = param_json["hard_plus"];
 
         }
 

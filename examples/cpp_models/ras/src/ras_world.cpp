@@ -6,7 +6,7 @@ RasWorld::RasWorld() {
 
 }
 
-RasWorld::RasWorld(VehicleModel *vehicle_model, OperatorModel *operator_model, double delta_t, double obstacle_density, std::vector<double> perception_range, std::string policy_type, std::map<std::string, PerceptionPerformance> perception_performance, std::map<std::string, double> obstacle_type_rate) {
+RasWorld::RasWorld(VehicleModel *vehicle_model, OperatorModel *operator_model, const double delta_t, const double obstacle_density, const std::vector<double> perception_range, const std::string policy_type, const std::map<std::string, PerceptionPerformance> &perception_performance, const std::map<std::string, double> &obstacle_type_rate) {
 
     _operator_model = operator_model;
     _vehicle_model = vehicle_model;
@@ -45,6 +45,7 @@ State* RasWorld::Initialize(const std::string log_file) {
         obj.pose.y = risk["y"];
         obj.pose.lane = risk["lane"];
         obj.pose.lane_position = risk["lane_position"];
+        obj.type = risk["type"];
         obj_list.emplace_back(obj);
     }
 
@@ -72,11 +73,13 @@ State* RasWorld::GetCurrentState() {
     pomdp_state->ego_recog.clear();
     pomdp_state->risk_pose.clear();
     pomdp_state->risk_bin.clear();
+    pomdp_state->risk_type.clear();
     for (int i=0; i<perception_target_ids.size(); i++) {
         Risk *risk = _sim->getRisk(perception_target_ids[i]);
         pomdp_state->ego_recog.emplace_back(risk->risk_pred);
         pomdp_state->risk_pose.emplace_back(risk->distance);
         pomdp_state->risk_bin.emplace_back(risk->risk_hidden);
+        pomdp_state->risk_type.emplace_back(risk->type);
         
         if (req_target_history.size() > 0 && req_target_history.back() == risk->id) {
             is_last_req_target = true;
@@ -126,7 +129,7 @@ bool RasWorld::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
         pomdp_state->req_time = 0;
         req_target_history.emplace_back("none");
 
-        obs = _operator_model->execIntervention(pomdp_state->req_time, pomdp_state->risk_bin[pomdp_state->req_target]);
+        obs = _operator_model->execIntervention(pomdp_state->req_time, pomdp_state->risk_bin[pomdp_state->req_target], pomdp_state->risk_type[pomdp_state->req_target]);
         ta_values->printObs(obs);
         obs_history.emplace_back(obs);
     }
@@ -148,7 +151,7 @@ bool RasWorld::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
         req_target_history.emplace_back(req_target_id);
 
         /** get obs and update it to ego_recog **/
-        obs = _operator_model->execIntervention(pomdp_state->req_time, pomdp_state->risk_bin[pomdp_state->req_target]);
+        obs = _operator_model->execIntervention(pomdp_state->req_time, pomdp_state->risk_bin[pomdp_state->req_target], pomdp_state->risk_type[pomdp_state->req_target]);
         ta_values->printObs(obs);
         obs_history.emplace_back(obs);
 
@@ -225,7 +228,8 @@ void RasWorld::Log(ACT_TYPE action, OBS_TYPE obs) {
             {"lane", risk.pose.lane},
             {"prob", risk.risk_prob},
             {"pred", risk.risk_pred},
-            {"hidden", risk.risk_hidden}
+            {"hidden", risk.risk_hidden},
+            {"type", risk.type}
         };
         step_log["risks"].emplace_back(buf);
     }
@@ -250,12 +254,6 @@ void RasWorld::SaveLog(std::string filename) {
     _log["obstacle_density"] = _obstacle_density;
     _log["policy"] = _policy_type;
     _log["delta_t"] = _vehicle_model->_delta_t ;
-    _log["perception_acc_ave"] = _sim->_perception_acc_ave;
-    _log["perception_acc_dev"] = _sim->_perception_acc_dev;
-    _log["operator_max_acc"] = _operator_model->_max_acc;
-    _log["operator_slope_acc_time"] = _operator_model->_slope_acc_time;
-    _log["operator_min_acc"] = _operator_model->_min_acc;
-    _log["operator_min_time"] = _operator_model->_min_time;
 
 
     std::ofstream o(filename);

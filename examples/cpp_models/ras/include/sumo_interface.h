@@ -24,13 +24,15 @@ private:
 
     // for logging // deprecated
     std::vector<std::string> _passed_targets;
-    std::map<std::string, PerceptionPerformance> _perception_performance;
     std::map<std::string, double> _obstacle_type_rate;
+
+public:
+    std::map<std::string, PerceptionPerformance> _perception_performance;
 
 public:
 
     SumoInterface();
-    SumoInterface(VehicleModel *vehicle_model, double delta_t, double density, std::vector<double> perception_range, double perception_acc_ave, double perception_acc_dev); 
+    SumoInterface(VehicleModel *vehicle_model, double delta_t, double density, std::vector<double> perception_range, const std::map<std::string, PerceptionPerformance> &perception_performance, std::map<std::string, double> obstacle_type_rate);
 
     std::vector<std::string> perception();
     void controlEgoVehicle(const std::vector<int>& target_poses, const std::vector<bool> target_risks) const;

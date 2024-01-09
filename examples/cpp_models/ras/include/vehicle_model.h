@@ -17,8 +17,9 @@ public:
 
 public:
     VehicleModel(); 
+    VehicleModel(const double delta_t); 
 
-    VehicleModes(double max_speed, double yield_speed, double max_accel, double max_decel, double min_decel, double safety_margin, double delta_t); 
+    VehicleModel(double max_speed, double yield_speed, double max_accel, double max_decel, double min_decel, double safety_margin, double delta_t); 
     double getDecelDistance(const double speed, const double acc, const double safety_margin) const;
     double getDecelTime(const double speed, const double acc) const;
 

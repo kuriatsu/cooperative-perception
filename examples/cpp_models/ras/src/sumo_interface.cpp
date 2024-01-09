@@ -2,7 +2,7 @@
 
 using namespace libtraci;
 
-SumoInterface::SumoInterface(VehicleModel *vehicle_model, double delta_t, double density, std::vector<double> perception_range, std::map<std::string, PerceptionPerformance> perception_performance, std::map<std::string, double> obstacle_type_rate) {
+SumoInterface::SumoInterface(VehicleModel *vehicle_model, double delta_t, double density, std::vector<double> perception_range, const std::map<std::string, PerceptionPerformance> &perception_performance, std::map<std::string, double> obstacle_type_rate) {
     _vehicle_model = vehicle_model;
     _density = density;
     _delta_t = delta_t;
@@ -131,8 +131,9 @@ void SumoInterface::spawnPedestrians() {
 
     std::map<std::string, std::normal_distribution<double>> type_prob;
     for (const auto &itr: _perception_performance) {
+        /* normal distribution with average 0.x doesn't work */ 
         std::normal_distribution<double> buf_dist(itr.second.ads_mean_acc*10.0, itr.second.ads_dev_acc*10.0);
-        type_prob[itr.first] = buf_dist; /* normal distribution with average 0.x doesn't work */ 
+        type_prob[itr.first] = buf_dist; 
     }
 
     /* add peds for each lane */
@@ -158,27 +159,28 @@ void SumoInterface::spawnPedestrians() {
             Person::setSpeed(ped_id, 0.8);
 
             /* target risk probability, average of likelihood represents accuracy of the perception system */
-            /* risk_prob > 0.5 most of the time (perception acc > 0.5) */
             double select_randval = rand(mt);
-	    std::string type;
+            std::string type;
             for (const auto &itr : _obstacle_type_rate) {
-                if (obstacle_select_rate < itr.second) {
+                if (select_randval < itr.second) {
                     type = itr.first;
                     break;
                 }
             }
 
-            double prob = type_prob[type](mt)*0.1;
-            while (prob < 0.5 || 1.0 < prob) {
-                prob = type_prob[type](mt)*0.1;
+            /* get  risk probability*/
+            /* risk_prob = p(risk=risk) */
+            double risk_prob = type_prob[type](mt)*0.1;
+            while (risk_prob < 0.5 || 1.0 < risk_prob) {
+                risk_prob = type_prob[type](mt)*0.1;
 	    }
 
             /* randomly assign risk/no-risk and flip risk_prob if risk */
-            risk_prob = (rand(mt) < 0.5) ? prob : (1.0 - prob);
-            /* risk_prob = p(risk=risk) */
-            bool risk = (rand(mt) < prob) ? true : false;
+            risk_prob = (rand(mt) < 0.5) ? risk_prob : (1.0 - risk_prob);
+            /* risk prob = prediction can be wrong */
+            bool risk = (rand(mt) < risk_prob) ? true : false;
 
-            // std::cout << "risk_prob : " << risk_prob << " risk : " << risk << std::endl;
+            // std::cout << "risk_prob : " << risk_prob << " risk : " << risk << "type : " << type<< std::endl;
 
             _risks[ped_id] = Risk(ped_id, risk, risk_prob, type); 
         }
@@ -294,3 +296,4 @@ int main(int argc, char* argv[]) {
         sim.controlEgoVehicle(targets);
     Simulation::close();
 }
+*/

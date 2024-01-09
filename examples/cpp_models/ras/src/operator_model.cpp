@@ -1,26 +1,30 @@
 #include <iostream>
 #include <operator_model.h>
 
-OperatorModel::OperatorModel(std::map<std::string, PerceptionPerformance> *perception_performance) :
+OperatorModel::OperatorModel() {
+}
+
+OperatorModel::OperatorModel(const std::map<std::string, PerceptionPerformance> &perception_performance) :
     _performance(perception_performance) {
-    }
+}
+
 OperatorModel::~OperatorModel(){
 }
 
-double OperatorModel::intAcc(const int time, const int type) const {
+double OperatorModel::intAcc(const int time, const std::string type) const {
 
     if (time < _performance.at(type).ope_min_time) {
-	return 0.5;
+        return 0.5;
     }
     else {
-	double acc = _performance.at(type).ope_min_acc + _performance.at(type).ope_slope_acc_time * (time - _performance.at(type).ope_min_time);
+        double acc = _performance.at(type).ope_min_acc + _performance.at(type).ope_slope_acc_time * (time - _performance.at(type).ope_min_time);
         // std::cout << "acc :" << acc << ", time : " << time << std::endl;
-	acc = (acc < _performance.at(type).ope_max_acc) ? acc : _performance.at(type).ope_max_acc;
-	return acc;
+        acc = (acc < _performance.at(type).ope_max_acc) ? acc : _performance.at(type).ope_max_acc;
+        return acc;
     }
 }
 
-int OperatorModel::execIntervention(const int time, const bool risk, const int type) const {
+int OperatorModel::execIntervention(const int time, const bool risk, const std::string type) const {
 
     if (time == 0) {
         return TAValues::RISK;
@@ -40,7 +44,7 @@ int OperatorModel::execIntervention(const int time, const bool risk, const int t
     }
 }
 
-int OperatorModel::execIntervention(const int time, const bool risk, const double rand_num, const int type) const {
+int OperatorModel::execIntervention(const int time, const bool risk, const double rand_num, const std::string type) const {
 
     if (time == 0) {
         return TAValues::RISK;

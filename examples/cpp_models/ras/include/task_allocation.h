@@ -16,12 +16,13 @@ public:
     int req_time;
     int req_target;
     std::vector<int> risk_pose;
+    std::vector<std::string> risk_type;
 
     // hidden state
     std::vector<bool> risk_bin;
     
     TAState();
-    TAState(int _ego_pose, float _ego_speed, std::vector<bool> _ego_recog, int _req_time, int _req_target, std::vector<bool> _risk_bin, std::vector<int> _risk_pose); 
+    TAState(int _ego_pose, float _ego_speed, std::vector<bool> _ego_recog, int _req_time, int _req_target, std::vector<bool> _risk_bin, std::vector<int> _risk_pose, std::vector<std::string> _risk_type); 
 	~TAState();
 	
     std::string text() const;
@@ -38,7 +39,7 @@ private:
 
 public:
     TaskAllocation(int planning_horizon, double risk_thresh, VehicleModel* vehicle_model, OperatorModel* operator_model, double delta_t); 
-    TaskAllocation(const double delta_t_, const std::vector<int> risk_pose_, const std::vector<double> risk_likelihood_);
+    TaskAllocation(const double delta_t_, TAState* start_state, const std::vector<double> risk_likelihood_);
     TaskAllocation();
 
 	// state transition parameter
@@ -48,7 +49,6 @@ public:
 
 	// recognition likelihood of the ADSbelief(belief);::vector<double> risk_recog;
     std::vector<double> _recog_likelihood;
-	// std::vector<int> _risk_positions;
 
     VehicleModel* _vehicle_model;
     OperatorModel* _operator_model;

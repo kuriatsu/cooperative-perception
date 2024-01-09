@@ -1,5 +1,5 @@
 <viewsettings>
-    <scheme name="demo">
+    <scheme name="custom_1">
         <opengl dither="0" fps="0" drawBoundaries="0" forceDrawPositionSelection="0" disableDottedContours="0" forceDrawRectangleSelection="0" geometryIndices_show="0" geometryIndices_size="50.00" geometryIndices_color="255,0,128" geometryIndices_bgColor="128,0,0,0" geometryIndices_constantSize="1" geometryIndices_onlySelected="0"/>
         <background backgroundColor="51,128,51" showGrid="0" gridXSize="100.00" gridYSize="100.00"/>
         <edges laneEdgeMode="0" scaleMode="0" laneShowBorders="1" showBikeMarkings="1" showLinkDecals="1" realisticLinkRules="0" showLinkRules="1" showRails="1" secondaryShape="0" hideConnectors="1" widthExaggeration="1.00" minSize="0.00" showDirection="0" showSublanes="0" spreadSuperposed="0" edgeParam="EDGE_KEY" laneParam="LANE_KEY" vehicleParam="PARAM_NUMERICAL" vehicleScaleParam="PARAM_NUMERICAL" vehicleTextParam="PARAM_TEXT" edgeData="speed" edgeDataID="" edgeDataScaling="" edgeValueHideCheck="0" edgeValueHideThreshold="0.00" edgeValueHideCheck2="0" edgeValueHideThreshold2="200.00"
@@ -530,7 +530,7 @@
                 <entry color="0.10" name="missing data"/>
             </scalingScheme>
         </edges>
-        <vehicles vehicleMode="0" vehicleScaleMode="0" vehicleQuality="2" vehicle_minSize="0.00" vehicle_exaggeration="1.00" vehicle_constantSize="0" vehicle_constantSizeSelected="0" showBlinker="1" drawMinGap="0" drawBrakeGap="0" showBTRange="0" showRouteIndex="0" scaleLength="1" drawReversed="0" showParkingInfo="0"
+        <vehicles vehicleMode="0" vehicleScaleMode="0" vehicleQuality="3" vehicle_minSize="1.00" vehicle_exaggeration="1.00" vehicle_constantSize="1" vehicle_constantSizeSelected="0" showBlinker="1" drawMinGap="0" drawBrakeGap="0" showBTRange="0" showRouteIndex="0" scaleLength="1" drawReversed="0" showParkingInfo="0"
                   vehicleName_show="0" vehicleName_size="60.00" vehicleName_color="204,153,0" vehicleName_bgColor="128,0,0,0" vehicleName_constantSize="1" vehicleName_onlySelected="0"
                   vehicleValue_show="0" vehicleValue_size="80.00" vehicleValue_color="cyan" vehicleValue_bgColor="128,0,0,0" vehicleValue_constantSize="1" vehicleValue_onlySelected="0"
                   vehicleScaleValue_show="0" vehicleScaleValue_size="80.00" vehicleScaleValue_color="grey" vehicleScaleValue_bgColor="128,0,0,0" vehicleScaleValue_constantSize="1" vehicleScaleValue_onlySelected="0"
@@ -759,7 +759,7 @@
                 <entry color="yellow"/>
             </colorScheme>
             <scalingScheme name="uniform">
-                <entry color="1.00"/>
+                <entry color="2.00"/>
             </scalingScheme>
             <scalingScheme name="by selection">
                 <entry color="1.00" name="unselected"/>
@@ -855,7 +855,7 @@
                 <entry color="1.00" threshold="0.00"/>
             </scalingScheme>
         </vehicles>
-        <persons personMode="0" personQuality="1" person_minSize="1.00" person_exaggeration="1.00" person_constantSize="1" person_constantSizeSelected="0"
+        <persons personMode="0" personQuality="3" person_minSize="0.00" person_exaggeration="2.00" person_constantSize="1" person_constantSizeSelected="0"
                  personName_show="0" personName_size="60.00" personName_color="0,153,204" personName_bgColor="128,0,0,0" personName_constantSize="1" personName_onlySelected="0"
                   personValue_show="0" personValue_size="80.00" personValue_color="cyan" personValue_bgColor="128,0,0,0" personValue_constantSize="1" personValue_onlySelected="0">
             <colorScheme name="given person/type color">
