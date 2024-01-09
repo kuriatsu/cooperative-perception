@@ -161,8 +161,10 @@ void SumoInterface::spawnPedestrians() {
             /* target risk probability, average of likelihood represents accuracy of the perception system */
             double select_randval = rand(mt);
             std::string type;
+            double cumulative_rate = 0.0;
             for (const auto &itr : _obstacle_type_rate) {
-                if (select_randval < itr.second) {
+                cumulative_rate += itr.second;
+                if (select_randval < cumulative_rate) {
                     type = itr.first;
                     break;
                 }
@@ -173,14 +175,14 @@ void SumoInterface::spawnPedestrians() {
             double risk_prob = type_prob[type](mt)*0.1;
             while (risk_prob < 0.5 || 1.0 < risk_prob) {
                 risk_prob = type_prob[type](mt)*0.1;
-	    }
+            }
 
             /* randomly assign risk/no-risk and flip risk_prob if risk */
             risk_prob = (rand(mt) < 0.5) ? risk_prob : (1.0 - risk_prob);
             /* risk prob = prediction can be wrong */
             bool risk = (rand(mt) < risk_prob) ? true : false;
 
-            // std::cout << "risk_prob : " << risk_prob << " risk : " << risk << "type : " << type<< std::endl;
+            std::cout << "risk_prob : " << risk_prob << " risk : " << risk << "type : " << type<< std::endl;
 
             _risks[ped_id] = Risk(ped_id, risk, risk_prob, type); 
         }

@@ -6,12 +6,13 @@ RasWorld::RasWorld() {
 
 }
 
-RasWorld::RasWorld(VehicleModel *vehicle_model, OperatorModel *operator_model, const double delta_t, const double obstacle_density, const std::vector<double> perception_range, const std::string policy_type, const std::map<std::string, PerceptionPerformance> &perception_performance, const std::map<std::string, double> &obstacle_type_rate) {
-
-    _operator_model = operator_model;
-    _vehicle_model = vehicle_model;
-    _policy_type = policy_type;
-    _obstacle_density = obstacle_density;
+RasWorld::RasWorld(VehicleModel *vehicle_model, OperatorModel *operator_model, const double delta_t, const double obstacle_density, const std::vector<double> perception_range, const std::string policy_type, const std::map<std::string, PerceptionPerformance> &perception_performance, const std::map<std::string, double> &obstacle_type_rate) :
+    _operator_model(operator_model),
+    _vehicle_model(vehicle_model),
+    _policy_type(policy_type),
+    _obstacle_density(obstacle_density),
+    _obstacle_type_rate(obstacle_type_rate)
+{
     _sim = new SumoInterface(_vehicle_model, delta_t, obstacle_density, perception_range, perception_performance, obstacle_type_rate);
 }
 
@@ -254,7 +255,11 @@ void RasWorld::SaveLog(std::string filename) {
     _log["obstacle_density"] = _obstacle_density;
     _log["policy"] = _policy_type;
     _log["delta_t"] = _vehicle_model->_delta_t ;
-
+    nlohmann::json buf;
+    for (const auto &itr : _obstacle_type_rate) {
+        buf[itr.first] = itr.second;
+    }
+    _log["obstacle_type_rate"] = buf;
 
     std::ofstream o(filename);
     o << std::setw(4) << _log << std::endl;

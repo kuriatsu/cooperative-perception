@@ -19,6 +19,7 @@ private:
     nlohmann::json _log;
     std::string _policy_type = "DESPOT";
     double _obstacle_density;
+    std::map<std::string, double> _obstacle_type_rate;
 
     // for myopic action
     std::vector<std::string> req_target_history;

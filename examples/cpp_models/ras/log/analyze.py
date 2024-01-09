@@ -130,37 +130,21 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
 
 
     log = data.get("log")
+    policy = re.findall("([A-Z]*)\d", sys.argv[1])[0]
 
-    ##########################
-    # print("time-speed")
-    ##########################
-    elapse_time_list = []
-    elapse_time = 0.0
-    ego_vel = []
-    for frame in log:
-        elapse_time_list.append(elapse_time)
-        elapse_time +=  data.get("delta_t")
-        ego_vel.append(frame.get("speed"))
-    
-    ax[0].plot(elapse_time_list, ego_vel, ".", linestyle="-")
-    ax[0].text(elapse_time-30, 14.0, f"travel time: {elapse_time:.1f} s", size=10, color="black")
-    ax[0].text(elapse_time-30, 13.0, f"average speed: {sum(ego_vel)/len(ego_vel):.1f} m/s", size=10, color="black")
-    ax[0].set_xlim(0, (len(log) + 1.0) * data.get("delta_t"))
-    ax[0].set_ylabel("vehicle speed [m/s]")
-
-    risk_ids = [] 
+    risk_id_prob = {} 
+    risk_id_index_for_color = {}
     risk_num = len(log[0].get("risks"))
     for risk in log[0].get("risks"):
-        risk_ids.append(risk.get("id"))
+        risk_id_prob[risk.get("id")] = risk.get("prob")
     color_map = plt.get_cmap("Set3")
 
     ##########################
     # print("risk position and prob")
     ##########################
-    ax2 = ax[0].twinx()
     reserved_time_list = []
-    for i in range(0, len(risk_ids)):
-        id = risk_ids[i]
+    for i, id in enumerate(risk_id_prob.keys()):
+        risk_id_index_for_color[id] = i
         elapsed_time = 0.0
         is_crossed = False
         last_prob = None
@@ -187,12 +171,18 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
                             crossing_time += 0.8
                         else:
                             break
-                    crossing_prob = risk.get("prob")
+                    crossing_prob = risk_id_prob[id]
                     if crossing_prob < 0.1: 
                         crossing_prob += 0.02 
 
-                    ax2.bar(crossing_time, crossing_prob, color=color_map(i/len(risk_ids)))
-                    ax2.annotate(id, xy=[crossing_time, crossing_prob], size=10, color= "red" if risk["hidden"] else "black")
+                    if risk["hidden"]:
+                        ax[0].bar(crossing_time, 1.0, color=color_map(i/len(risk_id_prob)))
+                        ax[0].bar(crossing_time, crossing_prob, color="white", width=1.0)
+                        ax[0].annotate(id, xy=[crossing_time, crossing_prob], size=10, color= "red")
+                    else:
+                        ax[0].bar(crossing_time, crossing_prob, color=color_map(i/len(risk_id_prob)))
+                        ax[0].annotate(id, xy=[crossing_time, crossing_prob], size=10, color= "black")
+
                     reserved_time_list.append(crossing_time)
                     continue
 
@@ -206,8 +196,29 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
                     crossing_time += 1.0
                 else:
                     break
-            ax2.bar(crossing_time, last_prob, color=color_map(i/len(risk_ids)))
+            ax[0].bar(crossing_time, last_prob, color=color_map(i/len(risk_id_prob)))
             print(f"{id} doesn't crossed time: {crossing_time} prob : {last_prob}")
+
+    ##########################
+    # print("time-speed")
+    ##########################
+    ax2 = ax[0].twinx()
+    elapse_time_list = []
+    elapse_time = 0.0
+    ego_vel = []
+    for frame in log:
+        elapse_time_list.append(elapse_time)
+        elapse_time +=  data.get("delta_t")
+        ego_vel.append(frame.get("speed"))
+    
+    ax2.plot(elapse_time_list, ego_vel, ".", linestyle="-")
+    ax2.text(elapse_time-30, 14.0, f"travel time: {elapse_time:.1f} s", size=10, color="black")
+    ax2.text(elapse_time-30, 13.0, f"average speed: {sum(ego_vel)/len(ego_vel):.1f} m/s", size=10, color="black")
+    ax2.set_xlim(0, (len(log) + 1.0) * data.get("delta_t"))
+    ax2.set_ylim(0, 12.0)
+    ax2.set_ylabel("vehicle speed [m/s]")
+    ax[0].set_ylim(0, 1.0)
+    ax[0].set_ylabel("risk probability")
 
 
     ##########################
@@ -239,19 +250,28 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
             request_time += data.get("delta_t")
 
             ## keep intervention request
-            if last_action_target == target:
-                for risk in frame.get("risks"):
-                    if target == risk.get("id"):
-                        buf_prob.append(risk.get("prob"))
-                        buf_time.append(elapsed_time)
-                        break
+            if policy == "DESPOT":
+                if last_action_target == target:
+                    for risk in frame.get("risks"):
+                        if target == risk.get("id"):
+                            buf_prob.append(risk.get("prob"))
+                            buf_time.append(elapsed_time)
+                            break
+            else:
+                if last_action_target == target:
+                    for risk in frame.get("risks"):
+                        if target == risk.get("id"):
+                            buf_prob.append(buf_prob[0])
+                            buf_time.append(elapsed_time)
+                            break
+
 
             ## request 1 -> requet 2  
             ## plot last intervention request to 1 
             if last_action_target != target and last_action_target is not None:
-                ax[1].plot(buf_time, buf_prob, linestyle="-", color=color_map(risk_ids.index(last_action_target)/len(risk_ids)))
-                ax[1].plot(buf_time[1:], buf_prob[1:], marker=".", linestyle="", color=color_map(risk_ids.index(last_action_target)/len(risk_ids)))
-                ax[1].plot(buf_time[0], buf_prob[0], marker="x", linestyle="", color=color_map(risk_ids.index(last_action_target)/len(risk_ids)))
+                ax[1].plot(buf_time, buf_prob, linestyle="-", color=color_map(risk_id_index_for_color[last_action_target]/len(risk_id_prob)))
+                ax[1].plot(buf_time[1:], buf_prob[1:], marker=".", linestyle="", color=color_map(risk_id_index_for_color[last_action_target]/len(risk_id_prob)))
+                ax[1].plot(buf_time[0], buf_prob[0], marker="x", linestyle="", color=color_map(risk_id_index_for_color[last_action_target]/len(risk_id_prob)))
 
             ## start intervention request
             ## 1. clear log log 
@@ -259,27 +279,39 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
             if last_action_target != target:
                 buf_prob = []
                 buf_time = []
-                for risk in log[frame_num-1].get("risks"):
-                    if target == risk.get("id"):
-                        buf_prob.append(risk.get("prob"))
-                        buf_time.append(elapsed_time-data.get("delta_t"))
-                        break
-                for risk in frame.get("risks"):
-                    if target == risk.get("id"):
-                        buf_prob.append(risk.get("prob"))
-                        buf_time.append(elapsed_time)
-                        break
+                if policy == "DESPOT":
+                    for risk in log[frame_num-1].get("risks"):
+                        if target == risk.get("id"):
+                            buf_prob.append(risk.get("prob"))
+                            buf_time.append(elapsed_time-data.get("delta_t"))
+                            break
+                    for risk in frame.get("risks"):
+                        if target == risk.get("id"):
+                            buf_prob.append(risk.get("prob"))
+                            buf_time.append(elapsed_time)
+                            break
+                else:
+                    for risk in log[frame_num-1].get("risks"):
+                        if target == risk.get("id"):
+                            buf_prob.append(risk.get("prob"))
+                            buf_time.append(elapsed_time-data.get("delta_t"))
+                            break
+                    for risk in frame.get("risks"):
+                        if target == risk.get("id"):
+                            buf_prob.append(buf_prob[0])
+                            buf_time.append(elapsed_time)
+                            break
 
-                ax[1].annotate(target, xy=[buf_time[0], buf_prob[0]], size=10, color="black")
+                ax[1].annotate(target, xy=[buf_time[0], buf_prob[0]], size=10, color="red" if risk["hidden"] else "black")
             last_action_target = target
                 
         else:
             ## finish intervention request 
             ## plot last intervention request log and clear log
             if last_action_target is not None:
-                ax[1].plot(buf_time, buf_prob, linestyle="-", color=color_map(risk_ids.index(last_action_target)/len(risk_ids)))
-                ax[1].plot(buf_time[1:], buf_prob[1:], marker=".", linestyle="", color=color_map(risk_ids.index(last_action_target)/len(risk_ids)))
-                ax[1].plot(buf_time[0], buf_prob[0], marker="x", linestyle="", color=color_map(risk_ids.index(last_action_target)/len(risk_ids)))
+                ax[1].plot(buf_time, buf_prob, linestyle="-", color=color_map(risk_id_index_for_color[last_action_target]/len(risk_id_prob)))
+                ax[1].plot(buf_time[1:], buf_prob[1:], marker=".", linestyle="", color=color_map(risk_id_index_for_color[last_action_target]/len(risk_id_prob)))
+                ax[1].plot(buf_time[0], buf_prob[0], marker="x", linestyle="", color=color_map(risk_id_index_for_color[last_action_target]/len(risk_id_prob)))
                 buf_prob = []
                 buf_time = []
 
@@ -297,10 +329,8 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
     ax[1].text(elapse_time-30, 1.02, f"request time: {request_time} s", size=10, color="black")
     ax[1].set_xlim(0, (len(log) + 1.0) * data.get("delta_t"))
     ax[1].set_ylim(0, 1.0)
-    ax[1].set_ylabel("risk probs")
-    ax2.set_ylim(0, 1.0)
-    ax2.set_ylabel("intervention request")
-    ax2.set_xlabel("travel distance [m]")
+    ax[1].set_ylabel("intervention request timing")
+    ax[1].set_xlabel("travel distance [m]")
 
     filename = re.findall("([.\w]*).json", sys.argv[1])[0]
 

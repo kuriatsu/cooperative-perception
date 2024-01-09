@@ -4,18 +4,18 @@
 densities=(
     0.001
     0.002
-    0.003
+#    0.003
     0.004
-    0.005
+#    0.005
     0.006
-    0.007
+#    0.007
     0.008
-    0.009
+#    0.009
     0.01
-    0.013
-    0.015
-    0.017
-    0.019
+    0.012
+    0.014
+    0.016
+    0.018
     0.02
 #    0.025
 #    0.03
@@ -30,11 +30,19 @@ densities=(
 #    0.1
 )
 
-param_file="../param1.json"
+param_files=(
+"../param0.json"
+"../param1.json"
+"../param2.json"
+"../param3.json"
+"../param4.json"
+)
 
 for density in "${densities[@]}"; do
-    for i in {1..5}; do
-        ../build/ras --policy DESPOT --density ${density} --param ${param_file} 
+    for param in "${param_files[@]}"; do
+        for i in {1..10}; do
+            ../build/ras --policy DESPOT --density ${density} --param ${param} 
+        done
     done
 done
 
