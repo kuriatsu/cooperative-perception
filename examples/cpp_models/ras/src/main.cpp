@@ -34,12 +34,15 @@ private:
     std::map<std::string, double> _obstacle_type_rate{
 	    {"easy", 0.5},
 	    {"hard", 0.5},
+	    {"easy_plus", 0.0},
 	    {"hard_plus", 0.0},
     };
 
+    /* min_time, min_acc, slope, max_acc, ads_mean, ads_dev */
     std::map<std::string, PerceptionPerformance> _perception_performance{
-        {"easy", {0.1, 0.9, 0.025, 0.95, 0.9, 0.1}},
+        {"easy", {1.0, 0.9, 0.025, 0.95, 0.9, 0.1}},
         {"hard", {1.0, 0.65, 0.075, 0.8, 0.6, 0.1}},
+        {"easy_plus", {1.0, 0.9, 0.01, 0.95, 0.9, 0.1}},
         {"hard_plus", {1.0, 0.65, 0.03, 0.8, 0.6, 0.1}},
     };
  

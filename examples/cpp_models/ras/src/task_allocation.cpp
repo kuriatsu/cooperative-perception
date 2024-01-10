@@ -236,10 +236,10 @@ double TaskAllocation::ObsProb(OBS_TYPE obs, const State& state, ACT_TYPE action
 }
 
 
-int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_curr, const ACT_TYPE& action) const {
+double TaskAllocation::CalcReward(const State& _state_prev, const State& _state_curr, const ACT_TYPE& action) const {
 	const TAState& state_prev = static_cast<const TAState&>(_state_prev);
 	const TAState& state_curr = static_cast<const TAState&>(_state_curr);
-	int reward = 0;
+	double reward = 0.0;
 
     int action_target_idx = _ta_values->getActionTarget(action);
     TAValues::ACT ta_action = _ta_values->getActionAttrib(action);
@@ -250,12 +250,12 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 
 
             if (state_curr.risk_bin[passed_index] == TAValues::RISK) {
-                reward += (state_curr.ego_speed - _vehicle_model->_yield_speed)/(_vehicle_model->_max_speed - _vehicle_model->_yield_speed) * -100;
+                reward += (state_curr.ego_speed - _vehicle_model->_yield_speed)/(_vehicle_model->_max_speed - _vehicle_model->_yield_speed) * -100.0;
                 // reward += (_max_speed - state_prev.ego_speed)/(_max_speed - _yield_speed) * 100;
             }
             /* driving efficiency */
             else {
-                reward += (_vehicle_model->_max_speed - state_prev.ego_speed)/(_vehicle_model->_max_speed - _vehicle_model->_yield_speed) * -10;
+                reward += (_vehicle_model->_max_speed - state_prev.ego_speed)/(_vehicle_model->_max_speed - _vehicle_model->_yield_speed) * -10.0;
                 // reward += (state_curr.ego_speed - _yield_speed)/(_max_speed - _yield_speed) * 10;
             }
 
@@ -273,7 +273,7 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
 
     // driving comfort
     double deceleration = (state_curr.ego_speed < state_prev.ego_speed) ? (state_curr.ego_speed - state_prev.ego_speed)/_delta_t : 0.0;
-    reward += (deceleration < -_vehicle_model->_max_decel) ? -100 : 0.0;
+    reward += (deceleration < -_vehicle_model->_max_decel) ? -100.0 : 0.0;
 
     // if (ta_action == TAValues::RECOG && state_prev.risk_bin[action_target_idx] != state_prev.ego_recog[action_target_idx])
     //     reward += -100;
@@ -287,14 +287,14 @@ int TaskAllocation::CalcReward(const State& _state_prev, const State& _state_cur
     
     // penalty for initial intervention request
 	if (ta_action == TAValues::REQUEST && (state_curr.req_time == _delta_t || state_prev.req_target != state_curr.req_target)) {
-        reward += -1;
+        reward += -0.1;
     }
 
     /* end of the request */
     if (state_prev.req_time > 0 && (ta_action != TAValues::REQUEST || state_curr.req_target != state_prev.req_target)) {
         /* when operator took mistake <- if no penalty, bet 0.5 of obs = no-risk if it want to keep speed*/
         if (state_curr.risk_bin[state_prev.req_target] != state_curr.ego_recog[state_prev.req_target]) {
-            reward += -100;
+            reward += -100.0;
         }
     }
 

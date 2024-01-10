@@ -87,7 +87,7 @@ public:
 
 protected:
 	void EgoVehicleTransition(int& pose, double& speed, const std::vector<bool>& recog_list, const std::vector<int>& target_poses, const ACT_TYPE& action) const ;
-	int CalcReward(const State& state_prev, const State& state_curr, const ACT_TYPE& action) const;
+	double CalcReward(const State& state_prev, const State& state_curr, const ACT_TYPE& action) const;
     void GetBinProduct(std::vector<std::vector<bool>>& out_list, std::vector<bool> buf, int row) const ;
 };
 

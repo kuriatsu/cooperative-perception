@@ -342,10 +342,10 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
 #################################
 elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
 
-    df = pd.DataFrame(columns = ["policy", "date", "risk_num", "travel_time", "total_fuel_consumption", "mean_fuel_consumption", "dev_accel", "mean_speed", "risk_omission", "ambiguity_omission", "request_time", "total_reward", "acc"])
+    df = pd.DataFrame(columns = ["policy", "date", "risk_num", "travel_time", "total_fuel_consumption", "mean_fuel_consumption", "dev_accel", "mean_speed", "risk_omission", "ambiguity_omission", "request_time", "total_reward", "acc", "ads_acc"])
     target_count = pd.DataFrame(columns = ["id", "prob", "is_requsted", "policy", "risk_num", "date"]) 
     # risk_prob_count = {"DESPOT":[0] * 10, "MYOPIC":[0]*10, "EGOISTIC":[0]*10, "REFERENCE":[0]*10}
-    prob_speed_count = pd.DataFrame(columns = ["policy", "date", "risk_num", "prob", "hidden", "pred", "speed", "distance_pred_speed", "distance_prob_speed", "distance_risk_speed"])
+    prob_speed_count = pd.DataFrame(columns = ["policy", "date", "risk_num", "prob", "hidden", "pred", "speed", "distance_pred_speed", "distance_prob_speed", "distance_risk_speed", "ads_acc"])
     recog_evaluation = pd.DataFrame(columns = ["hidden", "pred", "prob"])
 
 
@@ -371,6 +371,11 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
         reward = [0]
         correct_pred = 0
         passed_target = 0
+
+        ads_acc = data.get("obstacle_type_rate").get("hard") * 0.6 + data.get("obstacle_type_rate").get("easy") * 0.9
+        if ads_acc == 0.0 :
+            ads_acc = data.get("obstacle_type_rate").get("hard_plus") * 0.6 + data.get("obstacle_type_rate").get("easy_plus") * 0.9
+
 
         last_ego_position = 0.0
 
@@ -465,7 +470,7 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
                     passed_target += 1
 
 
-                    buf_prob_speed_count = pd.DataFrame([[policy, date, risk_num, int(risk.get("prob")*10)*0.1, risk.get("hidden"), risk.get("pred"), log[frame_num-1].get("speed"), distance_pred_speed, distance_prob_speed, distance_risk_speed]], columns=prob_speed_count.columns)
+                    buf_prob_speed_count = pd.DataFrame([[policy, date, risk_num, int(risk.get("prob")*10)*0.1, risk.get("hidden"), risk.get("pred"), log[frame_num-1].get("speed"), distance_pred_speed, distance_prob_speed, distance_risk_speed, ads_acc]], columns=prob_speed_count.columns)
                     prob_speed_count = pd.concat([prob_speed_count, buf_prob_speed_count], ignore_index=True)
 
             ## calculate reward
@@ -490,7 +495,7 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
         
         acc = correct_pred / passed_target if passed_target > 0 else None 
 
-        buf_df = pd.DataFrame([[policy, date, risk_num, travel_time, total_fuel_consumption, mean_fuel_consumption, dev_accel, mean_speed, mean_risk_omission, mean_ambiguity_omission, request_time, total_reward, acc]], columns=df.columns)
+        buf_df = pd.DataFrame([[policy, date, risk_num, travel_time, total_fuel_consumption, mean_fuel_consumption, dev_accel, mean_speed, mean_risk_omission, mean_ambiguity_omission, request_time, total_reward, acc, ads_acc]], columns=df.columns)
         df = pd.concat([df, buf_df], ignore_index=True)
 
 
@@ -595,8 +600,27 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
 #
 #    plt.show()
 
+    
 
 
+    fig, ax = plt.subplots(tight_layout = True)
+    buf_df = prob_speed_count[prob_speed_count.hidden == True]
+    ax.plot_surface(buf_df["risk_num"], buf_df["ads_acc"], buf_df["speed"], hue="policy", markers=True, ax=ax, palette=palette)
+    ax.set_zlim(0.0, 12.0)
+    plt.savefig("pass_speed_true_3d.svg", transparent=True)
+    plt.clf()
+
+    fig, ax = plt.subplots(tight_layout = True)
+    buf_df = prob_speed_count[prob_speed_count.hidden == False]
+    ax.plot_surface(buf_df["risk_num"], buf_df["ads_acc"], buf_df["speed"], hue="policy", markers=True, ax=ax, palette=palette)
+    ax.set_zlim(0.0, 12.0)
+    plt.savefig("pass_speed_false_3d.svg", transparent=True)
+    plt.clf()
+
+    fig, ax = plt.subplots(tight_layout = True)
+    ax.plot_surface(df["risk_num"], df["ads_acc"], df["request_time"], hue="policy", markers=True, ax=ax, palette=palette)
+    plt.savefig("request_time_3d.svg", transparent=True)
+    plt.clf()
 
     ## visualize recognition simulation 
     fig, ax = plt.subplots(1, 2, tight_layout=True)
