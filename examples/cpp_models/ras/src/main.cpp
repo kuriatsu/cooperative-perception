@@ -185,19 +185,18 @@ public:
             std::ifstream i(vm["param"].as<std::string>());
             nlohmann::json param_json;
             i >> param_json;
-            _obstacle_type_rate["easy"] = param_json["easy"];
-            _obstacle_type_rate["hard"] = param_json["hard"];
-            _obstacle_type_rate["hard_plus"] = param_json["hard_plus"];
+            for (const auto& itr : param_json.items()) {
+                _obstacle_type_rate[itr.key()] = itr.value();
+            }
         }
         /* no param file -> read param from log */
         else if (vm.count("log")) {
             std::ifstream i(_log_file);
-            nlohmann::json param_json;
-            i >> param_json;
-            _obstacle_type_rate["easy"] = param_json["easy"];
-            _obstacle_type_rate["hard"] = param_json["hard"];
-            _obstacle_type_rate["hard_plus"] = param_json["hard_plus"];
-
+            nlohmann::json log_json;
+            i >> log_json;
+            for (const auto& itr : log_json["obstacle_type_rate"].items()) {
+                _obstacle_type_rate[itr.key()] = itr.value();
+            }
         }
 
 //         int opt;

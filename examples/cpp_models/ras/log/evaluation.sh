@@ -4,13 +4,13 @@
 densities=(
     0.001
     0.002
-#    0.003
+    0.003
     0.004
-#    0.005
+    0.005
     0.006
-#    0.007
+    0.007
     0.008
-#    0.009
+    0.009
     0.01
     0.012
     0.014
@@ -56,10 +56,10 @@ policies=(
 while read log ; do
     for policy in "${policies[@]}"; do
         buf=${log##*[A-Z]}
-        ../build/ras --policy ${policy} --log ${log} --density ${buf%_*} --param ${param_file} 
+        ../build/ras --policy ${policy} --log ${log} --density ${buf%_*}
     done
 done < <(find . -name "*.json" )
 
-while read log ; do
-    python3 analyze.py ${log} 
-done < <(find . -name "*.json" )
+# while read log ; do
+#     python3 analyze.py ${log} 
+# done < <(find . -name "*.json" )

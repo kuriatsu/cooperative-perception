@@ -6,6 +6,7 @@ import seaborn as sns
 import math
 import pandas as pd
 import re
+from mpl_toolkits.mplot3d import Axes3D
 
 palette = {"REFERENCE": "orangered","EGOISTIC": "indigo", "MYOPIC": "dodgerblue", "DESPOT": "forestgreen"}
 LANE_LENGTH = 500
@@ -17,8 +18,8 @@ def CalcReward(state_prev, state_curr):
 
             if risk["hidden"] == "RISK":
                 reward += (state_curr["speed"] - 2.8) / (11.2 - 2.8) * -100
-            # else:
-            #     reward += (11.2 - state_curr["speed"]) / (11.2 - 2.8) * -10
+            else:
+                reward += (11.2 - state_curr["speed"]) / (11.2 - 2.8) * -10
             
             # if risk["pred"] == "RISK":
             #     reward += (state_curr["speed"] - 2.8) / (11.2 - 2.8) * -100
@@ -32,7 +33,7 @@ def CalcReward(state_prev, state_curr):
     reward += -100 if deceleration < -0.3 * 9.8 else 0.0
 
     ## driving efficiency 
-    reward += (state_curr["speed"] - 2.8) / (11.2 - 2.8) * 1;
+    # reward += (state_curr["speed"] - 2.8) / (11.2 - 2.8) * 1;
 
     ## intervention request
     if state_curr["action"] == "REQUEST" and (state_prev["action_target"] != state_curr["action_target"]):
@@ -602,22 +603,46 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
 
     
 
+    fig = plt.figure(figsize=(9, 9), facecolor="w")
+    ax = fig.add_subplot(111, projection="3d")
+    for policy, color in palette.items():
+        buf_df = prob_speed_count.query("hidden == False & policy==@policy")
+        x = []
+        y = []
+        for x_d in buf_df["risk_num"].drop_duplicates():
+            x.append(x_d)
+        for y_d in buf_df["ads_acc"].drop_duplicates():
+            y.append(y_d)
 
-    fig, ax = plt.subplots(tight_layout = True)
-    buf_df = prob_speed_count[prob_speed_count.hidden == True]
-    ax.plot_surface(buf_df["risk_num"], buf_df["ads_acc"], buf_df["speed"], hue="policy", markers=True, ax=ax, palette=palette)
+        x.sort()
+        y.sort()
+        z = []
+        for x_d in x:
+            z_r = []
+            for y_d in y:
+                z_r.append(buf_df[(buf_df.risk_num == x_d) & (buf_df.ads_acc == y_d)].speed.mean())
+            z.append(z_r)
+
+        x, y = np.meshgrid(x, y)
+        print(policy)
+        print(x, y, z)
+
+        ax.plot_surface(np.array(x), np.array(y), np.array(z), color = color, alpha = 0.8)
     ax.set_zlim(0.0, 12.0)
+    plt.show()
     plt.savefig("pass_speed_true_3d.svg", transparent=True)
     plt.clf()
 
-    fig, ax = plt.subplots(tight_layout = True)
+    fig = plt.figure(figsize=(9, 9), facecolor="w")
+    ax = fig.add_subplot(111, projection="3d")
     buf_df = prob_speed_count[prob_speed_count.hidden == False]
     ax.plot_surface(buf_df["risk_num"], buf_df["ads_acc"], buf_df["speed"], hue="policy", markers=True, ax=ax, palette=palette)
     ax.set_zlim(0.0, 12.0)
     plt.savefig("pass_speed_false_3d.svg", transparent=True)
     plt.clf()
 
-    fig, ax = plt.subplots(tight_layout = True)
+    fig = plt.figure(figsize=(9, 9), facecolor="w")
+    ax = fig.add_subplot(111, projection="3d")
     ax.plot_surface(df["risk_num"], df["ads_acc"], df["request_time"], hue="policy", markers=True, ax=ax, palette=palette)
     plt.savefig("request_time_3d.svg", transparent=True)
     plt.clf()
