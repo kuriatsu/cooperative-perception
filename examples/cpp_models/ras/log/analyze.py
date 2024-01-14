@@ -416,7 +416,7 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
                 target_index = target_count.index[(target_count.id == frame.get("action_target")) & (target_count.policy == policy) & (target_count.risk_num == risk_num) & (target_count.date == date)].tolist()[0]
                 target_count.iloc[target_index, 2] = True
                 
-                if last_request_target = frame.get("action_target"):
+                if last_request_target == frame.get("action_target"):
                     request_count += 1
 
             last_request_target = frame.get("action_target") if frame.get("action") == "REQUEST" else None
