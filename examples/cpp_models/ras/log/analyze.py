@@ -343,7 +343,7 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
 #################################
 elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
 
-    df = pd.DataFrame(columns = ["policy", "date", "risk_num", "travel_time", "total_fuel_consumption", "mean_fuel_consumption", "dev_accel", "mean_speed", "risk_omission", "ambiguity_omission", "request_time", "total_reward", "acc", "ads_acc"])
+    df = pd.DataFrame(columns = ["policy", "date", "risk_num", "travel_time", "total_fuel_consumption", "mean_fuel_consumption", "dev_accel", "mean_speed", "risk_omission", "ambiguity_omission", "request_time", "total_reward", "acc", "ads_acc", "request_count"])
     target_count = pd.DataFrame(columns = ["id", "prob", "is_requsted", "policy", "risk_num", "date"]) 
     # risk_prob_count = {"DESPOT":[0] * 10, "MYOPIC":[0]*10, "EGOISTIC":[0]*10, "REFERENCE":[0]*10}
     prob_speed_count = pd.DataFrame(columns = ["policy", "date", "risk_num", "prob", "hidden", "pred", "speed", "distance_pred_speed", "distance_prob_speed", "distance_risk_speed", "ads_acc"])
@@ -372,6 +372,8 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
         reward = [0]
         correct_pred = 0
         passed_target = 0
+        last_request_target = None
+        request_count = 0
 
         ads_acc = data.get("obstacle_type_rate").get("hard") * 0.6 + data.get("obstacle_type_rate").get("easy") * 0.9
         if ads_acc == 0.0 :
@@ -380,6 +382,7 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
 
         last_ego_position = 0.0
 
+        ## log 0 data
         if log[0].get("risks") is not None:
             for risk in log[0].get("risks"):
 
@@ -401,7 +404,6 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
             speed.append(frame.get("speed"))
             accel.append(frame.get("accel"))
             fuel_consumption.append(frame.get("fuel_consumption"))
-            
 
             if frame.get("risks") is None:
                 print(f"skipped {file} because of no obstacle spawned")
@@ -413,6 +415,11 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
                 ## flag target count "is_requested"
                 target_index = target_count.index[(target_count.id == frame.get("action_target")) & (target_count.policy == policy) & (target_count.risk_num == risk_num) & (target_count.date == date)].tolist()[0]
                 target_count.iloc[target_index, 2] = True
+                
+                if last_request_target = frame.get("action_target"):
+                    request_count += 1
+
+            last_request_target = frame.get("action_target") if frame.get("action") == "REQUEST" else None
 
             ## when ego_vehivle and risk crossed 
             for risk in frame.get("risks"):
@@ -496,7 +503,7 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
         
         acc = correct_pred / passed_target if passed_target > 0 else None 
 
-        buf_df = pd.DataFrame([[policy, date, risk_num, travel_time, total_fuel_consumption, mean_fuel_consumption, dev_accel, mean_speed, mean_risk_omission, mean_ambiguity_omission, request_time, total_reward, acc, ads_acc]], columns=df.columns)
+        buf_df = pd.DataFrame([[policy, date, risk_num, travel_time, total_fuel_consumption, mean_fuel_consumption, dev_accel, mean_speed, mean_risk_omission, mean_ambiguity_omission, request_time, total_reward, acc, ads_acc, request_count]], columns=df.columns)
         df = pd.concat([df, buf_df], ignore_index=True)
 
 
@@ -526,7 +533,10 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
     plt.savefig("ambiguity_omission.svg", transparent=True)
     plt.clf()
 
-    sns.lineplot(data=df, x="risk_num", y="request_time", hue="policy", style="policy", markers=True, palette=palette)
+    fig, ax = plt.subplots()
+    ax2 = ax.twinx()
+    sns.lineplot(data=df, x="risk_num", y="request_time", hue="policy", style="policy", markers=True, palette=palette, ax=ax)
+    sns.lineplot(data=df, x="risk_num", y="request_count", hue="policy", style="policy", markers=True, palette=palette, ax=ax2)
     plt.savefig("request_time.svg", transparent=True)
     plt.clf()
 
@@ -602,13 +612,16 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
 #
 #    plt.show()
 
-    for risk_num in [5.0, 15.0]:
+    for risk_num in [5.0, 18.0]:
         sns.lineplot(data=df[df.risk_num == risk_num], x="ads_acc", y="acc", hue="policy", style="policy", markers=True, palette=palette)
         plt.ylim([0.0, 1.0])
         plt.savefig(f"total_acc_{risk_num}.svg", transparent=True)
         plt.clf()
 
-        sns.lineplot(data=df[df.risk_num == risk_num], x="ads_acc", y="request_time", hue="policy", style="policy", markers=True, palette=palette)
+        fig, ax = plt.subplots(tight_layout = True)
+        ax2 = ax.twinx()
+        sns.lineplot(data=df[df.risk_num == risk_num], x="ads_acc", y="request_time", hue="policy", style="policy", markers=True, palette=palette, ax=ax)
+        sns.lineplot(data=df[df.risk_num == risk_num], x="ads_acc", y="request_count", hue="policy", style="policy", markers=True, palette=palette, ax=ax2)
         plt.savefig(f"request_time_{risk_num}.svg", transparent=True)
         plt.clf()
 
