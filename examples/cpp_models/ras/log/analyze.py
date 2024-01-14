@@ -539,6 +539,7 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
     plt.savefig("total_acc.svg", transparent=True)
     plt.clf()
 
+
     ## risk prob - intervention request
     request_rate = pd.DataFrame(columns=("policy", "risk_num", "prob", "rate"))
     for rn in target_count.risk_num.drop_duplicates():
@@ -601,8 +602,24 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
 #
 #    plt.show()
 
-    
+    for risk_num in [5.0, 15.0]:
+        sns.lineplot(data=df[df.risk_num == risk_num], x="ads_acc", y="acc", hue="policy", style="policy", markers=True, palette=palette)
+        plt.ylim([0.0, 1.0])
+        plt.savefig(f"total_acc_{risk_num}.svg", transparent=True)
+        plt.clf()
 
+        sns.lineplot(data=df[df.risk_num == risk_num], x="ads_acc", y="request_time", hue="policy", style="policy", markers=True, palette=palette)
+        plt.savefig(f"request_time_{risk_num}.svg", transparent=True)
+        plt.clf()
+
+        fig, ax = plt.subplots(tight_layout = True)
+        sns.lineplot(data=prob_speed_count[df.risk_num == risk_num], x="ads_acc", y="speed", hue="policy", style="hidden", markers=True, ax=ax, palette=palette)
+        ax.set_ylim(0.0, 12.0)
+        plt.savefig(f"pass_speed_{risk_num}.svg", transparent=True)
+        plt.clf()
+
+    
+    ## plot 3d 
     fig = plt.figure(figsize=(9, 9), facecolor="w")
     ax = fig.add_subplot(111, projection="3d")
     for policy, color in palette.items():
@@ -624,28 +641,41 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
             z.append(z_r)
 
         x, y = np.meshgrid(x, y)
-        print(policy)
-        print(x, y, z)
 
         ax.plot_surface(np.array(x), np.array(y), np.array(z), color = color, alpha = 0.8)
+
     ax.set_zlim(0.0, 12.0)
-    plt.show()
     plt.savefig("pass_speed_true_3d.svg", transparent=True)
     plt.clf()
 
     fig = plt.figure(figsize=(9, 9), facecolor="w")
     ax = fig.add_subplot(111, projection="3d")
-    buf_df = prob_speed_count[prob_speed_count.hidden == False]
-    ax.plot_surface(buf_df["risk_num"], buf_df["ads_acc"], buf_df["speed"], hue="policy", markers=True, ax=ax, palette=palette)
+    for policy, color in palette.items():
+        buf_df = prob_speed_count.query("hidden == True & policy==@policy")
+        x = []
+        y = []
+        for x_d in buf_df["risk_num"].drop_duplicates():
+            x.append(x_d)
+        for y_d in buf_df["ads_acc"].drop_duplicates():
+            y.append(y_d)
+
+        x.sort()
+        y.sort()
+        z = []
+        for x_d in x:
+            z_r = []
+            for y_d in y:
+                z_r.append(buf_df[(buf_df.risk_num == x_d) & (buf_df.ads_acc == y_d)].speed.mean())
+            z.append(z_r)
+
+        x, y = np.meshgrid(x, y)
+
+        ax.plot_surface(np.array(x), np.array(y), np.array(z), color = color, alpha = 0.8)
+
     ax.set_zlim(0.0, 12.0)
-    plt.savefig("pass_speed_false_3d.svg", transparent=True)
+    plt.savefig("pass_speed_true_3d.svg", transparent=True)
     plt.clf()
 
-    fig = plt.figure(figsize=(9, 9), facecolor="w")
-    ax = fig.add_subplot(111, projection="3d")
-    ax.plot_surface(df["risk_num"], df["ads_acc"], df["request_time"], hue="policy", markers=True, ax=ax, palette=palette)
-    plt.savefig("request_time_3d.svg", transparent=True)
-    plt.clf()
 
     ## visualize recognition simulation 
     fig, ax = plt.subplots(1, 2, tight_layout=True)
