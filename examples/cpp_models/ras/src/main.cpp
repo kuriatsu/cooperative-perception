@@ -36,6 +36,7 @@ private:
 	    {"hard", 0.5},
 	    {"easy_plus", 0.0},
 	    {"hard_plus", 0.0},
+	    {"future", 0.0},
     };
 
     /* min_time, min_acc, slope, max_acc, ads_mean, ads_dev */
@@ -44,6 +45,7 @@ private:
         {"hard", {1.0, 0.65, 0.075, 0.8, 0.6, 0.1}},
         {"easy_plus", {1.0, 0.9, 0.01, 0.95, 0.9, 0.1}},
         {"hard_plus", {1.0, 0.65, 0.03, 0.8, 0.6, 0.1}},
+        {"future", {1.0, 0.65, 0.03, 0.8, 0.9, 0.1}},
     };
  
 public:

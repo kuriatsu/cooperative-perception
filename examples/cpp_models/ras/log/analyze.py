@@ -416,7 +416,7 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
                 target_index = target_count.index[(target_count.id == frame.get("action_target")) & (target_count.policy == policy) & (target_count.risk_num == risk_num) & (target_count.date == date)].tolist()[0]
                 target_count.iloc[target_index, 2] = True
                 
-                if last_request_target == frame.get("action_target"):
+                if last_request_target != frame.get("action_target"):
                     request_count += 1
 
             last_request_target = frame.get("action_target") if frame.get("action") == "REQUEST" else None
@@ -535,8 +535,8 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
 
     fig, ax = plt.subplots()
     ax2 = ax.twinx()
-    sns.lineplot(data=df, x="risk_num", y="request_time", hue="policy", style="policy", markers=True, palette=palette, ax=ax)
-    sns.lineplot(data=df, x="risk_num", y="request_count", hue="policy", style="policy", markers=True, palette=palette, ax=ax2)
+    sns.lineplot(data=df, x="risk_num", y="request_time", hue="policy", markers=True, linestyle="-", palette=palette, ax=ax)
+    sns.lineplot(data=df, x="risk_num", y="request_count", hue="policy", markers=True, linestyle="--", palette=palette, ax=ax2)
     plt.savefig("request_time.svg", transparent=True)
     plt.clf()
 
@@ -620,8 +620,8 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
 
         fig, ax = plt.subplots(tight_layout = True)
         ax2 = ax.twinx()
-        sns.lineplot(data=df[df.risk_num == risk_num], x="ads_acc", y="request_time", hue="policy", style="policy", markers=True, palette=palette, ax=ax)
-        sns.lineplot(data=df[df.risk_num == risk_num], x="ads_acc", y="request_count", hue="policy", style="policy", markers=True, palette=palette, ax=ax2)
+        sns.lineplot(data=df[df.risk_num == risk_num], x="ads_acc", y="request_time", hue="policy", linestyle="-", markers=True, palette=palette, ax=ax)
+        sns.lineplot(data=df[df.risk_num == risk_num], x="ads_acc", y="request_count", hue="policy", linestyle="--", markers=True, palette=palette, ax=ax2)
         plt.savefig(f"request_time_{risk_num}.svg", transparent=True)
         plt.clf()
 
