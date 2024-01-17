@@ -255,7 +255,7 @@ double TaskAllocation::CalcReward(const State& _state_prev, const State& _state_
             }
             /* driving efficiency */
             else {
-                reward += (_vehicle_model->_max_speed - state_prev.ego_speed)/(_vehicle_model->_max_speed - _vehicle_model->_yield_speed) * -10.0;
+                reward += (_vehicle_model->_max_speed - state_prev.ego_speed)/(_vehicle_model->_max_speed - _vehicle_model->_yield_speed) * -100.0;
                 // reward += (state_curr.ego_speed - _yield_speed)/(_max_speed - _yield_speed) * 10;
             }
 
@@ -287,7 +287,7 @@ double TaskAllocation::CalcReward(const State& _state_prev, const State& _state_
     
     // penalty for initial intervention request
 	if (ta_action == TAValues::REQUEST && (state_curr.req_time == _delta_t || state_prev.req_target != state_curr.req_target)) {
-        reward += -0.1;
+        reward += 0.0;
     }
 
     /* end of the request */
