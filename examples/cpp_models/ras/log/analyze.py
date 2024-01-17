@@ -612,7 +612,8 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
 #
 #    plt.show()
 
-    for risk_num in [5.0, 18.0]:
+    print(df["risk_num"].unique())
+    for risk_num in [4.0, 18.0]:
         sns.lineplot(data=df[df.risk_num == risk_num], x="ads_acc", y="acc", hue="policy", style="policy", markers=True, palette=palette)
         plt.ylim([0.0, 1.0])
         plt.savefig(f"total_acc_{risk_num}.svg", transparent=True)
@@ -626,7 +627,7 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
         plt.clf()
 
         fig, ax = plt.subplots(tight_layout = True)
-        sns.lineplot(data=prob_speed_count[df.risk_num == risk_num], x="ads_acc", y="speed", hue="policy", style="hidden", markers=True, ax=ax, palette=palette)
+        sns.lineplot(data=prob_speed_count[prob_speed_count.risk_num == risk_num], x="ads_acc", y="speed", hue="policy", style="hidden", markers=True, ax=ax, palette=palette)
         ax.set_ylim(0.0, 12.0)
         plt.savefig(f"pass_speed_{risk_num}.svg", transparent=True)
         plt.clf()
