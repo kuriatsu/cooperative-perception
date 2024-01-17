@@ -1,5 +1,7 @@
 {
     "easy" : 0.0,
     "hard" : 0.0,
-    "hard_plus" : 1.0
+    "hard_plus" : 0.0,
+    "easy_plus" : 0.0,
+    "future" : 1.0
 }
