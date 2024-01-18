@@ -8,7 +8,7 @@ import pandas as pd
 import re
 from mpl_toolkits.mplot3d import Axes3D
 
-palette = {"REFERENCE": "orangered","NOREQUEST": "indigo", "MYOPIC": "dodgerblue", "MYOPIC_PLUS": "blue", "MYOPIC_CONSERVATIVE": "blue", "OURS": "forestgreen"}
+palette = {"REFERENCE": "navy","NOREQUEST": "turquoise", "MYOPIC": "green", "MYOPIC_PLUS": "yellowgreen", "MYOPIC_CONSERVATIVE": "olive", "OURS": "orangered", "OURS_LESS_REQUEST": "indigo", "OURS_LESS_REQUEST_PLUS": "fuchsia"}
 LANE_LENGTH = 500
 
 def CalcReward(state_prev, state_curr):
