@@ -149,6 +149,7 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
         elapsed_time = 0.0
         is_crossed = False
         last_prob = None
+        last_obs = None
         crossing_time = 0
         
 
@@ -175,23 +176,35 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
 
                     if policy == "OURS":
                         crossing_prob = last_prob
+                    elif policy.startswith("MYOPIC"):
+                        if risk.get("type") == "hard":
+                            crossing_prob = 0.8
+                        else:
+                            crossing_prob = 0.95
+
+                        if not risk.get("pred"):
+                            crossing_prob = 1.0 - crossing_prob
+
                     else:
                         crossing_prob = initial_risk_id_prob[id]
 
                     if crossing_prob < 0.1: 
                         crossing_prob += 0.02 
+                    elif crossing_prob > 0.9:
+                        crossing_prob -= 0.02 
+
 
                     if risk["hidden"]:
                         ax[0].bar(crossing_time, 1.0, color=color_map(i/len(initial_risk_id_prob)))
                         ax[0].bar(crossing_time, crossing_prob, color="white", width=1.0)
-                        ax[0].annotate(id, xy=[crossing_time, crossing_prob], size=10, color= "red")
                     else:
                         ax[0].bar(crossing_time, crossing_prob, color=color_map(i/len(initial_risk_id_prob)))
-                        ax[0].annotate(id, xy=[crossing_time, crossing_prob], size=10, color= "black")
+                    ax[0].annotate(f"{id}+({risk['type']})", xy=[crossing_time, crossing_prob], size=10, color= "red" if risk["hidden"] else "black")
 
                     reserved_time_list.append(crossing_time)
                     continue
 
+            last_obs = frame.get("obs")
 
 
         ## no crossing means the target are at the end of the course
@@ -231,6 +244,8 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
     # print("intervention request")
     ##########################
     last_action_target = None
+    last_observation = log[0].get("obs")
+    request_time_target = 0
     buf_prob = []
     buf_time = []
     reward = [0]
@@ -245,6 +260,7 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
                 buf_time.append(0.0)
                 break
         last_action_target = target
+        request_time_target = 1
 
     ## from second log
     for frame_num in range(1, len(log)):
@@ -254,6 +270,10 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
 
         if frame.get("action") == "REQUEST":
             request_time += data.get("delta_t")
+            if last_action_target == target:
+                request_time_target += 1
+            else:
+                request_time_target = 1
 
             ## keep intervention request
             if policy == "OURS":
@@ -263,6 +283,25 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
                             buf_prob.append(risk.get("prob"))
                             buf_time.append(elapsed_time)
                             break
+
+            elif policy.startswith("MYOPIC"):
+                if last_action_target == target:
+                    prob = buf_prob[0] 
+                    print(request_time_target)
+                    for risk in frame.get("risks"):
+                        if target == risk.get("id"):
+                            if risk.get("type") == "hard": 
+                                prob = min(0.8, 0.65+request_time_target*0.075)
+                            if risk.get("type") == "easy": 
+                                prob = min(0.95, 0.90+request_time_target*0.025)
+
+                            if not risk.get("pred"):
+                                prob = 1.0 - prob
+
+                            break
+
+                    buf_prob.append(prob)
+                    buf_time.append(elapsed_time)
             else:
                 if last_action_target == target:
                     for risk in frame.get("risks"):
@@ -296,6 +335,29 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
                             buf_prob.append(risk.get("prob"))
                             buf_time.append(elapsed_time)
                             break
+
+                elif policy.startswith("MYOPIC"):
+                    prob = 0.0 
+                    for risk in log[frame_num-1].get("risks"):
+                        if target == risk.get("id"):
+                            buf_prob.append(risk.get("prob"))
+                            buf_time.append(elapsed_time-data.get("delta_t"))
+                            break
+                    for risk in frame.get("risks"):
+                        if target == risk.get("id"):
+                            if risk.get("type") == "hard": 
+                                prob = 0.65
+                            elif risk.get("type") == "easy": 
+                                prob = 0.90
+
+                            if not risk.get("pred"):
+                                prob = 1.0 - prob
+
+                            break
+
+                    buf_prob.append(prob)
+                    buf_time.append(elapsed_time)
+
                 else:
                     for risk in log[frame_num-1].get("risks"):
                         if target == risk.get("id"):
@@ -308,8 +370,9 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
                             buf_time.append(elapsed_time)
                             break
 
-                ax[1].annotate(target, xy=[buf_time[0], buf_prob[0]], size=10, color="red" if risk["hidden"] else "black")
+                ax[1].annotate(f"{target}+({risk['type']})", xy=[buf_time[0], buf_prob[0]], size=10, color="red" if risk["hidden"] else "black")
             last_action_target = target
+            last_observation = frame["obs"] 
                 
         else:
             ## finish intervention request 
@@ -327,6 +390,7 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
                 buf_time = []
                 
             last_action_target = None
+            request_time_target = 0
 
         ## reward
         reward.append(CalcReward(log[frame_num-1], log[frame_num]))
@@ -542,7 +606,12 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
     ax2 = ax.twinx()
     sns.lineplot(data=df, x="risk_num", y="request_time", hue="policy", markers=True, linestyle="-", palette=palette, ax=ax)
     sns.lineplot(data=df, x="risk_num", y="request_count", hue="policy", markers=True, linestyle="--", palette=palette, ax=ax2)
-    plt.savefig("request_time.svg", transparent=True)
+    plt.savefig("request_time_count.svg", transparent=True)
+    plt.clf()
+
+    fig, ax = plt.subplots()
+    sns.lineplot(data=df, x="risk_num", y="request_count", hue="policy", markers=True, linestyle="--", palette=palette, ax=ax)
+    plt.savefig("request_count.svg", transparent=True)
     plt.clf()
 
     sns.lineplot(data=df, x="risk_num", y="total_reward", hue="policy", style="policy", markers=True, palette=palette)
@@ -628,7 +697,12 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
         ax2 = ax.twinx()
         sns.lineplot(data=df[df.risk_num == risk_num], x="ads_acc", y="request_time", hue="policy", linestyle="-", markers=True, palette=palette, ax=ax)
         sns.lineplot(data=df[df.risk_num == risk_num], x="ads_acc", y="request_count", hue="policy", linestyle="--", markers=True, palette=palette, ax=ax2)
-        plt.savefig(f"request_time_{risk_num}.svg", transparent=True)
+        plt.savefig(f"request_time_count_{risk_num}.svg", transparent=True)
+        plt.clf()
+
+        fig, ax = plt.subplots(tight_layout = True)
+        sns.lineplot(data=df[df.risk_num == risk_num], x="ads_acc", y="request_count", hue="policy", linestyle="--", markers=True, palette=palette, ax=ax)
+        plt.savefig(f"request_count_{risk_num}.svg", transparent=True)
         plt.clf()
 
         fig, ax = plt.subplots(tight_layout = True)
