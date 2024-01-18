@@ -8,7 +8,7 @@ import pandas as pd
 import re
 from mpl_toolkits.mplot3d import Axes3D
 
-palette = {"REFERENCE": "orangered","EGOISTIC": "indigo", "MYOPIC": "dodgerblue", "DESPOT": "forestgreen"}
+palette = {"REFERENCE": "orangered","NOREQUEST": "indigo", "MYOPIC": "dodgerblue", "MYOPIC_PLUS": "blue", "MYOPIC_CONSERVATIVE": "blue", "OURS": "forestgreen"}
 LANE_LENGTH = 500
 
 def CalcReward(state_prev, state_curr):
@@ -133,18 +133,18 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
     log = data.get("log")
     policy = re.findall("([A-Z]*)\d", sys.argv[1])[0]
 
-    risk_id_prob = {} 
+    initial_risk_id_prob = {} 
     risk_id_index_for_color = {}
     risk_num = len(log[0].get("risks"))
     for risk in log[0].get("risks"):
-        risk_id_prob[risk.get("id")] = risk.get("prob")
+        initial_risk_id_prob[risk.get("id")] = risk.get("prob")
     color_map = plt.get_cmap("Set3")
 
     ##########################
     # print("risk position and prob")
     ##########################
     reserved_time_list = []
-    for i, id in enumerate(risk_id_prob.keys()):
+    for i, id in enumerate(initial_risk_id_prob.keys()):
         risk_id_index_for_color[id] = i
         elapsed_time = 0.0
         is_crossed = False
@@ -172,16 +172,21 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
                             crossing_time += 0.8
                         else:
                             break
-                    crossing_prob = risk_id_prob[id]
+
+                    if policy == "OURS":
+                        crossing_prob = last_prob
+                    else:
+                        crossing_prob = initial_risk_id_prob[id]
+
                     if crossing_prob < 0.1: 
                         crossing_prob += 0.02 
 
                     if risk["hidden"]:
-                        ax[0].bar(crossing_time, 1.0, color=color_map(i/len(risk_id_prob)))
+                        ax[0].bar(crossing_time, 1.0, color=color_map(i/len(initial_risk_id_prob)))
                         ax[0].bar(crossing_time, crossing_prob, color="white", width=1.0)
                         ax[0].annotate(id, xy=[crossing_time, crossing_prob], size=10, color= "red")
                     else:
-                        ax[0].bar(crossing_time, crossing_prob, color=color_map(i/len(risk_id_prob)))
+                        ax[0].bar(crossing_time, crossing_prob, color=color_map(i/len(initial_risk_id_prob)))
                         ax[0].annotate(id, xy=[crossing_time, crossing_prob], size=10, color= "black")
 
                     reserved_time_list.append(crossing_time)
@@ -197,7 +202,7 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
                     crossing_time += 1.0
                 else:
                     break
-            ax[0].bar(crossing_time, last_prob, color=color_map(i/len(risk_id_prob)))
+            ax[0].bar(crossing_time, last_prob, color=color_map(i/len(initial_risk_id_prob)))
             print(f"{id} doesn't crossed time: {crossing_time} prob : {last_prob}")
 
     ##########################
@@ -251,7 +256,7 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
             request_time += data.get("delta_t")
 
             ## keep intervention request
-            if policy == "DESPOT":
+            if policy == "OURS":
                 if last_action_target == target:
                     for risk in frame.get("risks"):
                         if target == risk.get("id"):
@@ -270,9 +275,9 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
             ## request 1 -> requet 2  
             ## plot last intervention request to 1 
             if last_action_target != target and last_action_target is not None:
-                ax[1].plot(buf_time, buf_prob, linestyle="-", color=color_map(risk_id_index_for_color[last_action_target]/len(risk_id_prob)))
-                ax[1].plot(buf_time[1:], buf_prob[1:], marker=".", linestyle="", color=color_map(risk_id_index_for_color[last_action_target]/len(risk_id_prob)))
-                ax[1].plot(buf_time[0], buf_prob[0], marker="x", linestyle="", color=color_map(risk_id_index_for_color[last_action_target]/len(risk_id_prob)))
+                ax[1].plot(buf_time, buf_prob, linestyle="-", color=color_map(risk_id_index_for_color[last_action_target]/len(initial_risk_id_prob)))
+                ax[1].plot(buf_time[1:], buf_prob[1:], marker=".", linestyle="", color=color_map(risk_id_index_for_color[last_action_target]/len(initial_risk_id_prob)))
+                ax[1].plot(buf_time[0], buf_prob[0], marker="x", linestyle="", color=color_map(risk_id_index_for_color[last_action_target]/len(initial_risk_id_prob)))
 
             ## start intervention request
             ## 1. clear log log 
@@ -280,7 +285,7 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
             if last_action_target != target:
                 buf_prob = []
                 buf_time = []
-                if policy == "DESPOT":
+                if policy == "OURS":
                     for risk in log[frame_num-1].get("risks"):
                         if target == risk.get("id"):
                             buf_prob.append(risk.get("prob"))
@@ -310,9 +315,9 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
             ## finish intervention request 
             ## plot last intervention request log and clear log
             if last_action_target is not None:
-                ax[1].plot(buf_time, buf_prob, linestyle="-", color=color_map(risk_id_index_for_color[last_action_target]/len(risk_id_prob)))
-                ax[1].plot(buf_time[1:], buf_prob[1:], marker=".", linestyle="", color=color_map(risk_id_index_for_color[last_action_target]/len(risk_id_prob)))
-                ax[1].plot(buf_time[0], buf_prob[0], marker="x", linestyle="", color=color_map(risk_id_index_for_color[last_action_target]/len(risk_id_prob)))
+                ax[1].plot(buf_time, buf_prob, linestyle="-", color=color_map(risk_id_index_for_color[last_action_target]/len(initial_risk_id_prob)))
+                ax[1].plot(buf_time[1:], buf_prob[1:], marker=".", linestyle="", color=color_map(risk_id_index_for_color[last_action_target]/len(initial_risk_id_prob)))
+                ax[1].plot(buf_time[0], buf_prob[0], marker="x", linestyle="", color=color_map(risk_id_index_for_color[last_action_target]/len(initial_risk_id_prob)))
                 buf_prob = []
                 buf_time = []
 
@@ -345,7 +350,7 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
 
     df = pd.DataFrame(columns = ["policy", "date", "risk_num", "travel_time", "total_fuel_consumption", "mean_fuel_consumption", "dev_accel", "mean_speed", "risk_omission", "ambiguity_omission", "request_time", "total_reward", "acc", "ads_acc", "request_count"])
     target_count = pd.DataFrame(columns = ["id", "prob", "is_requsted", "policy", "risk_num", "date"]) 
-    # risk_prob_count = {"DESPOT":[0] * 10, "MYOPIC":[0]*10, "EGOISTIC":[0]*10, "REFERENCE":[0]*10}
+    # risk_prob_count = {"OURS":[0] * 10, "MYOPIC":[0]*10, "NOREQUEST":[0]*10, "REFERENCE":[0]*10}
     prob_speed_count = pd.DataFrame(columns = ["policy", "date", "risk_num", "prob", "hidden", "pred", "speed", "distance_pred_speed", "distance_prob_speed", "distance_risk_speed", "ads_acc"])
     recog_evaluation = pd.DataFrame(columns = ["hidden", "pred", "prob"])
 
@@ -359,9 +364,9 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
 
         log = data.get("log")
 
-        policy = re.findall("([A-Z]*)\d", file)[0]
-        date = re.findall("_([\d]*)", file)[0]
-        risk_num = float(re.findall("([\d.]*)_", file)[0]) * 2.0 * 500.0
+        policy = re.findall("([A-Z_]*)\d", file)[0]
+        date = re.findall("_([\d]*)", file)[-1]
+        risk_num = float(re.findall("([\d.]*)_", file)[-1]) * 2.0 * 500.0
         travel_time = 0.0
         fuel_consumption = [] 
         accel = []

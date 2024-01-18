@@ -12,8 +12,8 @@ using namespace despot;
 
 class RasWorld: public World {
 private:
-    TAState* pomdp_state; // save previous state
-    std::vector<std::string> perception_target_ids;
+    TAState* _pomdp_state; // save previous state
+    std::vector<std::string> _perception_target_ids;
 
     // log data
     nlohmann::json _log;
@@ -22,14 +22,14 @@ private:
     std::map<std::string, double> _obstacle_type_rate;
 
     // for myopic action
-    std::vector<std::string> req_target_history;
-    std::vector<OBS_TYPE> obs_history;
+    std::vector<std::string> _req_target_history;
+    std::vector<OBS_TYPE> _obs_history;
 
 public:
     SumoInterface* _sim;
     OperatorModel* _operator_model;
     VehicleModel* _vehicle_model;
-    TAValues* ta_values;
+    TAValues* _ta_values;
 
 public:
     RasWorld();
@@ -47,7 +47,9 @@ public:
     void Close();
     bool isTerminate();
 
-    ACT_TYPE MyopicAction();
-    ACT_TYPE EgoisticAction(); 
+    ACT_TYPE MyopicAction() const;
+    ACT_TYPE MyopicPlusAction(const std::vector<double> &likelihoods) const;
+    ACT_TYPE MyopicConservativeAction() const;
+    ACT_TYPE EgoisticAction() const; 
 }; 
 

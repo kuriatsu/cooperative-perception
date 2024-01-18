@@ -2,15 +2,15 @@
 
 
 densities=(
-    0.001
+#    0.001
     0.002
-    0.003
+#    0.003
     0.004
-    0.005
+#    0.005
     0.006
-    0.007
+#    0.007
     0.008
-    0.009
+#    0.009
     0.01
     0.012
     0.014
@@ -42,14 +42,16 @@ param_files=(
 for density in "${densities[@]}"; do
     for param in "${param_files[@]}"; do
         for i in {1..10}; do
-            ../build/ras --policy DESPOT --density ${density} --param ${param} 
+            ../build/ras --policy OURS --density ${density} --param ${param} 
         done
     done
 done
 
 policies=(
     "MYOPIC"
-    "EGOISTIC"
+    "NOREQUEST"
+    "MYOPIC_PLUS"
+    "MYOPIC_CONSERVATIVE"
     "REFERENCE"
 )
 
@@ -60,6 +62,6 @@ while read log ; do
     done
 done < <(find . -name "*.json" )
 
-# while read log ; do
-#     python3 analyze.py ${log} 
-# done < <(find . -name "*.json" )
+while read log ; do
+    python3 analyze.py ${log} 
+done < <(find . -name "*.json" )

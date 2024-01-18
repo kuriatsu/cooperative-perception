@@ -24,10 +24,10 @@ bool RasWorld::Connect(){
 State* RasWorld::Initialize() {
     _sim->spawnPedestrians();
     _sim->spawnEgoVehicle();
-    pomdp_state = new TAState();
-    pomdp_state->req_time = 0;
-    pomdp_state->req_target = 0;
-    ta_values = new TAValues(); 
+    _pomdp_state = new TAState();
+    _pomdp_state->req_time = 0;
+    _pomdp_state->req_target = 0;
+    _ta_values = new TAValues(); 
     return NULL;
 }
 
@@ -52,10 +52,10 @@ State* RasWorld::Initialize(const std::string log_file) {
 
     _sim->spawnPedestrians(obj_list);
     _sim->spawnEgoVehicle();
-    pomdp_state = new TAState();
-    pomdp_state->req_time = 0;
-    pomdp_state->req_target = 0;
-    ta_values = new TAValues(); 
+    _pomdp_state = new TAState();
+    _pomdp_state->req_time = 0;
+    _pomdp_state->req_target = 0;
+    _ta_values = new TAValues(); 
     return NULL;
 }
 
@@ -63,28 +63,28 @@ State* RasWorld::Initialize(const std::string log_file) {
 State* RasWorld::GetCurrentState() {
 
     std::cout << "################GetCurrentState##################" << std::endl;
-    perception_target_ids = _sim->perception();
-    std::cout << perception_target_ids << std::endl;
+    _perception_target_ids = _sim->perception();
+    std::cout << _perception_target_ids << std::endl;
 
     // check wether last request target still exists in the perception targets
     bool is_last_req_target = false;
 
-    pomdp_state->ego_pose = 0;
-    pomdp_state->ego_speed = _sim->getEgoSpeed();
-    pomdp_state->ego_recog.clear();
-    pomdp_state->risk_pose.clear();
-    pomdp_state->risk_bin.clear();
-    pomdp_state->risk_type.clear();
-    for (int i=0; i<perception_target_ids.size(); i++) {
-        Risk *risk = _sim->getRisk(perception_target_ids[i]);
-        pomdp_state->ego_recog.emplace_back(risk->risk_pred);
-        pomdp_state->risk_pose.emplace_back(risk->distance);
-        pomdp_state->risk_bin.emplace_back(risk->risk_hidden);
-        pomdp_state->risk_type.emplace_back(risk->type);
+    _pomdp_state->ego_pose = 0;
+    _pomdp_state->ego_speed = _sim->getEgoSpeed();
+    _pomdp_state->ego_recog.clear();
+    _pomdp_state->risk_pose.clear();
+    _pomdp_state->risk_bin.clear();
+    _pomdp_state->risk_type.clear();
+    for (int i=0; i<_perception_target_ids.size(); i++) {
+        Risk *risk = _sim->getRisk(_perception_target_ids[i]);
+        _pomdp_state->ego_recog.emplace_back(risk->risk_pred);
+        _pomdp_state->risk_pose.emplace_back(risk->distance);
+        _pomdp_state->risk_bin.emplace_back(risk->risk_hidden);
+        _pomdp_state->risk_type.emplace_back(risk->type);
         
-        if (req_target_history.size() > 0 && req_target_history.back() == risk->id) {
+        if (_req_target_history.size() > 0 && _req_target_history.back() == risk->id) {
             is_last_req_target = true;
-            pomdp_state->req_target = i; 
+            _pomdp_state->req_target = i; 
         }
 
         std::cout << 
@@ -95,23 +95,23 @@ State* RasWorld::GetCurrentState() {
             std::endl;
     }
 
-    // std::cout << req_target_history << std::endl;
+    // std::cout << _req_target_history << std::endl;
     if (!is_last_req_target) {
-        pomdp_state->req_time = 0;
+        _pomdp_state->req_time = 0;
     }
     else {
-        std::cout << "req target found again, id: " << req_target_history.back() << ", idx: " << pomdp_state->req_target << std::endl;
+        std::cout << "req target found again, id: " << _req_target_history.back() << ", idx: " << _pomdp_state->req_target << std::endl;
     }
 
-    ta_values = new TAValues(pomdp_state->risk_pose.size());
+    _ta_values = new TAValues(_pomdp_state->risk_pose.size());
 
-    State* out_state = static_cast<State*>(pomdp_state);
+    State* out_state = static_cast<State*>(_pomdp_state);
     return out_state;
 }
 
 std::vector<double> RasWorld::GetPerceptionLikelihood() {
     std::vector<double> likelihood;
-    for (const auto& id: perception_target_ids) {
+    for (const auto& id: _perception_target_ids) {
         likelihood.emplace_back(_sim->getRisk(id)->risk_prob);
     }
     return likelihood;
@@ -120,44 +120,44 @@ std::vector<double> RasWorld::GetPerceptionLikelihood() {
 bool RasWorld::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 
     std::cout << "execute action" << std::endl;
-    TAValues::ACT ta_action = ta_values->getActionAttrib(action);
-    int target_idx = ta_values->getActionTarget(action);
+    TAValues::ACT ta_action = _ta_values->getActionAttrib(action);
+    int target_idx = _ta_values->getActionTarget(action);
     
     // NO_ACTION
     if (ta_action == TAValues::NO_ACTION) {
         std::cout << "NO_ACTION" << std::endl;
 
-        pomdp_state->req_time = 0;
-        req_target_history.emplace_back("none");
+        _pomdp_state->req_time = 0;
+        _req_target_history.emplace_back("none");
 
-        obs = _operator_model->execIntervention(pomdp_state->req_time, pomdp_state->risk_bin[pomdp_state->req_target], pomdp_state->risk_type[pomdp_state->req_target]);
-        ta_values->printObs(obs);
-        obs_history.emplace_back(obs);
+        obs = _operator_model->execIntervention(_pomdp_state->req_time, _pomdp_state->risk_bin[_pomdp_state->req_target], _pomdp_state->risk_type[_pomdp_state->req_target]);
+        _ta_values->printObs(obs);
+        _obs_history.emplace_back(obs);
     }
     
     /** REQEST **/
     else {
-        std::string req_target_id = perception_target_ids[target_idx];
+        std::string req_target_id = _perception_target_ids[target_idx];
         std::cout << "action : REQUEST to " << target_idx << " = " << req_target_id << std::endl;
 
-        pomdp_state->req_target = target_idx;
+        _pomdp_state->req_target = target_idx;
 		// request to the same target or started to request
-        if (req_target_history.empty() || req_target_history.back() == req_target_id || pomdp_state->req_time == 0) {
-            pomdp_state->req_time += Globals::config.time_per_move;
+        if (_req_target_history.empty() || _req_target_history.back() == req_target_id || _pomdp_state->req_time == 0) {
+            _pomdp_state->req_time += Globals::config.time_per_move;
         }
 		// change request target 
         else {
-            pomdp_state->req_time = Globals::config.time_per_move;
+            _pomdp_state->req_time = Globals::config.time_per_move;
         }
-        req_target_history.emplace_back(req_target_id);
+        _req_target_history.emplace_back(req_target_id);
 
         /** get obs and update it to ego_recog **/
-        obs = _operator_model->execIntervention(pomdp_state->req_time, pomdp_state->risk_bin[pomdp_state->req_target], pomdp_state->risk_type[pomdp_state->req_target]);
-        ta_values->printObs(obs);
-        obs_history.emplace_back(obs);
+        obs = _operator_model->execIntervention(_pomdp_state->req_time, _pomdp_state->risk_bin[_pomdp_state->req_target], _pomdp_state->risk_type[_pomdp_state->req_target]);
+        _ta_values->printObs(obs);
+        _obs_history.emplace_back(obs);
 
         _sim->getRisk(req_target_id)->risk_pred = obs;
-        pomdp_state->ego_recog[target_idx] = obs;
+        _pomdp_state->ego_recog[target_idx] = obs;
         
         /** change color of the intervention target **/
         std::vector<int> red_color = {200, 0, 0};
@@ -172,9 +172,9 @@ void RasWorld::UpdateState(ACT_TYPE action, OBS_TYPE obs, const std::vector<doub
     for (auto itr = risk_probs.begin(), end = risk_probs.end(); itr != end; itr++) {
         /* write state change to risks info in sumo_interface */
         int idx = std::distance(risk_probs.begin(), itr);
-        std::string target_id = perception_target_ids[idx];
+        std::string target_id = _perception_target_ids[idx];
         Risk* risk = _sim->getRisk(target_id);
-        risk->risk_pred = pomdp_state->ego_recog[idx];
+        risk->risk_pred = _pomdp_state->ego_recog[idx];
 
         /* 
          * to avoid belief weight and observation bug
@@ -189,7 +189,7 @@ void RasWorld::UpdateState(ACT_TYPE action, OBS_TYPE obs, const std::vector<doub
     }
 
     /* control ego vehicle */
-    _sim->controlEgoVehicle(pomdp_state->risk_pose, pomdp_state->ego_recog);
+    _sim->controlEgoVehicle(_pomdp_state->risk_pose, _pomdp_state->ego_recog);
 }
      
 void RasWorld::Log(ACT_TYPE action, OBS_TYPE obs) {
@@ -199,11 +199,11 @@ void RasWorld::Log(ACT_TYPE action, OBS_TYPE obs) {
     std::vector<Risk> log_risks;
     _sim->log(time, ego_pose, other_ego_info, log_risks);
 
-    std::string log_action = ta_values->getActionName(action);
-    std::string log_obs = ta_values->getObsName(obs);
+    std::string log_action = _ta_values->getActionName(action);
+    std::string log_obs = _ta_values->getObsName(obs);
     std::string log_action_target = "NONE";
     if (log_action != "NO_ACTION") {
-        log_action_target = perception_target_ids[ta_values->getActionTarget(action)];
+        log_action_target = _perception_target_ids[_ta_values->getActionTarget(action)];
     }
 
     nlohmann::json step_log = {
@@ -266,34 +266,98 @@ void RasWorld::SaveLog(std::string filename) {
     std::cout << "saved log data to " << filename << std::endl;
 }
 
-ACT_TYPE RasWorld::MyopicAction() {
+ACT_TYPE RasWorld::MyopicAction() const {
 
-    // if intervention requested to the target and can request more
+    // if intervention requested to a target and can request more
     int request_time = 3;
-    if (0 < pomdp_state->req_time && pomdp_state->req_time < request_time && pomdp_state->risk_pose[pomdp_state->req_target] > _vehicle_model->getDecelDistance(pomdp_state->ego_speed, _vehicle_model->_max_decel, 0.0)) {
-        return ta_values->getAction(TAValues::REQUEST, pomdp_state->req_target);
+    if (0 < _pomdp_state->req_time && _pomdp_state->req_time < request_time && _pomdp_state->risk_pose[_pomdp_state->req_target] > _vehicle_model->getDecelDistance(_pomdp_state->ego_speed, _vehicle_model->_max_decel, 0.0)) {
+        return _ta_values->getAction(TAValues::REQUEST, _pomdp_state->req_target);
     }
 
     // find request target
     int closest_target = -1, min_dist = 100000;
-    for (int i=0; i<pomdp_state->risk_pose.size(); i++) {
-        int is_in_history = std::count(req_target_history.begin(), req_target_history.end(), perception_target_ids[i]);
-        double request_distance = _vehicle_model->getDecelDistance(pomdp_state->ego_pose, _vehicle_model->_min_decel, _vehicle_model->_safety_margin) + _vehicle_model->_yield_speed * (request_time - _vehicle_model->getDecelTime(pomdp_state->ego_speed, _vehicle_model->_min_decel)); 
-       if (is_in_history == 0 && pomdp_state->risk_pose[i] > request_distance) {
-            if (pomdp_state->risk_pose[i] < min_dist) {
-               min_dist = pomdp_state->risk_pose[i];
+    for (int i=0; i<_pomdp_state->risk_pose.size(); i++) {
+        int is_in_history = std::count(_req_target_history.begin(), _req_target_history.end(), _perception_target_ids[i]);
+        double request_distance = _vehicle_model->getDecelDistance(_pomdp_state->ego_pose, _vehicle_model->_min_decel, _vehicle_model->_safety_margin) + _vehicle_model->_yield_speed * (request_time - _vehicle_model->getDecelTime(_pomdp_state->ego_speed, _vehicle_model->_min_decel)); 
+        if (is_in_history == 0 && _pomdp_state->risk_pose[i] > request_distance) {
+            if (_pomdp_state->risk_pose[i] < min_dist) {
+               min_dist = _pomdp_state->risk_pose[i];
                closest_target = i;
             }
         }
     }
 
     if (closest_target != -1) {
-        return ta_values->getAction(TAValues::REQUEST, closest_target);
+        return _ta_values->getAction(TAValues::REQUEST, closest_target);
     }
     else
-        return ta_values->getAction(TAValues::NO_ACTION, 0);
+        return _ta_values->getAction(TAValues::NO_ACTION, 0);
 }
 
-ACT_TYPE RasWorld::EgoisticAction() {
-    return ta_values->getAction(TAValues::NO_ACTION, 0);
+
+ACT_TYPE RasWorld::MyopicPlusAction(const std::vector<double> &likelihoods) const {
+
+    // if intervention requested to a target and can request more
+    int request_time = 3;
+    if (0 < _pomdp_state->req_time && _pomdp_state->req_time < request_time && _pomdp_state->risk_pose[_pomdp_state->req_target] > _vehicle_model->getDecelDistance(_pomdp_state->ego_speed, _vehicle_model->_max_decel, 0.0)) {
+        return _ta_values->getAction(TAValues::REQUEST, _pomdp_state->req_target);
+    }
+
+    // find request target
+    int closest_target = -1, min_dist = 100000;
+    for (int i=0; i<_pomdp_state->risk_pose.size(); i++) {
+
+        int is_in_history = std::count(_req_target_history.begin(), _req_target_history.end(), _perception_target_ids[i]);
+        double request_distance = _vehicle_model->getDecelDistance(_pomdp_state->ego_pose, _vehicle_model->_min_decel, _vehicle_model->_safety_margin) + _vehicle_model->_yield_speed * (request_time - _vehicle_model->getDecelTime(_pomdp_state->ego_speed, _vehicle_model->_min_decel)); 
+	double likelihood = likelihoods[i];
+
+	/* first request, further than request_distance, uncertain */
+        if (is_in_history == 0 && _pomdp_state->risk_pose[i] > request_distance && 0.4 < likelihood && likelihood < 0.6) {
+            if (_pomdp_state->risk_pose[i] < min_dist) {
+               min_dist = _pomdp_state->risk_pose[i];
+               closest_target = i;
+            }
+        }
+    }
+
+    if (closest_target != -1) {
+        return _ta_values->getAction(TAValues::REQUEST, closest_target);
+    }
+    else
+        return _ta_values->getAction(TAValues::NO_ACTION, 0);
+}
+
+
+ACT_TYPE RasWorld::MyopicConservativeAction() const {
+
+    // if intervention requested to a target and can request more
+    int request_time = 3;
+    if (0 < _pomdp_state->req_time && _pomdp_state->req_time < request_time && _pomdp_state->risk_pose[_pomdp_state->req_target] > _vehicle_model->getDecelDistance(_pomdp_state->ego_speed, _vehicle_model->_max_decel, 0.0)) {
+        return _ta_values->getAction(TAValues::REQUEST, _pomdp_state->req_target);
+    }
+
+    // find request target
+    int closest_target = -1, min_dist = 100000;
+    for (int i=0; i<_pomdp_state->risk_pose.size(); i++) {
+        int is_in_history = std::count(_req_target_history.begin(), _req_target_history.end(), _perception_target_ids[i]);
+        double request_distance = _vehicle_model->getDecelDistance(_pomdp_state->ego_pose, _vehicle_model->_min_decel, _vehicle_model->_safety_margin) + _vehicle_model->_yield_speed * (request_time - _vehicle_model->getDecelTime(_pomdp_state->ego_speed, _vehicle_model->_min_decel)); 
+	/* first request, further than request distance, recog=NORISK */
+        if (is_in_history == 0 && _pomdp_state->risk_pose[i] > request_distance && _pomdp_state->ego_recog[i] == TAValues::NO_RISK) {
+            if (_pomdp_state->risk_pose[i] < min_dist) {
+               min_dist = _pomdp_state->risk_pose[i];
+               closest_target = i;
+            }
+        }
+    }
+
+    if (closest_target != -1) {
+        return _ta_values->getAction(TAValues::REQUEST, closest_target);
+    }
+    else
+        return _ta_values->getAction(TAValues::NO_ACTION, 0);
+}
+
+
+ACT_TYPE RasWorld::EgoisticAction() const {
+    return _ta_values->getAction(TAValues::NO_ACTION, 0);
 }

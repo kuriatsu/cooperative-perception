@@ -13,14 +13,14 @@ class MyPlanner: public Planner {
 // extern int optind, opterr, optopt;
 
 private:
-    std::vector<double> _perception_range = {50, 150}; // left+right range, forward range
                                                       
     // model parameters
     string _world_type = "simulator";
     string _belief_type = "DEFAULT";
     option::Option *options;
-    string _policy_type = "DESPOT"; // DESPOT, MYOPIC, EGOISTIC, REFERENCE
-    int _planning_horizon = 150;
+    string _policy_type = "OURS"; // OURS, MYOPIC, MYOPIC_PLUS, MYOPIC_CONSERVATIVE, NOREQUEST, REFERENCE
+    std::vector<double> _perception_range = {50, 100}; // left+right range, forward range
+    int _planning_horizon = _perception_range[1]; 
                                     
     // log
     string _log_file = "";
@@ -131,7 +131,11 @@ public:
         ACT_TYPE action;
         if (_policy_type == "MYOPIC")
             action = ras_world->MyopicAction();
-        else if (_policy_type == "EGOISTIC" || _policy_type == "REFERENCE")
+	else if (_policy_type == "MYOPIC_PLUS")
+	    action = ras_world->MyopicPlusAction(ta_model->getRiskProb(belief));
+	else if (_policy_type == "MYOPIC_CONSERVATIVE")
+	    action = ras_world->MyopicConservativeAction();
+        else if (_policy_type == "NOREQUEST" || _policy_type == "REFERENCE")
             action = ras_world->EgoisticAction();
         else {
             std::cout << "get action" << std::endl;
