@@ -19,7 +19,7 @@ def CalcReward(state_prev, state_curr):
             if risk["hidden"] == "RISK":
                 reward += (state_curr["speed"] - 2.8) / (11.2 - 2.8) * -100
             else:
-                reward += (11.2 - state_curr["speed"]) / (11.2 - 2.8) * -10
+                reward += (11.2 - state_curr["speed"]) / (11.2 - 2.8) * -100
             
             # if risk["pred"] == "RISK":
             #     reward += (state_curr["speed"] - 2.8) / (11.2 - 2.8) * -100
@@ -36,8 +36,8 @@ def CalcReward(state_prev, state_curr):
     # reward += (state_curr["speed"] - 2.8) / (11.2 - 2.8) * 1;
 
     ## intervention request
-    if state_curr["action"] == "REQUEST" and (state_prev["action_target"] != state_curr["action_target"]):
-        reward += -1
+    # if state_curr["action"] == "REQUEST" and (state_prev["action_target"] != state_curr["action_target"]):
+    #     reward += -1
 
     ## when operator mistake
     if state_prev["action"] == "REQUEST" and (state_prev["action_target"] != state_curr["action_target"]):
@@ -125,6 +125,7 @@ def CalcReward(state_prev, state_curr):
 
 if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
     fig, ax = plt.subplots(2, 1, tight_layout=True)
+    ax2 = ax[0].twinx()
 
     with open(sys.argv[1], "r") as f:
         data = json.load(f)
@@ -195,11 +196,11 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
 
 
                     if risk["hidden"]:
-                        ax[0].bar(crossing_time, 1.0, color=color_map(i/len(initial_risk_id_prob)))
-                        ax[0].bar(crossing_time, crossing_prob, color="white", width=1.0)
+                        ax2.bar(crossing_time, 1.0, color=color_map(i/len(initial_risk_id_prob)))
+                        ax2.bar(crossing_time, crossing_prob, color="white", width=1.0)
                     else:
-                        ax[0].bar(crossing_time, crossing_prob, color=color_map(i/len(initial_risk_id_prob)))
-                    ax[0].annotate(f"{id}+({risk['type']})", xy=[crossing_time, crossing_prob], size=10, color= "red" if risk["hidden"] else "black")
+                        ax2.bar(crossing_time, crossing_prob, color=color_map(i/len(initial_risk_id_prob)))
+                    ax2.annotate(f"{id}+({risk['type']})", xy=[crossing_time, crossing_prob], size=10, color= "red" if risk["hidden"] else "black")
 
                     reserved_time_list.append(crossing_time)
                     continue
@@ -215,13 +216,12 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
                     crossing_time += 1.0
                 else:
                     break
-            ax[0].bar(crossing_time, last_prob, color=color_map(i/len(initial_risk_id_prob)))
+            ax2.bar(crossing_time, last_prob, color=color_map(i/len(initial_risk_id_prob)))
             print(f"{id} doesn't crossed time: {crossing_time} prob : {last_prob}")
 
     ##########################
     # print("time-speed")
     ##########################
-    ax2 = ax[0].twinx()
     elapse_time_list = []
     elapse_time = 0.0
     ego_vel = []
@@ -230,14 +230,14 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
         elapse_time +=  data.get("delta_t")
         ego_vel.append(frame.get("speed"))
     
-    ax2.plot(elapse_time_list, ego_vel, ".", linestyle="-")
-    ax2.text(elapse_time-30, 14.0, f"travel time: {elapse_time:.1f} s", size=10, color="black")
-    ax2.text(elapse_time-30, 13.0, f"average speed: {sum(ego_vel)/len(ego_vel):.1f} m/s", size=10, color="black")
-    ax2.set_xlim(0, (len(log) + 1.0) * data.get("delta_t"))
-    ax2.set_ylim(0, 12.0)
-    ax2.set_ylabel("vehicle speed [m/s]")
-    ax[0].set_ylim(0, 1.0)
-    ax[0].set_ylabel("risk probability")
+    ax[0].plot(elapse_time_list, ego_vel, ".", linestyle="-")
+    ax[0].text(elapse_time-20, 14.0, f"travel time: {elapse_time:.1f} s", size=10, color="black")
+    ax[0].text(elapse_time-20, 13.0, f"average speed: {sum(ego_vel)/len(ego_vel):.1f} m/s", size=10, color="black")
+    ax[0].set_xlim(0, (len(log) + 1.0) * data.get("delta_t"))
+    ax[0].set_ylim(0, 12.0)
+    ax[0].set_ylabel("vehicle speed [m/s]")
+    ax2.set_ylim(0, 1.0)
+    ax2.set_ylabel("risk probability")
 
 
     ##########################
@@ -395,8 +395,9 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
         ## reward
         reward.append(CalcReward(log[frame_num-1], log[frame_num]))
 
-    ax[0].text(elapse_time-30, 12.0, f"reward: {sum(reward):.1f}", size=10, color="black")
-    ax[1].text(elapse_time-30, 1.02, f"request time: {request_time} s", size=10, color="black")
+    print(sum(reward))
+    ax[0].text(elapse_time-20, 12.0, f"reward: {sum(reward):.1f}", size=10, color="black")
+    ax[1].text(elapse_time-20, 1.02, f"request time: {request_time} s", size=10, color="black")
     ax[1].set_xlim(0, (len(log) + 1.0) * data.get("delta_t"))
     ax[1].set_ylim(0, 1.0)
     ax[1].set_ylabel("intervention request timing")
