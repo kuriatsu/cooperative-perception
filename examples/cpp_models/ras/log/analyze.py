@@ -19,7 +19,7 @@ def CalcReward(state_prev, state_curr):
             if risk["hidden"] == "RISK":
                 reward += (state_curr["speed"] - 2.8) / (11.2 - 2.8) * -100
             else:
-                reward += (11.2 - state_curr["speed"]) / (11.2 - 2.8) * -10
+                reward += (11.2 - state_curr["speed"]) / (11.2 - 2.8) * -100
             
             # if risk["pred"] == "RISK":
             #     reward += (state_curr["speed"] - 2.8) / (11.2 - 2.8) * -100
@@ -36,8 +36,8 @@ def CalcReward(state_prev, state_curr):
     # reward += (state_curr["speed"] - 2.8) / (11.2 - 2.8) * 1;
 
     ## intervention request
-    if state_curr["action"] == "REQUEST" and (state_prev["action_target"] != state_curr["action_target"]):
-        reward += -1
+    # if state_curr["action"] == "REQUEST" and (state_prev["action_target"] != state_curr["action_target"]):
+    #     reward += -1
 
     ## when operator mistake
     if state_prev["action"] == "REQUEST" and (state_prev["action_target"] != state_curr["action_target"]):
@@ -125,6 +125,7 @@ def CalcReward(state_prev, state_curr):
 
 if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
     fig, ax = plt.subplots(2, 1, tight_layout=True)
+    ax2 = ax[0].twinx()
 
     with open(sys.argv[1], "r") as f:
         data = json.load(f)
@@ -149,6 +150,7 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
         elapsed_time = 0.0
         is_crossed = False
         last_prob = None
+        last_obs = None
         crossing_time = 0
         
 
@@ -175,23 +177,35 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
 
                     if policy == "OURS":
                         crossing_prob = last_prob
+                    elif policy.startswith("MYOPIC"):
+                        if risk.get("type") == "hard":
+                            crossing_prob = 0.8
+                        else:
+                            crossing_prob = 0.95
+
+                        if not risk.get("pred"):
+                            crossing_prob = 1.0 - crossing_prob
+
                     else:
                         crossing_prob = initial_risk_id_prob[id]
 
                     if crossing_prob < 0.1: 
                         crossing_prob += 0.02 
+                    elif crossing_prob > 0.9:
+                        crossing_prob -= 0.02 
+
 
                     if risk["hidden"]:
-                        ax[0].bar(crossing_time, 1.0, color=color_map(i/len(initial_risk_id_prob)))
-                        ax[0].bar(crossing_time, crossing_prob, color="white", width=1.0)
-                        ax[0].annotate(id, xy=[crossing_time, crossing_prob], size=10, color= "red")
+                        ax2.bar(crossing_time, 1.0, color=color_map(i/len(initial_risk_id_prob)))
+                        ax2.bar(crossing_time, crossing_prob, color="white", width=1.0)
                     else:
-                        ax[0].bar(crossing_time, crossing_prob, color=color_map(i/len(initial_risk_id_prob)))
-                        ax[0].annotate(id, xy=[crossing_time, crossing_prob], size=10, color= "black")
+                        ax2.bar(crossing_time, crossing_prob, color=color_map(i/len(initial_risk_id_prob)))
+                    ax2.annotate(f"{id}+({risk['type']})", xy=[crossing_time, crossing_prob], size=10, color= "red" if risk["hidden"] else "black")
 
                     reserved_time_list.append(crossing_time)
                     continue
 
+            last_obs = frame.get("obs")
 
 
         ## no crossing means the target are at the end of the course
@@ -202,13 +216,12 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
                     crossing_time += 1.0
                 else:
                     break
-            ax[0].bar(crossing_time, last_prob, color=color_map(i/len(initial_risk_id_prob)))
+            ax2.bar(crossing_time, last_prob, color=color_map(i/len(initial_risk_id_prob)))
             print(f"{id} doesn't crossed time: {crossing_time} prob : {last_prob}")
 
     ##########################
     # print("time-speed")
     ##########################
-    ax2 = ax[0].twinx()
     elapse_time_list = []
     elapse_time = 0.0
     ego_vel = []
@@ -217,20 +230,22 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
         elapse_time +=  data.get("delta_t")
         ego_vel.append(frame.get("speed"))
     
-    ax2.plot(elapse_time_list, ego_vel, ".", linestyle="-")
-    ax2.text(elapse_time-30, 14.0, f"travel time: {elapse_time:.1f} s", size=10, color="black")
-    ax2.text(elapse_time-30, 13.0, f"average speed: {sum(ego_vel)/len(ego_vel):.1f} m/s", size=10, color="black")
-    ax2.set_xlim(0, (len(log) + 1.0) * data.get("delta_t"))
-    ax2.set_ylim(0, 12.0)
-    ax2.set_ylabel("vehicle speed [m/s]")
-    ax[0].set_ylim(0, 1.0)
-    ax[0].set_ylabel("risk probability")
+    ax[0].plot(elapse_time_list, ego_vel, ".", linestyle="-")
+    ax[0].text(elapse_time-20, 14.0, f"travel time: {elapse_time:.1f} s", size=10, color="black")
+    ax[0].text(elapse_time-20, 13.0, f"average speed: {sum(ego_vel)/len(ego_vel):.1f} m/s", size=10, color="black")
+    ax[0].set_xlim(0, (len(log) + 1.0) * data.get("delta_t"))
+    ax[0].set_ylim(0, 12.0)
+    ax[0].set_ylabel("vehicle speed [m/s]")
+    ax2.set_ylim(0, 1.0)
+    ax2.set_ylabel("risk probability")
 
 
     ##########################
     # print("intervention request")
     ##########################
     last_action_target = None
+    last_observation = log[0].get("obs")
+    request_time_target = 0
     buf_prob = []
     buf_time = []
     reward = [0]
@@ -245,6 +260,7 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
                 buf_time.append(0.0)
                 break
         last_action_target = target
+        request_time_target = 1
 
     ## from second log
     for frame_num in range(1, len(log)):
@@ -254,6 +270,10 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
 
         if frame.get("action") == "REQUEST":
             request_time += data.get("delta_t")
+            if last_action_target == target:
+                request_time_target += 1
+            else:
+                request_time_target = 1
 
             ## keep intervention request
             if policy == "OURS":
@@ -263,6 +283,25 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
                             buf_prob.append(risk.get("prob"))
                             buf_time.append(elapsed_time)
                             break
+
+            elif policy.startswith("MYOPIC"):
+                if last_action_target == target:
+                    prob = buf_prob[0] 
+                    print(request_time_target)
+                    for risk in frame.get("risks"):
+                        if target == risk.get("id"):
+                            if risk.get("type") == "hard": 
+                                prob = min(0.8, 0.65+request_time_target*0.075)
+                            if risk.get("type") == "easy": 
+                                prob = min(0.95, 0.90+request_time_target*0.025)
+
+                            if not risk.get("pred"):
+                                prob = 1.0 - prob
+
+                            break
+
+                    buf_prob.append(prob)
+                    buf_time.append(elapsed_time)
             else:
                 if last_action_target == target:
                     for risk in frame.get("risks"):
@@ -296,6 +335,29 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
                             buf_prob.append(risk.get("prob"))
                             buf_time.append(elapsed_time)
                             break
+
+                elif policy.startswith("MYOPIC"):
+                    prob = 0.0 
+                    for risk in log[frame_num-1].get("risks"):
+                        if target == risk.get("id"):
+                            buf_prob.append(risk.get("prob"))
+                            buf_time.append(elapsed_time-data.get("delta_t"))
+                            break
+                    for risk in frame.get("risks"):
+                        if target == risk.get("id"):
+                            if risk.get("type") == "hard": 
+                                prob = 0.65
+                            elif risk.get("type") == "easy": 
+                                prob = 0.90
+
+                            if not risk.get("pred"):
+                                prob = 1.0 - prob
+
+                            break
+
+                    buf_prob.append(prob)
+                    buf_time.append(elapsed_time)
+
                 else:
                     for risk in log[frame_num-1].get("risks"):
                         if target == risk.get("id"):
@@ -308,8 +370,9 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
                             buf_time.append(elapsed_time)
                             break
 
-                ax[1].annotate(target, xy=[buf_time[0], buf_prob[0]], size=10, color="red" if risk["hidden"] else "black")
+                ax[1].annotate(f"{target}+({risk['type']})", xy=[buf_time[0], buf_prob[0]], size=10, color="red" if risk["hidden"] else "black")
             last_action_target = target
+            last_observation = frame["obs"] 
                 
         else:
             ## finish intervention request 
@@ -327,12 +390,14 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
                 buf_time = []
                 
             last_action_target = None
+            request_time_target = 0
 
         ## reward
         reward.append(CalcReward(log[frame_num-1], log[frame_num]))
 
-    ax[0].text(elapse_time-30, 12.0, f"reward: {sum(reward):.1f}", size=10, color="black")
-    ax[1].text(elapse_time-30, 1.02, f"request time: {request_time} s", size=10, color="black")
+    print(sum(reward))
+    ax[0].text(elapse_time-20, 12.0, f"reward: {sum(reward):.1f}", size=10, color="black")
+    ax[1].text(elapse_time-20, 1.02, f"request time: {request_time} s", size=10, color="black")
     ax[1].set_xlim(0, (len(log) + 1.0) * data.get("delta_t"))
     ax[1].set_ylim(0, 1.0)
     ax[1].set_ylabel("intervention request timing")

@@ -1,0 +1,117 @@
+{
+    "delta_t": 1.0,
+    "log": [
+        {
+            "accel": 0.0,
+            "action": "REQUEST",
+            "action_target": "E0_0-200",
+            "fuel_consumption": 837.2222222222222,
+            "lane": "E0",
+            "lane_position": 5.1,
+            "obs": "RISK",
+            "risks": [
+                {
+                    "hidden": false,
+                    "id": "-E0_0-0",
+                    "lane": "-E0",
+                    "lane_position": 400.0,
+                    "pred": true,
+                    "prob": 0.5,
+                    "type": "hard",
+                    "x": 100.0,
+                    "y": 3.5200000000000005
+                },
+                {
+                    "hidden": false,
+                    "id": "-E0_0-2",
+                    "lane": "-E0",
+                    "lane_position": 300.0,
+                    "pred": false,
+                    "prob": 0.2,
+                    "type": "hard",
+                    "x": 200.0,
+                    "y": 3.5200000000000005
+                },
+                {
+                    "hidden": false,
+                    "id": "E0_0-2",
+                    "lane": "E0",
+                    "lane_position": 200.0,
+                    "pred": false,
+                    "prob": 0.4,
+                    "type": "easy",
+                    "x": 200.0,
+                    "y": -3.5200000000000005
+                },
+                {
+                    "hidden": false,
+                    "id": "-E0_0-3",
+                    "lane": "-E0",
+                    "lane_position": 95.0,
+                    "pred": false,
+                    "prob": 0.3,
+                    "type": "hard",
+                    "x": 405.0,
+                    "y": 3.5200000000000005
+                },
+                {
+                    "hidden": false,
+                    "id": "E0_0-3",
+                    "lane": "E0",
+                    "lane_position": 405.0,
+                    "pred": false,
+                    "prob": 0.2,
+                    "type": "hard",
+                    "x": 405.0,
+                    "y": 3.5200000000000005
+                },
+                {
+                    "hidden": false,
+                    "id": "E0_0-4",
+                    "lane": "E0",
+                    "lane_position": 400.0,
+                    "pred": true,
+                    "prob": 0.8,
+                    "type": "hard",
+                    "x": 400.0,
+                    "y": -3.5200000000000005
+                },
+                {
+                    "hidden": true,
+                    "id": "-E0_0-4",
+                    "lane": "-E0",
+                    "lane_position": 100.0,
+                    "pred": false,
+                    "prob": 0.10,
+                    "type": "hard",
+                    "x": 400.0,
+                    "y": -3.5200000000000005
+                },
+                {
+                    "hidden": false,
+                    "id": "E0_0-5",
+                    "lane": "E0",
+                    "lane_position":405.0,
+                    "pred": false,
+                    "prob": 0.2,
+                    "type": "easy",
+                    "x": 405.0,
+                    "y": 3.5200000000000005
+                }
+            ],
+            "speed": 0.0,
+            "time": 1.0835e-320,
+            "x": 5.1,
+            "y": -1.6
+        }
+    ],
+    "obstacle_density": 0.005,
+    "obstacle_type_rate": {
+        "easy": 0.6,
+        "easy_plus": 0.0,
+        "future": 0.0,
+        "hard": 0.4,
+        "hard_plus": 0.0
+    },
+    "policy": "OURS"
+}
