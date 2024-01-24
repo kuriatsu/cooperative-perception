@@ -348,10 +348,10 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
 #################################
 elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
 
-    df = pd.DataFrame(columns = ["policy", "date", "risk_num", "travel_time", "total_fuel_consumption", "mean_fuel_consumption", "dev_accel", "mean_speed", "risk_omission", "ambiguity_omission", "request_time", "total_reward", "acc", "ads_acc", "request_count"])
+    df = pd.DataFrame(columns = ["policy", "date", "risk_num", "travel_time", "total_fuel_consumption", "mean_fuel_consumption", "dev_accel", "mean_speed", "risk_omission", "ambiguity_omission", "request_time", "total_reward", "acc", "easy_rate", "request_count"])
     target_count = pd.DataFrame(columns = ["id", "prob", "is_requsted", "policy", "risk_num", "date"]) 
     # risk_prob_count = {"OURS":[0] * 10, "MYOPIC":[0]*10, "NOREQUEST":[0]*10, "REFERENCE":[0]*10}
-    prob_speed_count = pd.DataFrame(columns = ["policy", "date", "risk_num", "prob", "hidden", "pred", "speed", "distance_pred_speed", "distance_prob_speed", "distance_risk_speed", "ads_acc"])
+    prob_speed_count = pd.DataFrame(columns = ["policy", "date", "risk_num", "prob", "hidden", "pred", "speed", "distance_pred_speed", "distance_prob_speed", "distance_risk_speed", "easy_rate"])
     recog_evaluation = pd.DataFrame(columns = ["hidden", "pred", "prob"])
 
 
@@ -380,9 +380,9 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
         last_request_target = None
         request_count = 0
 
-        ads_acc = data.get("obstacle_type_rate").get("hard") * 0.6 + data.get("obstacle_type_rate").get("easy") * 0.9
-        if ads_acc == 0.0 :
-            ads_acc = data.get("obstacle_type_rate").get("hard_plus") * 0.6 + data.get("obstacle_type_rate").get("easy_plus") * 0.9
+        easy_rate = data.get("obstacle_type_rate").get("easy")
+        if easy_rate == 0.0 :
+            easy_rate = data.get("obstacle_type_rate").get("easy_plus")
 
 
         last_ego_position = 0.0
@@ -483,7 +483,7 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
                     passed_target += 1
 
 
-                    buf_prob_speed_count = pd.DataFrame([[policy, date, risk_num, int(risk.get("prob")*10)*0.1, risk.get("hidden"), risk.get("pred"), log[frame_num-1].get("speed"), distance_pred_speed, distance_prob_speed, distance_risk_speed, ads_acc]], columns=prob_speed_count.columns)
+                    buf_prob_speed_count = pd.DataFrame([[policy, date, risk_num, int(risk.get("prob")*10)*0.1, risk.get("hidden"), risk.get("pred"), log[frame_num-1].get("speed"), distance_pred_speed, distance_prob_speed, distance_risk_speed, easy_rate]], columns=prob_speed_count.columns)
                     prob_speed_count = pd.concat([prob_speed_count, buf_prob_speed_count], ignore_index=True)
 
             ## calculate reward
@@ -508,11 +508,12 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
         
         acc = correct_pred / passed_target if passed_target > 0 else None 
 
-        buf_df = pd.DataFrame([[policy, date, risk_num, travel_time, total_fuel_consumption, mean_fuel_consumption, dev_accel, mean_speed, mean_risk_omission, mean_ambiguity_omission, request_time, total_reward, acc, ads_acc, request_count]], columns=df.columns)
+        buf_df = pd.DataFrame([[policy, date, risk_num, travel_time, total_fuel_consumption, mean_fuel_consumption, dev_accel, mean_speed, mean_risk_omission, mean_ambiguity_omission, request_time, total_reward, acc, easy_rate, request_count]], columns=df.columns)
         df = pd.concat([df, buf_df], ignore_index=True)
 
 
     sns.lineplot(data=df, x="risk_num", y="travel_time", hue="policy", style="policy", markers=True, palette=palette)
+    ax.set_ylim([0.0, 120.0])
     plt.savefig("travel_time.svg", transparent=True)
     plt.clf()
 
@@ -525,12 +526,12 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
     plt.clf()
 
     sns.lineplot(data=df, x="risk_num", y="dev_accel", hue="policy", style="policy", markers=True, palette=palette)
-    plt.ylim([0.0, 11.2])
+    plt.ylim([0.0, 12.0])
     plt.savefig("accel.svg", transparent=True)
     plt.clf()
 
     sns.lineplot(data=df, x="risk_num", y="mean_speed", hue="policy", style="policy", markers=True, palette=palette)
-    plt.ylim([0.0, 11.2])
+    plt.ylim([0.0, 12.0])
     plt.savefig("mean_speed.svg", transparent=True)
     plt.clf()
 
@@ -538,11 +539,14 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
     plt.savefig("ambiguity_omission.svg", transparent=True)
     plt.clf()
 
-    fig, ax = plt.subplots()
-    ax2 = ax.twinx()
-    sns.lineplot(data=df, x="risk_num", y="request_time", hue="policy", markers=True, linestyle="-", palette=palette, ax=ax)
-    sns.lineplot(data=df, x="risk_num", y="request_count", hue="policy", markers=True, linestyle="--", palette=palette, ax=ax2)
+    sns.lineplot(data=df, x="risk_num", y="request_time", hue="policy", markers=True, style="policy", palette=palette)
+    plt.ylim([0.0, 90.0])
     plt.savefig("request_time.svg", transparent=True)
+    plt.clf()
+
+    sns.lineplot(data=df, x="risk_num", y="request_count", hue="policy", markers=True, style="policy", palette=palette)
+    plt.ylim([0.0, 30.0])
+    plt.savefig("request_count.svg", transparent=True)
     plt.clf()
 
     sns.lineplot(data=df, x="risk_num", y="total_reward", hue="policy", style="policy", markers=True, palette=palette)
@@ -617,25 +621,27 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
 #
 #    plt.show()
 
-    print(df["risk_num"].unique())
-    for risk_num in [4.0, 18.0]:
-        sns.lineplot(data=df[df.risk_num == risk_num], x="ads_acc", y="acc", hue="policy", style="policy", markers=True, palette=palette)
-        plt.ylim([0.0, 1.0])
-        plt.savefig(f"total_acc_{risk_num}.svg", transparent=True)
-        plt.clf()
+    ## horizontal axis = easy rate
+    sns.lineplot(data=df, x="easy_rate", y="acc", hue="policy", style="policy", markers=True, palette=palette)
+    plt.ylim([0.0, 1.0])
+    plt.savefig(f"total_acc_easy_rate.svg", transparent=True)
+    plt.clf()
 
-        fig, ax = plt.subplots(tight_layout = True)
-        ax2 = ax.twinx()
-        sns.lineplot(data=df[df.risk_num == risk_num], x="ads_acc", y="request_time", hue="policy", linestyle="-", markers=True, palette=palette, ax=ax)
-        sns.lineplot(data=df[df.risk_num == risk_num], x="ads_acc", y="request_count", hue="policy", linestyle="--", markers=True, palette=palette, ax=ax2)
-        plt.savefig(f"request_time_{risk_num}.svg", transparent=True)
-        plt.clf()
+    sns.lineplot(data=df, x="easy_rate", y="request_time", hue="policy", style="policy", markers=True, palette=palette)
+    ax.set_ylim(0.0, 90.0)
+    plt.savefig(f"request_time_easy_rate.svg", transparent=True)
+    plt.clf()
 
-        fig, ax = plt.subplots(tight_layout = True)
-        sns.lineplot(data=prob_speed_count[prob_speed_count.risk_num == risk_num], x="ads_acc", y="speed", hue="policy", style="hidden", markers=True, ax=ax, palette=palette)
-        ax.set_ylim(0.0, 12.0)
-        plt.savefig(f"pass_speed_{risk_num}.svg", transparent=True)
-        plt.clf()
+    sns.lineplot(data=df, x="easy_rate", y="request_count", hue="policy", style="policy", markers=True, palette=palette)
+    ax.set_ylim(0.0, 30.0)
+    plt.savefig(f"request_count_easy_rate.svg", transparent=True)
+    plt.clf()
+
+    fig, ax = plt.subplots(tight_layout = True)
+    sns.lineplot(data=prob_speed_count, x="easy_rate", y="speed", hue="policy", style="hidden", markers=True, ax=ax, palette=palette)
+    ax.set_ylim(0.0, 12.0)
+    plt.savefig(f"pass_speed_easy_rate.svg", transparent=True)
+    plt.clf()
 
     
     ## plot 3d 
@@ -647,7 +653,7 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
         y = []
         for x_d in buf_df["risk_num"].drop_duplicates():
             x.append(x_d)
-        for y_d in buf_df["ads_acc"].drop_duplicates():
+        for y_d in buf_df["easy_rate"].drop_duplicates():
             y.append(y_d)
 
         x.sort()
@@ -656,7 +662,7 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
         for x_d in x:
             z_r = []
             for y_d in y:
-                z_r.append(buf_df[(buf_df.risk_num == x_d) & (buf_df.ads_acc == y_d)].speed.mean())
+                z_r.append(buf_df[(buf_df.risk_num == x_d) & (buf_df.easy_rate == y_d)].speed.mean())
             z.append(z_r)
 
         x, y = np.meshgrid(x, y)
@@ -675,7 +681,7 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
         y = []
         for x_d in buf_df["risk_num"].drop_duplicates():
             x.append(x_d)
-        for y_d in buf_df["ads_acc"].drop_duplicates():
+        for y_d in buf_df["easy_rate"].drop_duplicates():
             y.append(y_d)
 
         x.sort()
@@ -684,7 +690,7 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
         for x_d in x:
             z_r = []
             for y_d in y:
-                z_r.append(buf_df[(buf_df.risk_num == x_d) & (buf_df.ads_acc == y_d)].speed.mean())
+                z_r.append(buf_df[(buf_df.risk_num == x_d) & (buf_df.easy_rate == y_d)].speed.mean())
             z.append(z_r)
 
         x, y = np.meshgrid(x, y)
