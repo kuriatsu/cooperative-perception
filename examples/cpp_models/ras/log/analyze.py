@@ -11,7 +11,7 @@ from mpl_toolkits.mplot3d import Axes3D
 palette = {"REFERENCE": "navy","NOREQUEST": "turquoise", "MYOPIC": "green", "MYOPIC_PLUS": "yellowgreen", "MYOPIC_CONSERVATIVE": "olive", "OURS": "orangered", "OURS_LESS_REQUEST": "indigo", "OURS_LESS_REQUEST_PLUS": "fuchsia"}
 LANE_LENGTH = 500
 
-def CalcReward(state_prev, state_curr):
+def CalcReward(state_prev, state_curr, policy):
     reward = 0
     for risk in state_curr["risks"]:
         if state_prev["lane_position"] < risk["lane_position"] <= state_curr["lane_position"]:
@@ -36,8 +36,11 @@ def CalcReward(state_prev, state_curr):
     # reward += (state_curr["speed"] - 2.8) / (11.2 - 2.8) * 1;
 
     ## intervention request
-    # if state_curr["action"] == "REQUEST" and (state_prev["action_target"] != state_curr["action_target"]):
-    #     reward += -1
+    if state_curr["action"] == "REQUEST" and (state_prev["action_target"] != state_curr["action_target"]):
+        if policy == OURS_LESS_REQUEST:
+            reward += -1
+        elif policy == OURS_LESS_REQUEST_PLUS:
+            reward += -10
 
     ## when operator mistake
     if state_prev["action"] == "REQUEST" and (state_prev["action_target"] != state_curr["action_target"]):
@@ -393,7 +396,7 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
             request_time_target = 0
 
         ## reward
-        reward.append(CalcReward(log[frame_num-1], log[frame_num]))
+        reward.append(CalcReward(log[frame_num-1], log[frame_num], policy))
 
     print(sum(reward))
     ax[0].text(elapse_time-20, 12.0, f"reward: {sum(reward):.1f}", size=10, color="black")
@@ -552,7 +555,7 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
                     prob_speed_count = pd.concat([prob_speed_count, buf_prob_speed_count], ignore_index=True)
 
             ## calculate reward
-            reward.append(CalcReward(log[frame_num-1], log[frame_num]))
+            reward.append(CalcReward(log[frame_num-1], log[frame_num], policy))
 
             last_ego_position = frame.get("lane_position") 
 
