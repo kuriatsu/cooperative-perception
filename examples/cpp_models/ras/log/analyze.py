@@ -37,9 +37,9 @@ def CalcReward(state_prev, state_curr, policy):
 
     ## intervention request
     if state_curr["action"] == "REQUEST" and (state_prev["action_target"] != state_curr["action_target"]):
-        if policy == OURS_LESS_REQUEST:
+        if policy == "OURS_LESS_REQUEST":
             reward += -1
-        elif policy == OURS_LESS_REQUEST_PLUS:
+        elif policy == "OURS_LESS_REQUEST_PLUS":
             reward += -10
 
     ## when operator mistake
