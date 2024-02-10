@@ -7,6 +7,7 @@ import math
 import pandas as pd
 import re
 from mpl_toolkits.mplot3d import Axes3D
+import ray
 
 palette = {"REFERENCE": "navy","NOREQUEST": "turquoise", "MYOPIC": "green", "MYOPIC_PLUS": "yellowgreen", "MYOPIC_CONSERVATIVE": "olive", "OURS": "orangered", "OURS_LESS_REQUEST": "indigo", "OURS_LESS_REQUEST_PLUS": "fuchsia"}
 LANE_LENGTH = 500
@@ -413,16 +414,8 @@ if len(sys.argv) == 2 and sys.argv[1].endswith("json"):
 #################################
 elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
 
-    df = pd.DataFrame(columns = ["policy", "date", "risk_num", "travel_time", "total_fuel_consumption", "mean_fuel_consumption", "dev_accel", "mean_speed", "risk_omission", "ambiguity_omission", "request_time", "total_reward", "acc", "ads_acc", "request_count"])
-    target_count = pd.DataFrame(columns = ["id", "prob", "is_requsted", "policy", "risk_num", "date"]) 
-    # risk_prob_count = {"OURS":[0] * 10, "MYOPIC":[0]*10, "NOREQUEST":[0]*10, "REFERENCE":[0]*10}
-    prob_speed_count = pd.DataFrame(columns = ["policy", "date", "risk_num", "prob", "hidden", "pred", "speed", "distance_pred_speed", "distance_prob_speed", "distance_risk_speed", "ads_acc"])
-    recog_evaluation = pd.DataFrame(columns = ["hidden", "pred", "prob"])
-
-
-    fig, ax = plt.subplots(1, 1, tight_layout=True)
-
-    for file in sys.argv[1:]:
+    @ray.remote
+    def process_raw_data(file):
         print(file)
         with open(file, "r") as f:
             data = json.load(f)
@@ -445,6 +438,11 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
         last_request_target = None
         request_count = 0
 
+        buf_target_count = pd.DataFrame(columns = ["id", "prob", "is_requsted", "policy", "risk_num", "date"]) 
+        # risk_prob_count = {"OURS":[0] * 10, "MYOPIC":[0]*10, "NOREQUEST":[0]*10, "REFERENCE":[0]*10}
+        buf_prob_speed_count = pd.DataFrame(columns = ["policy", "date", "risk_num", "prob", "hidden", "pred", "speed", "distance_pred_speed", "distance_prob_speed", "distance_risk_speed", "ads_acc"])
+        buf_recog_evaluation = pd.DataFrame(columns = ["hidden", "pred", "prob"])
+
         ads_acc = data.get("obstacle_type_rate").get("hard") * 0.6 + data.get("obstacle_type_rate").get("easy") * 0.9
         if ads_acc == 0.0 :
             ads_acc = data.get("obstacle_type_rate").get("hard_plus") * 0.6 + data.get("obstacle_type_rate").get("easy_plus") * 0.9
@@ -457,16 +455,16 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
             for risk in log[0].get("risks"):
 
                 ## add recog evaluation
-                buf_recog_evaluation = pd.DataFrame([[risk.get("hidden"), risk.get("pred"), risk.get("prob")]], columns=recog_evaluation.columns)
-                recog_evaluation = pd.concat([recog_evaluation, buf_recog_evaluation], ignore_index=True)
+                buf = pd.DataFrame([[risk.get("hidden"), risk.get("pred"), risk.get("prob")]], columns=buf_recog_evaluation.columns)
+                buf_recog_evaluation = pd.concat([buf_recog_evaluation, buf], ignore_index=True)
 
                 quantized_prob = 0.0
                 if risk.get("prob") == 1.0:
                     quantized_prob = 0.9 
                 else:
                     quantized_prob = math.floor(risk.get("prob")*10) * 0.1 
-                buf_target_count = pd.DataFrame([[risk.get("id"), quantized_prob, False, policy, risk_num, date]], columns=target_count.columns)
-                target_count = pd.concat([target_count, buf_target_count], ignore_index=True)
+                buf = pd.DataFrame([[risk.get("id"), quantized_prob, False, policy, risk_num, date]], columns=buf_target_count.columns)
+                buf_target_count = pd.concat([buf_target_count, buf], ignore_index=True)
 
         for frame_num in range(1, len(log)):
             frame = log[frame_num]
@@ -483,8 +481,8 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
                 ## add request time
                 request_time += data.get("delta_t") 
                 ## flag target count "is_requested"
-                target_index = target_count.index[(target_count.id == frame.get("action_target")) & (target_count.policy == policy) & (target_count.risk_num == risk_num) & (target_count.date == date)].tolist()[0]
-                target_count.iloc[target_index, 2] = True
+                target_index = buf_target_count.index[(buf_target_count.id == frame.get("action_target")) & (buf_target_count.policy == policy) & (buf_target_count.risk_num == risk_num) & (buf_target_count.date == date)].tolist()[0]
+                buf_target_count.iloc[target_index, 2] = True
                 
                 if last_request_target != frame.get("action_target"):
                     request_count += 1
@@ -548,8 +546,8 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
                     passed_target += 1
 
 
-                    buf_prob_speed_count = pd.DataFrame([[policy, date, risk_num, int(risk.get("prob")*10)*0.1, risk.get("hidden"), risk.get("pred"), log[frame_num-1].get("speed"), distance_pred_speed, distance_prob_speed, distance_risk_speed, ads_acc]], columns=prob_speed_count.columns)
-                    prob_speed_count = pd.concat([prob_speed_count, buf_prob_speed_count], ignore_index=True)
+                    buf = pd.DataFrame([[policy, date, risk_num, int(risk.get("prob")*10)*0.1, risk.get("hidden"), risk.get("pred"), log[frame_num-1].get("speed"), distance_pred_speed, distance_prob_speed, distance_risk_speed, ads_acc]], columns=buf_prob_speed_count.columns)
+                    buf_prob_speed_count = pd.concat([buf_prob_speed_count, buf], ignore_index=True)
 
             ## calculate reward
             reward.append(CalcReward(log[frame_num-1], log[frame_num]))
@@ -573,10 +571,33 @@ elif len(sys.argv) > 2 and sys.argv[1].endswith("json"):
         
         acc = correct_pred / passed_target if passed_target > 0 else None 
 
-        buf_df = pd.DataFrame([[policy, date, risk_num, travel_time, total_fuel_consumption, mean_fuel_consumption, dev_accel, mean_speed, mean_risk_omission, mean_ambiguity_omission, request_time, total_reward, acc, ads_acc, request_count]], columns=df.columns)
-        df = pd.concat([df, buf_df], ignore_index=True)
+        buf_df = pd.DataFrame([[policy, date, risk_num, travel_time, total_fuel_consumption, mean_fuel_consumption, dev_accel, mean_speed, mean_risk_omission, mean_ambiguity_omission, request_time, total_reward, acc, ads_acc, request_count]], columns=["policy", "date", "risk_num", "travel_time", "total_fuel_consumption", "mean_fuel_consumption", "dev_accel", "mean_speed", "risk_omission", "ambiguity_omission", "request_time", "total_reward", "acc", "ads_acc", "request_count"])
+
+        return buf_df, buf_prob_speed_count, buf_target_count, buf_recog_evaluation
 
 
+
+
+    df = pd.DataFrame(columns = ["policy", "date", "risk_num", "travel_time", "total_fuel_consumption", "mean_fuel_consumption", "dev_accel", "mean_speed", "risk_omission", "ambiguity_omission", "request_time", "total_reward", "acc", "ads_acc", "request_count"])
+    target_count = pd.DataFrame(columns = ["id", "prob", "is_requsted", "policy", "risk_num", "date"]) 
+    # risk_prob_count = {"OURS":[0] * 10, "MYOPIC":[0]*10, "NOREQUEST":[0]*10, "REFERENCE":[0]*10}
+    prob_speed_count = pd.DataFrame(columns = ["policy", "date", "risk_num", "prob", "hidden", "pred", "speed", "distance_pred_speed", "distance_prob_speed", "distance_risk_speed", "ads_acc"])
+    recog_evaluation = pd.DataFrame(columns = ["hidden", "pred", "prob"])
+    ray.init()
+    processes = []
+    for file in sys.argv[1:]:
+        processes.append(process_raw_data.remote(file)) 
+
+    results = ray.get(processes)
+    for res in results:
+        df = pd.concat([df, res[0]], ignore_index=True)
+        prob_speed_count = pd.concat([prob_speed_count, res[1]], ignore_index=True)
+        target_count = pd.concat([target_count, res[2]], ignore_index=True)
+        recog_evaluation = pd.concat([recog_evaluation, res[3]], ignore_index=True)
+
+
+
+    fig, ax = plt.subplots(1, 1, tight_layout=True)
     sns.lineplot(data=df, x="risk_num", y="travel_time", hue="policy", style="policy", markers=True, palette=palette)
     plt.savefig("travel_time.svg", transparent=True)
     plt.clf()
