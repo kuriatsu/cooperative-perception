@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(cooperative_perception)
+project(cooperative_perception_planner)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -10,18 +10,18 @@ find_package(ament_cmake REQUIRED)
 find_package(Despot REQUIRED)
 find_package(json REQUIRED)
 
-add_executable(cooperative_perception src/cooperative_perception.cpp)
-target_include_directories(cooperative_perception PUBLIC
+add_executable(cooperative_perception_planner src/cooperative_perception_planner.cpp)
+target_include_directories(cooperative_perception_planner PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-target_compile_features(cooperative_perception PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+target_compile_features(cooperative_perception_planner PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 ament_target_dependencies(
-  cooperative_perception
+  cooperative_perception_planner
   "Despot"
   "json"
 )
 
-install(TARGETS cooperative_perception
+install(TARGETS cooperative_perception_planner
   DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
