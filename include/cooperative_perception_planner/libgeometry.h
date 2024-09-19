@@ -109,7 +109,7 @@ public:
     }
 };
 
-class TAValues {
+class CPValues {
 private:
     int no_action_head = 0;
     int request_head = 1;
@@ -117,10 +117,10 @@ private:
     int max_action_num = 3;
 
 public:
-    TAValues() {
+    CPValues() {
     };
 
-    TAValues(int num_targets){
+    CPValues(int num_targets){
         if (num_targets == 0) {
             no_action_head = 0;
             request_head = 0;

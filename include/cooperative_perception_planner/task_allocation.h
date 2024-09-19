@@ -8,7 +8,7 @@
 
 namespace despot {
 
-class TAState : public State {
+class CPState : public State {
 public:
 	int ego_pose;
     double ego_speed;
@@ -20,17 +20,17 @@ public:
 	// hidden state
 	std::vector<bool> risk_bin;
     
-    TAState();
-    TAState(int _ego_pose, float _ego_speed, std::vector<bool> _ego_recog, int _req_time, int _req_target, std::vector<bool> _risk_bin, std::vector<int> _risk_pose); 
-	~TAState();
+    CPState();
+    CPState(int _ego_pose, float _ego_speed, std::vector<bool> _ego_recog, int _req_time, int _req_target, std::vector<bool> _risk_bin, std::vector<int> _risk_pose); 
+	~CPState();
 	
 	std::string text() const;
 };
 
-class TaskAllocation: public DSPOMDP {
+class CPPOMDP: public DSPOMDP {
 protected:
-	mutable MemoryPool<TAState>      memory_pool;
-	std::vector<TAState*>            states;
+	mutable MemoryPool<CPState>      memory_pool;
+	std::vector<CPState*>            states;
 	mutable std::vector<ValuedAction> mdp_policy;
 	OperatorModel                     operator_model;
 	
@@ -45,9 +45,9 @@ private:
     int m_max_perception_num = 3;
 
 public:
-    TaskAllocation(int planning_horizon, double risk_thresh, VehicleModel* vehicle_model, OperatorModel* operator_model, double delta_t); 
-    TaskAllocation(const double delta_t_, const std::vector<int> risk_pose_, const std::vector<double> risk_likelihood_);
-    TaskAllocation();
+    CPPOMDP(int planning_horizon, double risk_thresh, VehicleModel* vehicle_model, OperatorModel* operator_model, double delta_t); 
+    CPPOMDP(const double delta_t_, const std::vector<int> risk_pose_, const std::vector<double> risk_likelihood_);
+    CPPOMDP();
 
 	// state transition parameter
 	int    m_planning_horizon;
@@ -62,8 +62,8 @@ public:
 
     VehicleModel* m_vehicle_model;
     OperatorModel* m_operator_model;
-    TAState* m_start_state;
-    TAValues* m_ta_values;
+    CPState* m_start_state;
+    TAValues* m_cp_values;
 
 public:
 	// Essential
