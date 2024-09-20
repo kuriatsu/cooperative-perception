@@ -8,7 +8,10 @@
 #include "cooperative_perception_planner/operator_model.h"
 #include "cooperative_perception_planner/sumo_interface.h"
 
-#include "autoware_perception_msgs/msg/predicted_objects_UE.hpp"
+#include "autoware_perception_msgs/msg/predicted_objects.hpp"
+#include "autoware_planning_msgs/msg/Trajectory.hpp"
+#include "geometry_msgs/msg/PoseWithCovarianceStampled.hpp"
+#include "cooperative_perception/msg/Intervention.hpp"
 
 
 using namespace despot;
@@ -36,6 +39,10 @@ public:
     // models
     OperatorModel *_operator_model;
     VehicleModel *_vehicle_model;
+    
+    // kinda like enum of action and observation for POMDP  
+    // dynamically updated
+    std::shared_ptr<CPValues> _cp_values = std::make_shared<CPValues>();
 
 private:
     std::shared_ptr<CPState> _pomdp_state = std::make_shared<CPState>(); // save previous state
@@ -48,14 +55,16 @@ private:
     std::vector<std::string> _req_target_history;
     std::vector<OBS_TYPE> _obs_history;
 
-    rclcpp::Publisher<autoware_perception_msgs::msg::PredictedObjects>::SharedPtr _pub_updated_objects;
-    rclcpp::Publisher<std_msgs:msg::Uuid>::SharedPtr _pub_action;
-    rclcpp::Subscription<autoware_perception_msgs::msg::PredictedObjects>::SharedPtr _sub_objects;
-    rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr _sub_ego_pose;
-    rclcpp::Subscription<autoware_auto_planning_msgs::msg::Paths>::SharedPtr _sub_ego_path;
+    // ros msg
+    geometry_msgs::msg::Pose _ego_pose;
+    autoware_planning_msgs::msg::Trajectory _ego_traj;
 
-public:
-    // kinda like enum of action and observation for POMDP  
-    // dynamically updated
-    std::shared_ptr<CPValues> _cp_values = std::make_shared<CPValues>();
+
+private:
+    rclcpp::Subscription<autoware_perception_msgs::msg::PredictedObjects>::SharedPtr _sub_objects;
+    rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr _sub_ego_pose;
+    rclcpp::Subscription<autoware_auto_planning_msgs::msg::Trajectory>::SharedPtr _sub_ego_traj;
+    rclcpp::Subscription<cooperative_perception::msg::InterventionTarget>::SharedPtr _sub_intervention;
+    rclcpp::Publisher<cooperative_perception::msg::InterventionTarget>::SharedPtr _pub_action;
+    rclcpp::Publisher<autoware_perception_msgs::msg::PredictedObjects>::SharedPtr _pub_updated_objects;
 };

@@ -1,13 +1,14 @@
-#include "cooperative_perception_planner/cooperative_perception_planner.hpp"
+#include "cooperative_perception_planner/cooperative_perception.hpp"
 
 CooperativePerceptionPlanner::CooperativePerceptionPlanner(int argc, char* argv[])
-    : Node("cooperative_perception_planner_node")
+    : Node("cooperative_perception_node")
 {
     _sub_objects = this->create_subscription<autoware_perception_msgs::msgs::PredictedObjects>("/objects/predicted_objects", 10, std::bind(&CooperativePerceptionPlanner::ObjectsCb, this, _1));
-    _sub_ego_pose = this->create_subscription<geometry_msgs::msgs::PoseStamped>("/ego_vehicle/position", 10, std::bind(&CooperativePerceptionPlanner::EgoPoseCb, this, _1));
-    _sub_ego_path = this->create_subscription<autoware_planning_msgs::msgs::Paths>("/ego_vehicle/path", 10, std::bind(&CooperativePerceptionPlanner::EgoPathCb, this, _1));
-    _pub_updated_objects = this->create_publisher<autoware_perception_msgs::msg::PredictedObjects>("/updated_objects", 10);
-    _pub_action = this->create_publisher<std_msgs::msg::Uuid>("/intervention_target", 10);
+    _sub_ego_pose = this->create_subscription<geometry_msgs::msgs::PoseWithCovarianceStampled>("/localization/pose_with_covariance", 10, std::bind(&CooperativePerceptionPlanner::EgoPoseCb, this, _1));
+    _sub_ego_traj = this->create_subscription<autoware_planning_msgs::msgs::Trajectory>("/planning/scenario_planning/trajectory", 10, std::bind(&CooperativePerceptionPlanner::EgoTrajCb, this, _1));
+    _sub_intervention = this->create_subscription<cooperative_perception::msgs::InterventionTarget>("/intervention_result", 10, std::bind(&CooperativePerceptionPlanner::InterventionCb, this, _1));
+    _pub_updated_objects = this->create_publisher<cooperative_perception::msg::Intervention>("/updated_objects", 10);
+    _pub_action = this->create_publisher<cooperative_perception::msg::Intervention>("/intervention_target", 10);
     RunPlanning(argc, argv);
 }
 
@@ -42,13 +43,35 @@ void CooperativePerceptionPlanner::InitializeDefaultParameters() {
     Globals::config.time_per_move = 2.0; 
 }
 
-void CooperativePerceptionPlanner::EgoPoseCb(geometry_msgs::msg::Pose &msg) {
+void CooperativePerceptionPlanner::EgoPoseCb(geometry_msgs::msg::PoseWithCovarianceStamped &msg) 
+{
+    _ego_pose = msg.pose.pose;
 }
 
-void CooperativePerceptionPlanner::EgoPathCb(autoware_perception_msgs::msg::Path &msg) {
+void CooperativePerceptionPlanner::EgoTrajCb(autoware_perception_msgs::msg::Trajectory &msg) {
+    _ego_traj = msg;
 }
 
-void CooperativePerceptionPlanner::ObjectsCb(autoware_perception_msgs::msg::PredictedObjectsUE &msg) {
+void CooperativePerceptionPlanner::InterventionCb(cooperative_perception::msg::InterventionTarget &msg) {
+    start_t = get_time_second();
+    obs = msg.intervention;
+    solver->BeliefUpdate(action, obs);
+    end_t = get_time_second();
+    double update_time = end_t - start_t;
+    //
+    // Reflect belief to risk database in sumo_interface
+    for (auto itr = risk_probs.begin(), end = risk_probs.end(); itr != end; itr++) {
+        int idx = std::distance(risk_probs.begin(), itr);
+        std::string req_target_id = id_idx_list[idx];
+        Risk* risk = sim->getRisk(req_target_id);
+        risk->risk_prob = *itr;
+        risk->risk_pred = pomdp_state->ego_recog[idx];
+    }
+
+    ras_world->Log(action, obs);
+}
+
+void CooperativePerceptionPlanner::ObjectsCb(autoware_perception_msgs::msg::PredictedObjects &msg) {
     _belief = NULL;
     _logger = NULL;
     InitializeLogger(_logger, _options, _model, _belief, _solver, num_runs,
@@ -218,25 +241,6 @@ bool CooperativePerceptionPlanner::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs)
     return false;
 }
 
-
-void CooperativePerceptionPlanner::InterventionCb() {
-
-    start_t = get_time_second();
-    solver->BeliefUpdate(action, obs);
-    end_t = get_time_second();
-    double update_time = end_t - start_t;
-    //
-    // Reflect belief to risk database in sumo_interface
-    for (auto itr = risk_probs.begin(), end = risk_probs.end(); itr != end; itr++) {
-        int idx = std::distance(risk_probs.begin(), itr);
-        std::string req_target_id = id_idx_list[idx];
-        Risk* risk = sim->getRisk(req_target_id);
-        risk->risk_prob = *itr;
-        risk->risk_pred = pomdp_state->ego_recog[idx];
-    }
-
-    ras_world->Log(action, obs);
-}
 
 ACT_TYPE RasWorld::MyopicAction() {
 

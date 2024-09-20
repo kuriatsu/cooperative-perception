@@ -1,7 +1,6 @@
 #pragma once
 
 #include <iostream>
-#include <libsumo/libtraci.h>
 #include <math.h>
 
 using namespace libtraci;
@@ -32,32 +31,6 @@ public:
         theta = 0.0;
     }
 
-    Pose(libsumo::TraCIPosition position) {
-        x = position.x;
-        y = position.y;
-        theta = 0.0;
-    }
-
-    Pose(std::string id, std::string attrib) {
-        libsumo::TraCIPosition position;
-        double angle;
-
-        if (attrib == "v" || attrib == "vehicle") {
-            position = Vehicle::getPosition(id);
-            angle = M_PI*Vehicle::getAngle(id)/180.0;
-            lane = Vehicle::getRoadID(id);
-            lane_position = Vehicle::getLanePosition(id);
-        }
-        else if (attrib == "p" || attrib == "person") {
-            position = Person::getPosition(id);
-            angle = M_PI*Person::getAngle(id)/180.0;
-            lane = Person::getRoadID(id);
-            lane_position = Person::getLanePosition(id); 
-        }
-        x = position.x;
-        y = position.y;
-        theta = angle;
-    }
 
     Pose() {
     }
@@ -124,17 +97,15 @@ public:
         if (num_targets == 0) {
             no_action_head = 0;
             request_head = 0;
-            change_recog_head = 0;
             max_action_num = 1;
         }
         no_action_head = 0;
         request_head = 1;
-        change_recog_head = num_targets + 1;
-        max_action_num = 1 + num_targets * 2;
+        max_action_num = 1 + num_targets;
     };
 
-    enum OBS {NO_RISK, RISK, NONE};
-    enum ACT {NO_ACTION, REQUEST, RECOG};
+    enum OBS {NONE, NO_RISK, RISK};
+    enum ACT {NO_ACTION, REQUEST};
 
     int numActions() {
         return max_action_num;
@@ -162,11 +133,8 @@ public:
         if (action == no_action_head) {
             return NO_ACTION;
         }
-        else if (request_head <= action && action < change_recog_head) {
+        else if (request_head <= action) {
             return REQUEST;
-        }
-        else if (change_recog_head <= action) {
-            return RECOG;
         }
         else {
             std::cerr << "action index may be out of range \n" <<
@@ -183,9 +151,6 @@ public:
         else if (attrib == REQUEST) {
             return request_head + target;
         }
-        else if (attrib == RECOG) {
-            return change_recog_head + target;
-        }
         else {
             std::cerr << "action attrib may be out of range \n" <<
                 "num_action :" << attrib << 
@@ -198,11 +163,8 @@ public:
         if (action == no_action_head) {
             return "NO_ACTION";
         }
-        else if (request_head <= action && action < change_recog_head) {
+        else if (request_head <= action) {
             return "REQUEST";
-        }
-        else if (change_recog_head <= action) {
-            return "RECOG";
         }
         else {
             std::cerr << "action index may be out of range \n" <<
@@ -236,10 +198,6 @@ public:
         else if (request_head <= action && action < change_recog_head) {
             target_index = action - request_head;
             out << "REQUEST to " << target_index;
-        }
-        else if (change_recog_head <= action) {
-            target_index = action - change_recog_head;
-            out << "change RECOG of " << target_index;
         }
         else {
             std::cerr << "action index may be out of range \n" <<
