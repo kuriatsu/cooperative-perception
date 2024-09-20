@@ -38,7 +38,7 @@ public:
     VehicleModel *_vehicle_model;
 
 private:
-    TAState* _pomdp_state = new TAState(); // save previous state
+    std::shared_ptr<CPState> _pomdp_state = std::make_shared<CPState>(); // save previous state
 
     // recognition result
     std::vector<std::string> _id_idx_list;
@@ -57,5 +57,5 @@ private:
 public:
     // kinda like enum of action and observation for POMDP  
     // dynamically updated
-    CPValues* _cp_values = new CPValues();
+    std::shared_ptr<CPValues> _cp_values = std::make_shared<CPValues>();
 };

@@ -75,7 +75,7 @@ void CooperativePerceptionPlanner::ObjectsCb(autoware_perception_msgs::msg::Pred
     RunStep(solver, world, model, logger);
 }
 
-State* CooperativePerceptionPlanner::GetCurrentState(autoware_perception_msgs::msg::PredictedObjectsUE &msg, State* state, std::vector<double> *likelihood_list) {
+State* CooperativePerceptionPlanner::GetCurrentState(autoware_perception_msgs::msg::PredictedObjectsUE &objects, State* state, std::vector<double> *likelihood_list, autoware_planning_msgs::msg::Path &ego_path) {
 
     std::cout << "################GetCurrentState##################" << std::endl;
 
