@@ -12,6 +12,9 @@
 #include "autoware_planning_msgs/msg/Trajectory.hpp"
 #include "geometry_msgs/msg/PoseWithCovarianceStampled.hpp"
 #include "cooperative_perception/msg/Intervention.hpp"
+#include "unique_identifier_msgs/msg/UUID.hpp"
+
+#include <cmath>
 
 
 using namespace despot;
@@ -35,6 +38,7 @@ public:
     Logger *_logger;
     Belief *_belief;
     Model *_model;
+    World *_world;
     
     // models
     OperatorModel *_operator_model;
@@ -48,21 +52,23 @@ private:
     std::shared_ptr<CPState> _pomdp_state = std::make_shared<CPState>(); // save previous state
 
     // recognition result
-    std::vector<std::string> _id_idx_list;
+    std::map<int, unique_identifier_msgs::msg::UUID> _id_idx_list;
     std::vector<Risk> _perception_targets;
 
     // for myopic action
-    std::vector<std::string> _req_target_history;
+    std::vector<unique_identifier_msgs::msg::UUID> _req_target_history;
     std::vector<OBS_TYPE> _obs_history;
 
     // ros msg
     geometry_msgs::msg::Pose _ego_pose;
+    geometry_msgs::msg::Twist _ego_speed;
     autoware_planning_msgs::msg::Trajectory _ego_traj;
 
 
 private:
     rclcpp::Subscription<autoware_perception_msgs::msg::PredictedObjects>::SharedPtr _sub_objects;
     rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr _sub_ego_pose;
+    rclcpp::Subscription<geometry_msgs::msg::TwistWithCovarianceStamped>::SharedPtr _sub_ego_speed;
     rclcpp::Subscription<autoware_auto_planning_msgs::msg::Trajectory>::SharedPtr _sub_ego_traj;
     rclcpp::Subscription<cooperative_perception::msg::InterventionTarget>::SharedPtr _sub_intervention;
     rclcpp::Publisher<cooperative_perception::msg::InterventionTarget>::SharedPtr _pub_action;
