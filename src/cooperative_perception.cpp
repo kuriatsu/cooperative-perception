@@ -44,11 +44,54 @@ int CooperativePerceptionPlanner::RunPlanning(int argc, char* argv[])
 
     DisplayParameters(_options, _model);
 
-    logger->InitRound(world->GetCurrentState());
+    _logger->InitRound(_pomdp_state);
     round_=0; step_=0;
+    PlanningLoop(_solver, _world, _model, _logger);
+    _logger->EndRound();
 
+    PrintResult(1, _logger, main_clock_start);
+    return 0;
 }
 
+
+void CooperativePerceptionPlanner::PlanningLoop(Solver*& solver, World* world, DSPOMDP* model, Logger* logger) {
+    bool terminal = false;
+    while (!terminal) {
+        terminal = RunStep(solver, world, model, logger);
+    }
+}
+
+bool CooperativePerceptionPlanner::RunStep(State* solver, World* world, DSPOMDP* model, Logger* logger) {
+
+    double start_t = get_time_second(), end_t;
+    std::vector<double> likelihood_list;
+    GetCurrentState(_predicted_objects, _pomdp_state, likelihood_list, _ego_traj)
+    Belief* _belief = cp_model->InitialBelief(_pomdp_state, likelihood_list, belief_type);
+    assert(_belief != NULL);
+    // solver->belief(belief);
+
+    solver = InitializeSolver(model, _belief, "DESPOT", options);
+
+
+    ACT_TYPE action;
+    if (policy_type == "MYOPIC")
+        action = MyopicAction();
+    else if (policy_type == "EGOISTIC")
+        action = EgoisticAction();
+    else
+        action = solver->Search().action;
+
+    end_t = get_time_second();
+    double search_time = end_t - start_t;
+
+    start_t = get_time_second();
+    OBS_TYPE obs;
+    bool terminal = ExecuteAction(action, obs);
+    end_t = get_time_second();
+    double execute_time = end_t - start_t;
+
+    return false;
+}
 void CooperativePerceptionPlanner::InitializeDefaultParameters() {
     Globals::config.num_scenarios = 100;
     Globals::config.sim_len = 90;
@@ -118,11 +161,6 @@ void CooperativePerceptionPlanner::InterventionCb(cooperative_perception::msg::I
             break;
         }
     }
-
-
-
-
-
 }
 
 void CooperativePerceptionPlanner::ObjectsCb(autoware_perception_msgs::msg::PredictedObjects &msg) {
@@ -130,40 +168,7 @@ void CooperativePerceptionPlanner::ObjectsCb(autoware_perception_msgs::msg::Pred
     logger->CheckTargetTime();
     
     _predicted_objects = msg;
-    std::shared_ptr<CPState> start_state = std::make_shared<CPState>();
-    std::vector<double> likelihood_list;
-    GetCurrentState(msg, start_state, likelihood_list, _ego_traj)
     RunStep(solver, world, model, logger);
-}
-
-bool CooperativePerceptionPlanner::RunStep(State* solver, World* world, DSPOMDP* model, Logger* logger) {
-
-    double start_t = get_time_second(), end_t;
-    Belief* _belief = cp_model->InitialBelief(start_state, likelihood_list, belief_type);
-    assert(_belief != NULL);
-    // solver->belief(belief);
-
-    solver = InitializeSolver(model, _belief, "DESPOT", options);
-
-
-    ACT_TYPE action;
-    if (policy_type == "MYOPIC")
-        action = MyopicAction();
-    else if (policy_type == "EGOISTIC")
-        action = EgoisticAction();
-    else
-        action = solver->Search().action;
-
-    end_t = get_time_second();
-    double search_time = end_t - start_t;
-
-    start_t = get_time_second();
-    OBS_TYPE obs;
-    bool terminal = ExecuteAction(action, obs);
-    end_t = get_time_second();
-    double execute_time = end_t - start_t;
-
-    return false;
 }
 
 State* CooperativePerceptionPlanner::GetCurrentState() {

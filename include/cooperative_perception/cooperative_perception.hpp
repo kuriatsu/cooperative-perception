@@ -66,8 +66,7 @@ private:
     autoware_planning_msgs::msg::Trajectory _ego_traj;
     
     //
-    bool _on_action;
-    bool _on_observation;
+    bool _on_belief_update;
 
 
 private:
