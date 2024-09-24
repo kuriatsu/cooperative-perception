@@ -69,26 +69,59 @@ void CooperativePerceptionPlanner::EgoTrajCb(autoware_perception_msgs::msg::Traj
     _ego_traj = msg;
 }
 
-void CooperativePerceptionPlanner::InterventionCb(cooperative_perception::msg::InterventionTarget &msg) {
-    // update belief
+void CooperativePerceptionPlanner::InterventionCb(cooperative_perception::msg::InterventionTarget &msg) 
+{
     start_t = get_time_second();
-    obs = msg.intervention;
+    // get observation 
+    
+    OBS_TYPE obs = msg.intervention;
     obs_history.emplace_back(obs);
     cp_values->printObs(obs);
+
+    // find action
+    ACT_TYPE action;
+    if (msg.action == CPValues::REQUEST) 
+    {
+        int target_idx;
+        for (const auto itr : _id_idx_list)
+        {
+            if (itr.second == msg.object_id)
+            {
+                target_idx = itr.key;
+                break;
+            }
+        }
+        action = _cp_values->getAction(msg.action, target_idx);
+    } else
+    {
+        action = msg.action;
+        return;
+    }
+        
+    // update belief
     solver->BeliefUpdate(action, obs);
+
     end_t = get_time_second();
     double update_time = end_t - start_t;
 
     // Reflect belief to risk database in sumo_interface
-    for (auto itr = risk_probs.begin(), end = risk_probs.end(); itr != end; itr++) {
-        int idx = std::distance(risk_probs.begin(), itr);
-        std::string req_target_id = id_idx_list[idx];
-        Risk* risk = sim->getRisk(req_target_id);
-        risk->risk_prob = *itr;
-        risk->risk_pred = pomdp_state->ego_recog[idx];
+    CPPOMDP* cp_model = static_cast<CPPOMDP*>(_model);
+    for (const auto &object : _predicted_objects)
+    {
+        if (object.object_id == msg.object_id) 
+        {
+            autoware_auto_perception_msgs::msg::PredictedObject out_msg = object;
+            int path_index;
+            GetCollisionPointAndRisk(ego_traj, object.kinematics.predicted_paths, float(), float(), path_index);
+            object_kinematics.predicted_paths[path_index].confidence = cp_model->getRiskProb(_belief)[target_idx];
+            _pub_updated_object->publish(object);
+            break;
+        }
     }
 
-    ras_world->Log(action, obs);
+
+
+
 
 }
 
@@ -96,9 +129,10 @@ void CooperativePerceptionPlanner::ObjectsCb(autoware_perception_msgs::msg::Pred
     CPPOMDP* cp_model = static_cast<CPPOMDP*>(_model);
     logger->CheckTargetTime();
     
+    _predicted_objects = msg;
     std::shared_ptr<CPState> start_state = std::make_shared<CPState>();
-    std::vector<double> likelihood_list = ras_world->GetPerceptionLikelihood(_current_state);
-    GetCurrentState(msg, start_state, likelihood_list)
+    std::vector<double> likelihood_list;
+    GetCurrentState(msg, start_state, likelihood_list, _ego_traj)
     RunStep(solver, world, model, logger);
 }
 
@@ -146,7 +180,7 @@ void CooperativePerceptionPlanner::GetCurrentState(autoware_perception_msgs::msg
     int target_index = 0;
 
     // check wether last request target still exists in the perception targets
-    bool is_last_req_target = false;
+    bool is_last_req_target_exist = false;
 
     _pomdp_state->ego_pose = 0;
     _pomdp_state->ego_speed = _ego_speed.linear.x;
@@ -158,7 +192,8 @@ void CooperativePerceptionPlanner::GetCurrentState(autoware_perception_msgs::msg
         autoware_auto_perception_msgs::msg::PredictedObject &object = objects[i];
         float collision_prob;
         float collision_point;
-        GetCollisionPointAndRisk(ego_traj, object.kinematics.predicted_paths, collision_prob, collision_point);
+        int path_index;
+        GetCollisionPointAndRisk(ego_traj, object.kinematics.predicted_paths, collision_prob, collision_point, path_index);
 
         if (collsion_point.x == 0.0 and collision_point.y = 0.0) 
         {
@@ -173,7 +208,7 @@ void CooperativePerceptionPlanner::GetCurrentState(autoware_perception_msgs::msg
         _pomdp_state->risk_bin.emplace_back(collision_prob>_risk_thresh);
         
         if (req_target_history.size() > 0 && req_target_history.back() == object.object_id) {
-            is_last_req_target = true;
+            is_last_req_target_exist = true;
             _pomdp_state->req_target = target_index; 
         }
 
@@ -187,7 +222,7 @@ void CooperativePerceptionPlanner::GetCurrentState(autoware_perception_msgs::msg
 
 
     // check last request and update request time
-    if (!is_last_req_target) 
+    if (!is_last_req_target_exist) 
     {
         _pomdp_state->req_time = 0;
     } else 
@@ -201,7 +236,7 @@ void CooperativePerceptionPlanner::GetCurrentState(autoware_perception_msgs::msg
 }
 
 
-void CooperativePerceptionPlanner::GetCollisionPointAndRisk(const autoware_auto_planning_msgs::msg::Trajectory &ego_traj, const autoware_auto_perception_msgs::msg::PredictedPath *obj_paths, float &collision_prob, float &collision_point) 
+void CooperativePerceptionPlanner::GetCollisionPointAndRisk(const autoware_auto_planning_msgs::msg::Trajectory &ego_traj, const autoware_auto_perception_msgs::msg::PredictedPath *obj_paths, float &collision_prob, float &collision_point, int &path_index) 
 {
     float thres = 3.0; // [m]
     float accumulated_dist = 0.0;
@@ -229,6 +264,7 @@ void CooperativePerceptionPlanner::GetCollisionPointAndRisk(const autoware_auto_
                 {
                     collision_point = accumulated_dist;
                     collision_prob = obj_paths[j].confidence;
+                    path_index = j;
                     return;
                 }
             }
@@ -240,35 +276,41 @@ void CooperativePerceptionPlanner::GetCollisionPointAndRisk(const autoware_auto_
 bool CooperativePerceptionPlanner::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 
     std::cout << "execute action" << std::endl;
-    CPState::ACT ta_action = cp_values->getActionAttrib(action);
-    int target_idx = cp_values->getActionTarget(action);
+    CPState::ACT ta_action = _cp_values->getActionAttrib(action);
+    int target_idx = _cp_values->getActionTarget(action);
     
     // intervention request
     if (ta_action == CPState::REQUEST) {
-        std::string req_target_id = id_idx_list[target_idx];
-        std::cout << "action : REQUEST to " << target_idx << " = " << req_target_id << std::endl;
-
+        unique_identifier_msgs::msg::UUID target_id = id_idx_list[target_idx];
         if (req_target_history.empty() || req_target_history.back() == req_target_id) {
-            pomdp_state->req_time += Globals::config.time_per_move;
+            _pomdp_state->req_time += Globals::config.time_per_move;
         }
         else {
-            pomdp_state->ego_recog[target_idx] = CPState::RISK;
-            pomdp_state->req_time = Globals::config.time_per_move;
-            pomdp_state->req_target = target_idx;
+            _pomdp_state->ego_recog[target_idx] = CPState::RISK;
+            _pomdp_state->req_time = Globals::config.time_per_move;
+            _pomdp_state->req_target = target_idx;
         }
 
         req_target_history.emplace_back(req_target_id);
+
+        cooperative_perception::msg::Intervention out_msg;
+        msg.object_id = target_id;
+        msg.distance = _pomdp_state->risk_pose[target_idx];
+        _pub_action->publish(msg);
     }
-    
     
     // NO_ACTION
     else {
         std::cout << "NO_ACTION" << std::endl;
-        pomdp_state->req_time = 0;
-        pomdp_state->req_target = 0;
+        _pomdp_state->req_time = 0;
+        _pomdp_state->req_target = 0;
+
         req_target_history.emplace_back("none");
 
+        cooperative_perception::msg::Intervention out_msg;
+        _pub_action->publish(msg);
     }
+
     return false;
 }
 
@@ -276,22 +318,22 @@ bool CooperativePerceptionPlanner::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs)
 ACT_TYPE RasWorld::MyopicAction() {
 
     // if intervention requested to the target and can request more
-    if (0 < pomdp_state->req_time && pomdp_state->req_time < 6 && pomdp_state->risk_pose[pomdp_state->req_target] > vehicle_model->getDecelDistance(pomdp_state->ego_speed, vehicle_model->m_max_decel, 0.0)) {
-        return cp_values->getAction(CPState::REQUEST, pomdp_state->req_target);
+    if (0 < _pomdp_state->req_time && _pomdp_state->req_time < 6 && _pomdp_state->risk_pose[_pomdp_state->req_target] > vehicle_model->getDecelDistance(_pomdp_state->ego_speed, vehicle_model->m_max_decel, 0.0)) {
+        return cp_values->getAction(CPState::REQUEST, _pomdp_state->req_target);
     }
     // finish request and change state 
-    else if (0 < pomdp_state->req_time && pomdp_state->ego_recog[pomdp_state->req_target] != obs_history.back()) {
-        return cp_values->getAction(CPState::RECOG, pomdp_state->req_target);
+    else if (0 < _pomdp_state->req_time && _pomdp_state->ego_recog[_pomdp_state->req_target] != obs_history.back()) {
+        return cp_values->getAction(CPState::RECOG, _pomdp_state->req_target);
     }
 
     // find request target
     int closest_target = -1, min_dist = 100000;
-    for (int i=0; i<pomdp_state->risk_pose.size(); i++) {
+    for (int i=0; i<_pomdp_state->risk_pose.size(); i++) {
         int is_in_history = std::count(req_target_history.begin(), req_target_history.end(), id_idx_list[i]);
-        double request_distance = vehicle_model->getDecelDistance(pomdp_state->ego_pose, vehicle_model->m_min_decel, vehicle_model->m_safety_margin) + vehicle_model->m_yield_speed * (6.0 - vehicle_model->getDecelTime(pomdp_state->ego_speed, vehicle_model->m_min_decel)); 
-       if (is_in_history == 0 && pomdp_state->risk_pose[i] > request_distance) {
-            if (pomdp_state->risk_pose[i] < min_dist) {
-               min_dist = pomdp_state->risk_pose[i];
+        double request_distance = vehicle_model->getDecelDistance(_pomdp_state->ego_pose, vehicle_model->m_min_decel, vehicle_model->m_safety_margin) + vehicle_model->m_yield_speed * (6.0 - vehicle_model->getDecelTime(_pomdp_state->ego_speed, vehicle_model->m_min_decel)); 
+       if (is_in_history == 0 && _pomdp_state->risk_pose[i] > request_distance) {
+            if (_pomdp_state->risk_pose[i] < min_dist) {
+               min_dist = _pomdp_state->risk_pose[i];
                closest_target = i;
             }
         }

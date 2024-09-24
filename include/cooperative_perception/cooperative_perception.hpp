@@ -50,9 +50,10 @@ public:
 
 private:
     std::shared_ptr<CPState> _pomdp_state = std::make_shared<CPState>(); // save previous state
+    autoware_auto_perception_msgs::msg::PredictedObjects _predicted_objects;
 
     // recognition result
-    std::map<int, unique_identifier_msgs::msg::UUID> _id_idx_list;
+    std::map<std::int8_t, unique_identifier_msgs::msg::UUID> _id_idx_list;
     std::vector<Risk> _perception_targets;
 
     // for myopic action
@@ -63,6 +64,10 @@ private:
     geometry_msgs::msg::Pose _ego_pose;
     geometry_msgs::msg::Twist _ego_speed;
     autoware_planning_msgs::msg::Trajectory _ego_traj;
+    
+    //
+    bool _on_action;
+    bool _on_observation;
 
 
 private:
@@ -72,5 +77,5 @@ private:
     rclcpp::Subscription<autoware_auto_planning_msgs::msg::Trajectory>::SharedPtr _sub_ego_traj;
     rclcpp::Subscription<cooperative_perception::msg::InterventionTarget>::SharedPtr _sub_intervention;
     rclcpp::Publisher<cooperative_perception::msg::InterventionTarget>::SharedPtr _pub_action;
-    rclcpp::Publisher<autoware_perception_msgs::msg::PredictedObjects>::SharedPtr _pub_updated_objects;
+    rclcpp::Publisher<autoware_perception_msgs::msg::PredictedObject>::SharedPtr _pub_updated_object;
 };

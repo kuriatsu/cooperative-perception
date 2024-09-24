@@ -86,8 +86,7 @@ class CPValues {
 private:
     int no_action_head = 0;
     int request_head = 1;
-    int change_recog_head = 2;
-    int max_action_num = 3;
+    int max_action_num = 2;
 
 public:
     CPValues() {
@@ -115,11 +114,8 @@ public:
         if (action == no_action_head) {
             return 0;
         }
-        else if (request_head <= action && action < change_recog_head) {
+        else if (request_head <= action) {
             return action - request_head;
-        }
-        else if (change_recog_head <= action) {
-            return action - change_recog_head;
         }
         else {
             std::cerr << "action index may be out of range \n" <<
