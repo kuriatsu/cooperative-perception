@@ -619,20 +619,6 @@ int CPPOMDP::NumActiveParticles() const {
 //     m_cp_values = new CPState(m_start_state->risk_pose.size());
 // }
 
-std::vector<double> CPPOMDP::getRiskProb(const Belief* belief) {
-	const vector<State*>& particles = static_cast<const ParticleBelief*>(belief)->particles();
-	
-	// double status = 0;
-	vector<double> probs(m_start_state->risk_pose.size(), 0.0);
-	for (int i = 0; i < particles.size(); i++) {
-		State* particle = particles[i];
-		CPState* state = static_cast<CPState*>(particle);
-		for (auto itr=state->risk_bin.begin(), end=state->risk_bin.end(); itr!=end; itr++) {
-			probs[distance(state->risk_bin.begin(), itr)] += *itr * particle->weight;
-		}
-	}
-    return probs;
-}
 
 void CPPOMDP::PrintState(const State& state, ostream& out) const {
 	const CPState& ras_state = static_cast<const CPState&>(state);

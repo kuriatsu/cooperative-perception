@@ -16,9 +16,9 @@ private:
     autoware_auto_perception_msgs::msg::PredictedObjects _predicted_objects;
     geometry_msgs::msg::Pose _ego_pose;
     geometry_msgs::msg::Twist _ego_speed;
-    autoware_planning_msgs::msg::Trajectory _ego_traj;
+    autoware_planning_msgs::msg::Trajectory _ego_trajectory;
     cooperative_perception::msg::InterventionTarget _intervention_result;
-    CPState _pomdp_state;
+    CPState _cp_state;
 
 private:
     rclcpp::Subscription<autoware_perception_msgs::msg::PredictedObjects>::SharedPtr _sub_objects;

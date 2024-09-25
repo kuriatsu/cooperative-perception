@@ -105,6 +105,8 @@ bool CooperativePerceptionPlanner::RunStep(State* solver, World* world, DSPOMDP*
     end_t = get_time_second();
     double update_time = end_t - start_t;
 
+    cp_world->SyncBelief(cp_world->GetRiskProb(belief));
+
     return logger->SummarizeStep(step_++, round_, terminal, action, obs, step_start_t);
 }
 
