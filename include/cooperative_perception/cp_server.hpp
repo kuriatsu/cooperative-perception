@@ -29,10 +29,10 @@ private:
     rclcpp::Subscription<cooperative_perception::msg::InterventionTarget>::SharedPtr _sub_intervention;
 
     rclcpp::Publisher<cooperative_perception::msg::InterventionTarget>::SharedPtr _pub_intervention;
-    rclcpp::Publisher<autoware_perception_msgs::msg::PredictedObject>::SharedPtr _pub_synthesized_object;
+    rclcpp::Publisher<autoware_perception_msgs::msg::PredictedObject>::SharedPtr _pub_updated_object;
 
     rclcpp::Service<cooperative_perception::srv::Intervention>:SharedPtr _intervention_service;
     rclcpp::Service<cooperative_perception::srv::State>:SharedPtr _current_state_service;
-    rclcpp::Service<cooperative_perception::srv::State>:SharedPtr _synthesize_state_service;
+    rclcpp::Service<cooperative_perception::srv::State>:SharedPtr _update_perception_service;
 
 };

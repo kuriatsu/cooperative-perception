@@ -1,0 +1,7 @@
+bool request
+---
+unique_identifier_msgs::msg::UUID[] object_id
+float64 ego_speed
+int8[] risk_pose
+float64[] likelihood
+

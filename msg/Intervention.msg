@@ -9,3 +9,4 @@ unique_identifier_msgs/UUID object_id
 uint8 intervention
 uint8 action
 float64 distance
+uint8 path_index

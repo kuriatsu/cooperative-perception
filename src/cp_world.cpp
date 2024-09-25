@@ -36,7 +36,7 @@ void CPWorld::GetCurrentState(State &state, std::vector<double> &likelihood_list
 
     /* request to service */
     auto request = std::make_shared<cooperative_perception::srv::State::Request>();
-    request->req = true;
+    request->request = true;
 
     while (!_current_state_client->wait_for_service(1s))
     {
@@ -63,43 +63,32 @@ void CPWorld::GetCurrentState(State &state, std::vector<double> &likelihood_list
     _cp_state->ego_recog.clear();
     _cp_state->risk_bin.clear();
     _cp_state->ego_pose = 0;
-    _cp_state->ego_speed = result.get()->ego_speed.linear.x;
+    _cp_state->ego_speed = result.get()->ego_speed;
+    _cp_state->risk_pose = result.get()->target_pose;
 
-    int target_index = 0;
     _id_idx_list.clear();
 
-    for (int i=0; i<sizeof(result.get()->predicted_objects.objects)/sizeof(autoware_perception_msgs::msg::PredictedObject); i++) 
+    for (int i=0; i<sizeof(result.get()->ids)/sizeof(unique_identifier_msgs::msg::UUID); i++) 
     {
-        auto &object = result.get()->predicted_objects.objects[i];
+        _id_idx_list[i] = result.get()->object_id[i];
+        double &likelihood = result.get()->likelihood[i];
+        likelihood_list.emplace_back(likelihood);
 
-        /* get collision point and confidence */
-        float collision_prob;
-        float collision_point;
-        int path_index;
-        GetCollisionPointAndRisk(result->get().ego_trajectory, object.kinematics.predicted_paths, collision_prob, collision_point, int());
-
-        /* no collision point -> ignore it */
-        if (collsion_point.x == 0.0 and collision_point.y = 0.0) continue;
-
-        _cp_state->risk_pose.emplace_back(collision_point);
-        _cp_state->ego_recog.emplace_back(collision_prob>_risk_thresh);
-        _cp_state->risk_bin.emplace_back(collision_prob>_risk_thresh);
+        _cp_state->ego_recog.emplace_back(likelihood>_risk_thresh);
+        _cp_state->risk_bin.emplace_back(likelihood>_risk_thresh);
 
         /* is this request target (index can change at each time step) */
-        if (_req_target_history.size() > 0 && _req_target_history.back() == object.object_id) {
+        if (_req_target_history.size() > 0 && _req_target_history.back() == result.get()->object_id[i]) {
             is_last_req_target_exist = true;
             _cp_state->req_target = target_index; 
         }
 
-        _id_idx_list[target_index] = object.object_id;
-        likelihood_list.emplace_back(collision_prob);
 
         std::cout << 
             "id :" << object.object_id << "\n" <<
             "distance :" << collision_point << "\n" <<
             "prob :" << collision_prob << "\n" <<
             std::endl;
-        target_index++;
     }
 
 
@@ -117,41 +106,6 @@ void CPWorld::GetCurrentState(State &state, std::vector<double> &likelihood_list
     state = static_cast<State*>(_cp_state);
 }
 
-void CPWorld::GetCollisionPointAndRisk(const autoware_auto_planning_msgs::msg::Trajectory &ego_traj, const autoware_auto_perception_msgs::msg::PredictedPath *obj_paths, float &collision_prob, float &collision_point, int &path_index) 
-{
-    float thres = 3.0; // [m]
-    float accumulated_dist = 0.0;
-    for (int i=0; i<sizeof(ego_traj.points)/sizeof(autoware_planning_msgs::msg::TrajectoryPoint); ++i)
-    {
-        /* object position is based on the crossing point */
-        geometry_msgs::msg::Pose &ego_traj_pose = ego_traj[i];
-        if (i == 0)
-        {
-            incremental_dist += sqrt(pow(ego_traj_pose.position.x - _ego_pose.position.x) + pow(ego_traj_pose.position.y - _ego_pose.position.y));
-        } else 
-        {
-            incremental_dist += sqrt(pow(ego_traj_pose.position.x - ego_traj[i-1].position.x) + pow(ego_traj_pose.position.y - ego_traj[i-1].position.y));
-        }
-
-        /* calculate crossing point */
-        for (int j=0; j<sizeof(obj_paths)/sizeof(autoware_auto_perception_msgs::msg::PredictedPath); ++j) 
-        {
-            for (int k=0; k<sizeof(obj_paths[j].path)/sizeof(geometry_msgs::msg::Pose); ++k)
-            {
-                geometry_msgs::msg::Pose &obj_pose = obj_paths[j].path[k];
-
-                float dist = sqrt(pow(obj_pose.point.x - ego_traj_pose.point.x) + pow(obj_pose.point.y - ego_traj_pose.point.y));
-                if (dist < thres)
-                {
-                    collision_point = accumulated_dist;
-                    collision_prob = obj_paths[j].confidence;
-                    path_index = j;
-                    return;
-                }
-            }
-        }
-    }
-}
 
 
 
@@ -181,7 +135,7 @@ bool CPWorld::ExecuteAction(ACT_TYPE &action, OBS_TYPE& obs) {
         _req_target_history.emplace_back(req_target_id);
 
         request->action = CPValues::REQUEST;
-        request->target_id = req_target_id;
+        request->object_id = req_target_id;
 
     } else 
     {
@@ -192,7 +146,7 @@ bool CPWorld::ExecuteAction(ACT_TYPE &action, OBS_TYPE& obs) {
         _req_target_history.emplace_back("none");
 
         request->action = CPValues::NO_ACTION;
-        request->target_id = 0;
+        request->object_id = 0;
     }
 
     /* throw request */
@@ -215,7 +169,7 @@ bool CPWorld::ExecuteAction(ACT_TYPE &action, OBS_TYPE& obs) {
     }
 
     /* process request result (observation) */
-    auto intervention_target_id = result.get()->target_id;
+    auto intervention_target_id = result.get()->object_id;
     std::int8_t intervention_result = result.get()->result;
     for (const auto &itr : _id_idx_list) 
     {
@@ -234,9 +188,34 @@ bool CPWorld::ExecuteAction(ACT_TYPE &action, OBS_TYPE& obs) {
 }
 
 
-void CPWorld::SyncBelief(const ACT_TYPE &action, const OBS_TYPE &obs, const std::vector<double> &risk_probs)
+void CPWorld::UpdatePerception(const ACT_TYPE &action, const OBS_TYPE &obs, const std::vector<double> &risk_probs)
 {
-    std::int8_t target_index = _cp_values->getActionTarget(
+    std::int8_t target_index = _cp_values->getActionTarget(action);
+    unique_identifier_msgs::msg::UUID target_id = ;
+
+    auto request = std::make_shared<cooperative_perception::srv::UpdatePerception::Request>();
+    request->object_id = _id_idx_list[target_index];
+    request->likelihood = risk_probs[target_index];
+
+    /* throw request */
+    while (!_update_perception_client->wait_for_service(1s))
+    {
+        if (!rclcpp::ok())
+        {
+            RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "[cp_world_node::update_perception_client] Interrupted while waiting for service. Exit");
+            return;
+        } 
+        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "[cp_world_node::update_perception_client] service not available");
+    }
+
+    /* send request */
+    auto result = _update_perception_client->async_send_request(request);
+
+    if (rclcpp::spin_until_future_complete(this, result) != rclcpp::FutureReturnCode::SUCCESS)
+    {
+        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "[cp_world_node::update_perception_client] failed to call service Intervention");
+        return;
+    }
 }
 
 std::vector<double> CPPOMDP::GetRiskProb(const Belief* belief) {

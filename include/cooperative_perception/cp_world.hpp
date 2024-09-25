@@ -43,7 +43,7 @@ public:
 private:
     rclcpp::Client<cooperative_perception::srv::Intervention>::SharedPtr _intervention_client;
     rclcpp::Client<cooperative_perception::srv::State>::SharedPtr _current_state_client;
-    rclcpp::Client<cooperative_perception::srv::State>::SharedPtr _synthesize_state_client;
+    rclcpp::Client<cooperative_perception::srv::UpdatePerception>::SharedPtr _update_perception_client;
 
 
 }; 
