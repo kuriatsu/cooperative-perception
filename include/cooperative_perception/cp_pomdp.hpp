@@ -1,10 +1,10 @@
 #pragma once
 
-#include <despot/interface/pomdp.h>
-#include <despot/core/mdp.h>
-#include "operator_model.h"
-#include "libgeometry.h"
-#include "vehicle_model.h"
+#include "despot/interface/pomdp.h"
+#include "despot/core/mdp.h"
+#include "operator_model.hpp"
+#include "libgeometry.hpp"
+#include "vehicle_model.hpp"
 
 namespace despot {
 
@@ -76,6 +76,7 @@ public:
 
 	double GetMaxReward() const;
 	ValuedAction GetBestAction() const;
+    std::vector<double> GetPerceptionLikelihood(const Belief* belief);
     ScenarioUpperBound* CreateScenarioUpperBound(std::string name, std::string particle_bound_name) const; 
     ScenarioLowerBound* CreateScenarioLowerBound(std::string name, std::string particle_bound_name) const;
 
@@ -88,8 +89,7 @@ public:
 	void Free(State* particle) const;
 	int NumActiveParticles() const;
 
-    void syncCurrentState(State* state, std::vector<double>& likelihood_list);
-    std::vector<double> getRiskProb(const Belief* belief); 
+    // void syncCurrentState(State* state, std::vector<double>& likelihood_list);
 	void PrintState(const State& state, std::ostream& out = std::cout) const;
 	void PrintBelief(const Belief& belief, std::ostream& out = std::cout) const;
 	void PrintObs(const State& state, OBS_TYPE observation, std::ostream& out = std::cout) const;

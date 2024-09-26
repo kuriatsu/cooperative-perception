@@ -1,14 +1,14 @@
-#include "cooperative_perception_planner/cooperative_perception.hpp"
+#include "cooperative_perception/cooperative_perception.hpp"
 
-
-CooperativePerceptionPlanner::~CooperativePerceptionPlanner() {
+CooperativePerception::CooperativePerception()
+{
 }
 
-int CooperativePerceptionPlanner::RunPlanning(int argc, char* argv[]) 
+int CooperativePerception::RunPlanning(int argc, char* argv[]) 
 {
     // models
-    _operator_model = new OperatorModel();
-    _vehicle_model = new VehicleModel(_delta_t);
+    operator_model_ = new OperatorModel();
+    vehicle_model_ = new VehicleModel(_delta_t);
 
     bool search_solver;
     int num_runs = 1;
@@ -16,7 +16,7 @@ int CooperativePerceptionPlanner::RunPlanning(int argc, char* argv[])
     string belief_type = "DEFAULT";
     int time_limit = -1;
 
-    option::Option *options = InitializeParamers(argc, argv, _solver_type,
+    option::Option *options = InitializeParamers(argc, argv, solver_type_,
                 search_solver, num_runs, world_type, belief_type, time_limit);
     if(options==nullptr)
         return 0;
@@ -24,9 +24,9 @@ int CooperativePerceptionPlanner::RunPlanning(int argc, char* argv[])
 
     DSPOMDP *model = InitializeModel(options);
     assert(model != nullptr);
-    // _model = new CPPOMDP(_planning_horizon, _risk_thresh, _vehicle_model, _operator_model, _delta_t);
+    // model_ = new CPPOMDP(planning_horizon_, risk_thresh_, vehicle_model_, operator_model_, delta_t_);
 
-    _world = InitializeWorld("simulator", _model, _options);
+    world_ = InitializeWorld("simulator", model_, options_);
     assert(world != nullptr);
 
     Belief *belief = nullptr;
@@ -34,30 +34,32 @@ int CooperativePerceptionPlanner::RunPlanning(int argc, char* argv[])
     Logger *logger = nullptr;
 
     InitializeLogger(logger, options, model, belief, solver, num_runs,
-            main_clock_start, world, world_type, time_limit, _policy_type);
+            main_clock_start, world, world_type, time_limit, policy_type_);
 
-    DisplayParameters(_options, _model);
+    DisplayParameters(options_, model_);
 
-    _logger->InitRound(world->GetCurrentState());
+    logger_->InitRound(world->GetCurrentState());
     round_=0; step_=0;
     PlanningLoop(solver, world, model, logger);
-    _logger->EndRound();
+    logger_->EndRound();
 
     delete world;
-    PrintResult(1, _logger, main_clock_start);
+    PrintResult(1, logger_, main_clock_start);
 
     return 0;
 }
 
 
-void CooperativePerceptionPlanner::PlanningLoop(Solver*& solver, World* world, DSPOMDP* model, Logger* logger) {
+void CooperativePerception::PlanningLoop(Solver*& solver, World* world, DSPOMDP* model, Logger* logger) 
+{
     bool terminal = false;
     while (!terminal) {
         terminal = RunStep(solver, world, model, logger);
     }
 }
 
-bool CooperativePerceptionPlanner::RunStep(State* solver, World* world, DSPOMDP* model, Logger* logger) {
+bool CooperativePerception::RunStep(State* solver, World* world, DSPOMDP* model, Logger* logger)
+{
 
     logger->CheckTargetTime();
     double step_start_t = get_time_second();
@@ -105,13 +107,13 @@ bool CooperativePerceptionPlanner::RunStep(State* solver, World* world, DSPOMDP*
     end_t = get_time_second();
     double update_time = end_t - start_t;
 
-    cp_world->SyncBelief(cp_world->GetRiskProb(belief));
+    cp_world->UpdatePerception(cp_model->GetPerceptionLikelihood(belief));
 
     return logger->SummarizeStep(step_++, round_, terminal, action, obs, step_start_t);
 }
 
 
-void CooperativePerceptionPlanner::InitializeWorld(int argc, char* argv[])
+void CooperativePerception::InitializeWorld(int argc, char* argv[])
 {
     std::shared_ptr<CPWorld> world = std::make_shared<CPWorld>();
     world->Connect(argc, argv);
@@ -120,7 +122,8 @@ void CooperativePerceptionPlanner::InitializeWorld(int argc, char* argv[])
 }
 
 
-void CooperativePerceptionPlanner::InitializeDefaultParameters() {
+void CooperativePerception::InitializeDefaultParameters() 
+{
     Globals::config.num_scenarios = 100;
     Globals::config.sim_len = 90;
     Globals::config.time_per_move = 2.0; 
@@ -136,5 +139,5 @@ DSPOMDP* InitializeModel(option::Option* options)
 
 int main(int argc, char ** argv)
 {
-    return CooperativePerceptionPlanner::RunPlanning(argc, argv);
+    return CooperativePerception::RunPlanning(argc, argv);
 }

@@ -1,12 +1,12 @@
-#include "cooperative_perception/cp_server.hpp"
+#include "cooperative_perception/cp_ros_interface.hpp"
 
 CPRosInterface::CPRosInterface()
     : Node("CPRosInterface")
 {
-    _sub_objects = this->create_subscription<autoware_perception_msgs::msgs::PredictedObjects>("/objects/predicted_objects", 10, std::bind(&CPRosInterface::ObjectsCb, this, _1));
+    _sub_objects = this->create_subscription<autoware_auto_perception_msgs::msgs::PredictedObjects>("/objects/predicted_objects", 10, std::bind(&CPRosInterface::ObjectsCb, this, _1));
     _sub_ego_pose = this->create_subscription<geometry_msgs::msgs::PoseWithCovarianceStampled>("/localization/pose_with_covariance", 10, std::bind(&CPRosInterface::EgoPoseCb, this, _1));
     _sub_ego_speed = this->create_subscription<geometry_msgs::msgs::TwistWithCovarianceStamped>("/localization/twist", 10, std::bind(&CPRosInterface::EgoSpeedCb, this, _1));
-    _sub_ego_traj = this->create_subscription<autoware_planning_msgs::msgs::Trajectory>("/planning/scenario_planning/trajectory", 10, std::bind(&CPRosInterface::EgoTrajectoryCb, this, _1));
+    _sub_ego_traj = this->create_subscription<autoware_auto_planning_msgs::msgs::Trajectory>("/planning/scenario_planning/trajectory", 10, std::bind(&CPRosInterface::EgoTrajectoryCb, this, _1));
     _sub_intervention = this->create_subscription<cooperative_perception::msgs::InterventionTarget>("/intervention_result", 10, std::bind(&CPRosInterface::InterventionCb, this, _1));
 
     _pub_updated_objects = this->create_publisher<cooperative_perception::msg::Intervention>("/updated_objects", 10);
@@ -20,25 +20,25 @@ CPRosInterface::CPRosInterface()
 
 void CPRosInterface::EgoPoseCb(geometry_msgs::msg::PoseWithCovarianceStamped &msg) 
 {
-    _ego_pose = msg.pose.pose;
+    ego_pose_ = msg.pose.pose;
 }
 
 void CPRosInterface::EgoSpeedCb(geometry_msgs::msg::TwistWithCovarianceStamped &msg) 
 {
-    _ego_speed = msg.twist.twist;
+    ego_speed_ = msg.twist.twist;
 }
 
-void CPRosInterface::EgoTrajectoryCb(autoware_perception_msgs::msg::Trajectory &msg) 
+void CPRosInterface::EgoTrajectoryCb(autoware_auto_perception_msgs::msg::Trajectory &msg) 
 {
-    _ego_trajectory = msg;
+    ego_trajectory_ = msg;
 }
 
 void CPRosInterface::InterventionCb(cooperative_perception::msg::InterventionTarget &msg)
 {
-    _intervention_result = msg;
+    intervention_result_ = msg;
 }
 
-void CPRosInterface::ObjectsCb(autoware_perception_msgs::msg::PredictedObjects &msg) 
+void CPRosInterface::ObjectsCb(autoware_auto_perception_msgs::msg::PredictedObjects &msg) 
 {
     _predicted_objects = msg;
 }
@@ -90,7 +90,7 @@ void CPRosInterface::CurrentStateService(const std::shared_ptr<cooperative_perce
     }
     responce->target_pose = distances;
     responce->likelihood = probs;
-    responce->ego_speed = _ego_speed.linear.x;
+    responce->ego_speed = ego_speed_.linear.x;
     responce->object_id = ids;
 }
 
@@ -98,13 +98,13 @@ void CPRosInterface::GetCollisionPointAndRisk(const autoware_auto_planning_msgs:
 {
     float thres = 3.0; // [m]
     float accumulated_dist = 0.0;
-    for (int i=0; i<sizeof(ego_traj.points)/sizeof(autoware_planning_msgs::msg::TrajectoryPoint); ++i)
+    for (int i=0; i<sizeof(ego_traj.points)/sizeof(autoware_auto_planning_msgs::msg::TrajectoryPoint); ++i)
     {
         /* object position is based on the crossing point */
         geometry_msgs::msg::Pose &ego_traj_pose = ego_traj[i];
         if (i == 0)
         {
-            incremental_dist += sqrt(pow(ego_traj_pose.position.x - _ego_pose.position.x) + pow(ego_traj_pose.position.y - _ego_pose.position.y));
+            incremental_dist += sqrt(pow(ego_traj_pose.position.x - ego_pose_.position.x) + pow(ego_traj_pose.position.y - ego_pose_.position.y));
         } else 
         {
             incremental_dist += sqrt(pow(ego_traj_pose.position.x - ego_traj[i-1].position.x) + pow(ego_traj_pose.position.y - ego_traj[i-1].position.y));

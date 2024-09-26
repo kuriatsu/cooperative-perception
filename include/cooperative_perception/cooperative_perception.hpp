@@ -3,12 +3,13 @@
 #include <memory>
 #include <despot/planner.h>
 
-#include "cooperative_perception_planner/task_allocation.h"
-#include "cooperative_perception_planner/operator_model.h"
-#include "cooperative_perception_planner/sumo_interface.h"
+#include "cooperative_perception/cp_pomdp.hpp"
+#include "cooperative_perception/cp_world.hpp"
+#include "cooperative_perception/operator_model.hpp"
+#include "cooperative_perception/vehicle_model.hpp"
 
-#include "autoware_perception_msgs/msg/predicted_objects.hpp"
-#include "autoware_planning_msgs/msg/Trajectory.hpp"
+#include "autoware_auto_perception_msgs/msg/predicted_objects.hpp"
+#include "autoware_auto_planning_msgs/msg/Trajectory.hpp"
 #include "geometry_msgs/msg/PoseWithCovarianceStampled.hpp"
 #include "cooperative_perception/msg/Intervention.hpp"
 #include "unique_identifier_msgs/msg/UUID.hpp"
@@ -19,41 +20,37 @@
 using namespace despot;
 using std::placeholders::_1;
 
-class CooperativePerceptionPlanner: public Planner 
+class CooperativePerception: public Planner 
 {
 public:
-	CooperativePerceptionPlanner(int argc, char* argv[]);
+	CooperativePerception();
+    int RunPlanning(int argc, char* argv[]);
 
+private:
     // params
-    double _delta_t = 2.0;
-    double _risk_thresh = 0.5;
-    int _planning_horizon = 150;
+    double delta_t_ = 2.0;
+    double risk_thresh_ = 0.5;
+    int planning_horizon_ = 150;
 
     // model parameters
-    string _policy_type = "DESPOT"; // DESPOT, MYOPIC, EGOISTIC
+    string policy_type_ = "DESPOT"; // DESPOT, MYOPIC, EGOISTIC
     
     // pomdp
-    Solver *_solver;
-    Logger *_logger;
-    Belief *_belief;
-    Model *_model;
-    World *_world;
+    Solver *solver_;
+    Logger *logger_;
+    Belief *belief_;
+    Model *model_;
+    World *world_;
     
     // models
-    OperatorModel *_operator_model;
-    VehicleModel *_vehicle_model;
+    OperatorModel *operator_model_;
+    VehicleModel *vehicle_model_;
     
-    // kinda like enum of action and observation for POMDP  
-    // dynamically updated
-
 private:
+    void PlanningLoop(Solver*& solver, World* world, DSPOMDP* model, Logger* logger);
+    bool RunStep(State* solver, World* world, DSPOMDP* model, Logger* logger); 
+    void InitializeWorld(int argc, char* argv[]);
+    void InitializeDefaultParameters(); 
+    DSPOMDP* InitializeModel(option::Option* options);
 
-
-
-    
-    //
-    bool _on_belief_update;
-
-
-private:
 };

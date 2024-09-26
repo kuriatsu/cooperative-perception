@@ -1,7 +1,7 @@
 #pragma once
 #include <iostream>
 #include <despot/util/random.h>
-#include "libgeometry.h"
+#include "libgeometry.hpp"
 
 class OperatorModel {
 public:

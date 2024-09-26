@@ -3,10 +3,9 @@
 CPWorld::CPworld()
     : Node("CPWorldNode")
 {
-
-    _intervention_client = this->create_service<cooperative_perception::srv::Intervention>("intervention");
-    _current_state_client = this->create_service<cooperative_perception::srv::State>("cp_current_state");
-    _synthesize_state_client = this->create_service<cooperative_perception::srv::State>("cp_updated_target");
+    intervention_client_ = this->create_service<cooperative_perception::srv::Intervention>("intervention");
+    current_state_client_ = this->create_service<cooperative_perception::srv::State>("cp_current_state");
+    update_perception_client_ = this->create_service<cooperative_perception::srv::UpdatePerception>("cp_updated_target");
 }
 
 CPWorld::~CPworld() {
@@ -19,7 +18,7 @@ State* CPWorld::Initialize()
     return nullptr;
 }
 
-bool Connect(int argc, char* argv[])
+bool CPWorld::Connect(int argc, char* argv[])
 {
     rclcpp::init(argc, argv);
     rclcpp::spin(std::make_shared<CPWorld>(argc, argv));
@@ -27,7 +26,7 @@ bool Connect(int argc, char* argv[])
 
 
 State* CPWorld::GetCurrentState() {
-    return static_cast<State*>(_pomdp_state);
+    return static_cast<State*>(pomdp_state_);
 }
 
 
@@ -38,7 +37,7 @@ void CPWorld::GetCurrentState(State &state, std::vector<double> &likelihood_list
     auto request = std::make_shared<cooperative_perception::srv::State::Request>();
     request->request = true;
 
-    while (!_current_state_client->wait_for_service(1s))
+    while (!current_state_client_->wait_for_service(1s))
     {
         if (!rclcpp::ok())
         {
@@ -48,7 +47,7 @@ void CPWorld::GetCurrentState(State &state, std::vector<double> &likelihood_list
         RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "[cp_world_node] service not available");
     }
 
-    auto result = _current_state_client->async_send_request(request);
+    auto result = current_state_client_->async_send_request(request);
     if (rclcpp::spin_until_future_complete(this, result) != rclcpp::FutureReturnCode::SUCCESS)
     {
         RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "[cp_world_node] failed to call service Intervention");
@@ -66,11 +65,11 @@ void CPWorld::GetCurrentState(State &state, std::vector<double> &likelihood_list
     _cp_state->ego_speed = result.get()->ego_speed;
     _cp_state->risk_pose = result.get()->target_pose;
 
-    _id_idx_list.clear();
+    id_idx_list_.clear();
 
     for (int i=0; i<sizeof(result.get()->ids)/sizeof(unique_identifier_msgs::msg::UUID); i++) 
     {
-        _id_idx_list[i] = result.get()->object_id[i];
+        id_idx_list_[i] = result.get()->object_id[i];
         double &likelihood = result.get()->likelihood[i];
         likelihood_list.emplace_back(likelihood);
 
@@ -78,7 +77,7 @@ void CPWorld::GetCurrentState(State &state, std::vector<double> &likelihood_list
         _cp_state->risk_bin.emplace_back(likelihood>_risk_thresh);
 
         /* is this request target (index can change at each time step) */
-        if (_req_target_history.size() > 0 && _req_target_history.back() == result.get()->object_id[i]) {
+        if (req_taret_history_.size() > 0 && req_taret_history_.back() == result.get()->object_id[i]) {
             is_last_req_target_exist = true;
             _cp_state->req_target = target_index; 
         }
@@ -101,7 +100,7 @@ void CPWorld::GetCurrentState(State &state, std::vector<double> &likelihood_list
         std::cout << "req target found again, id: " << req_target_history.back() << ", idx: " << _cp_state->req_target << std::endl;
     }
 
-    _cp_values = new CPState(_cp_state->risk_pose.size());
+    cp_values_ = new CPState(_cp_state->risk_pose.size());
 
     state = static_cast<State*>(_cp_state);
 }
@@ -117,8 +116,8 @@ bool CPWorld::ExecuteAction(ACT_TYPE &action, OBS_TYPE& obs) {
     auto request = std::make_shared<cooperative_perception::srv::Intervention::Request>();
     
     // intervention request
-    if (_cp_values->getActionAttrib(action) == CPState::REQUEST) {
-        int req_target_idx = _cp_values->getActionTarget(action);
+    if (cp_values_->getActionAttrib(action) == CPState::REQUEST) {
+        int req_target_idx = cp_values_->getActionTarget(action);
         unique_identifier_msgs::msg::UUID req_target_id = id_idx_list[req_target_idx];
 
         /* check intervention request */
@@ -132,7 +131,7 @@ bool CPWorld::ExecuteAction(ACT_TYPE &action, OBS_TYPE& obs) {
             _cp_state->req_target = req_target_idx;
         }
 
-        _req_target_history.emplace_back(req_target_id);
+        req_taret_history_.emplace_back(req_target_id);
 
         request->action = CPValues::REQUEST;
         request->object_id = req_target_id;
@@ -143,14 +142,14 @@ bool CPWorld::ExecuteAction(ACT_TYPE &action, OBS_TYPE& obs) {
         _cp_state->req_time = 0;
         _cp_state->req_target = 0;
 
-        _req_target_history.emplace_back("none");
+        req_taret_history_.emplace_back("none");
 
         request->action = CPValues::NO_ACTION;
         request->object_id = 0;
     }
 
     /* throw request */
-    while (!_intervention_client->wait_for_service(1s))
+    while (!intervention_client_->wait_for_service(1s))
     {
         if (!rclcpp::ok())
         {
@@ -161,7 +160,7 @@ bool CPWorld::ExecuteAction(ACT_TYPE &action, OBS_TYPE& obs) {
     }
 
     /* send request */
-    auto result = _intervention_client->async_send_request(request);
+    auto result = intervention_client_->async_send_request(request);
     if (rclcpp::spin_until_future_complete(this, result) != rclcpp::FutureReturnCode::SUCCESS)
     {
         RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "[cp_world_node] failed to call service Intervention");
@@ -171,34 +170,34 @@ bool CPWorld::ExecuteAction(ACT_TYPE &action, OBS_TYPE& obs) {
     /* process request result (observation) */
     auto intervention_target_id = result.get()->object_id;
     std::int8_t intervention_result = result.get()->result;
-    for (const auto &itr : _id_idx_list) 
+    for (const auto &itr : id_idx_list_) 
     {
         if (itr.second == intervention_target_id)
         {
             /* intervention result is the result of action at last time step */
-            action = _cp_values->getAction(CPValues::REQUEST, itr.first);
+            action = cp_values_->getAction(CPValues::REQUEST, itr.first);
             obs = intervention_result;
             break;
         }
         RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "[cp_world_node] intervention target no longer exist");
     }
 
-    obs_history.emplace_back(obs);
+    obs_history_.emplace_back(obs);
     cp_values->printObs(obs);
 }
 
 
 void CPWorld::UpdatePerception(const ACT_TYPE &action, const OBS_TYPE &obs, const std::vector<double> &risk_probs)
 {
-    std::int8_t target_index = _cp_values->getActionTarget(action);
+    std::int8_t target_index = cp_values_->getActionTarget(action);
     unique_identifier_msgs::msg::UUID target_id = ;
 
     auto request = std::make_shared<cooperative_perception::srv::UpdatePerception::Request>();
-    request->object_id = _id_idx_list[target_index];
+    request->object_id = id_idx_list_[target_index];
     request->likelihood = risk_probs[target_index];
 
     /* throw request */
-    while (!_update_perception_client->wait_for_service(1s))
+    while (!update_perception_client_->wait_for_service(1s))
     {
         if (!rclcpp::ok())
         {
@@ -209,7 +208,7 @@ void CPWorld::UpdatePerception(const ACT_TYPE &action, const OBS_TYPE &obs, cons
     }
 
     /* send request */
-    auto result = _update_perception_client->async_send_request(request);
+    auto result = update_perception_client_->async_send_request(request);
 
     if (rclcpp::spin_until_future_complete(this, result) != rclcpp::FutureReturnCode::SUCCESS)
     {
@@ -218,41 +217,26 @@ void CPWorld::UpdatePerception(const ACT_TYPE &action, const OBS_TYPE &obs, cons
     }
 }
 
-std::vector<double> CPPOMDP::GetRiskProb(const Belief* belief) {
-	const vector<State*>& particles = static_cast<const ParticleBelief*>(belief)->particles();
-	
-	// double status = 0;
-	vector<double> probs(_cp_state->risk_pose.size(), 0.0);
-	for (int i = 0; i < particles.size(); i++) {
-		State* particle = particles[i];
-		CPState* state = static_cast<CPState*>(particle);
-		for (auto itr=state->risk_bin.begin(), end=state->risk_bin.end(); itr!=end; itr++) {
-			probs[distance(state->risk_bin.begin(), itr)] += *itr * particle->weight;
-		}
-	}
-    return probs;
-}
-
 
 ACT_TYPE CPWorld::MyopicAction() {
 
     // if intervention requested to the target and can request more
-    if (0 < _pomdp_state->req_time && _pomdp_state->req_time < 6 && _pomdp_state->risk_pose[_pomdp_state->req_target] > vehicle_model->getDecelDistance(_pomdp_state->ego_speed, vehicle_model->m_max_decel, 0.0)) {
-        return cp_values->getAction(CPState::REQUEST, _pomdp_state->req_target);
+    if (0 < pomdp_state_->req_time && pomdp_state_->req_time < 6 && pomdp_state_->risk_pose[pomdp_state_->req_target] > vehicle_model->getDecelDistance(pomdp_state_->ego_speed, vehicle_model->m_max_decel, 0.0)) {
+        return cp_values->getAction(CPState::REQUEST, pomdp_state_->req_target);
     }
     // finish request and change state 
-    else if (0 < _pomdp_state->req_time && _pomdp_state->ego_recog[_pomdp_state->req_target] != obs_history.back()) {
-        return cp_values->getAction(CPState::RECOG, _pomdp_state->req_target);
+    else if (0 < pomdp_state_->req_time && pomdp_state_->ego_recog[pomdp_state_->req_target] != obs_history_.back()) {
+        return cp_values->getAction(CPState::RECOG, pomdp_state_->req_target);
     }
 
     // find request target
     int closest_target = -1, min_dist = 100000;
-    for (int i=0; i<_pomdp_state->risk_pose.size(); i++) {
+    for (int i=0; i<pomdp_state_->risk_pose.size(); i++) {
         int is_in_history = std::count(req_target_history.begin(), req_target_history.end(), id_idx_list[i]);
-        double request_distance = vehicle_model->getDecelDistance(_pomdp_state->ego_pose, vehicle_model->m_min_decel, vehicle_model->m_safety_margin) + vehicle_model->m_yield_speed * (6.0 - vehicle_model->getDecelTime(_pomdp_state->ego_speed, vehicle_model->m_min_decel)); 
-       if (is_in_history == 0 && _pomdp_state->risk_pose[i] > request_distance) {
-            if (_pomdp_state->risk_pose[i] < min_dist) {
-               min_dist = _pomdp_state->risk_pose[i];
+        double request_distance = vehicle_model->getDecelDistance(pomdp_state_->ego_pose, vehicle_model->m_min_decel, vehicle_model->m_safety_margin) + vehicle_model->m_yield_speed * (6.0 - vehicle_model->getDecelTime(pomdp_state_->ego_speed, vehicle_model->m_min_decel)); 
+       if (is_in_history == 0 && pomdp_state_->risk_pose[i] > request_distance) {
+            if (pomdp_state_->risk_pose[i] < min_dist) {
+               min_dist = pomdp_state_->risk_pose[i];
                closest_target = i;
             }
         }
@@ -268,49 +252,3 @@ ACT_TYPE CPWorld::MyopicAction() {
 ACT_TYPE CPWorld::EgoisticAction() {
     return cp_values->getAction(CPState::NO_ACTION, 0);
 }
-
-void RasWorld::Log(ACT_TYPE action, OBS_TYPE obs) {
-    double time;
-    Pose ego_pose;
-    std::vector<double> other_ego_info;
-    std::vector<Risk> log_risks;
-    sim->log(time, ego_pose, other_ego_info, log_risks);
-
-    std::string log_action = cp_values->getActionName(action);
-    std::string log_obs = cp_values->getObsName(obs);
-    std::string log_action_target = "NONE";
-    if (log_action != "NO_ACTION") {
-        log_action_target = id_idx_list[cp_values->getActionTarget(action)];
-    }
-
-    nlohmann::json step_log = {
-        {"time", time},
-        {"x", ego_pose.x},
-        {"y", ego_pose.y},
-        {"lane_position", ego_pose.lane_position},
-        {"lane", ego_pose.lane},
-        {"speed", other_ego_info[0]}, 
-        {"accel", other_ego_info[1]},
-        {"fuel_consumption", other_ego_info[2]},
-        {"action", log_action},
-        {"action_target", log_action_target},
-        {"obs", log_obs}
-    };
-
-    for (const auto& risk : log_risks) {
-        nlohmann::json buf = {
-            {"id", risk.id},
-            {"x", risk.pose.x},
-            {"y", risk.pose.y},
-            {"lane_position", risk.pose.lane_position},
-            {"lane", risk.pose.lane},
-            {"prob", risk.risk_prob},
-            {"pred", risk.risk_pred},
-            {"hidden", risk.risk_hidden}
-        };
-        step_log["risks"].emplace_back(buf);
-    }
-
-    m_log.emplace_back(step_log);
-}
-

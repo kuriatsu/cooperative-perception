@@ -1,5 +1,5 @@
 #include <iostream>
-#include <operator_model.h>
+#include "cooperative_perception/operator_model.hpp"
 
 OperatorModel::~OperatorModel(){
 }

@@ -1,9 +1,9 @@
-#include "task_allocation.h"
+#include "cooperative_perception/cp_pomdp.hpp"
 
-#include <despot/core/builtin_lower_bounds.h>
-#include <despot/core/builtin_policy.h>
-#include <despot/core/builtin_upper_bounds.h>
-#include <despot/core/particle_belief.h>
+#include "despot/core/builtin_lower_bounds.h"
+#include "despot/core/builtin_policy.h"
+#include "despot/core/builtin_upper_bounds.h"
+#include "despot/core/particle_belief.h"
 
 using namespace std;
 
@@ -561,6 +561,21 @@ void CPPOMDP::GetBinProduct(vector<vector<bool>>& out_list, std::vector<bool> bu
         buf[row] = (i) ? false : true;   
         GetBinProduct(out_list, buf, row+1);
     }
+}
+
+std::vector<double> CPPOMDP::GetPerceptionLikelihood(const Belief* belief) {
+	const vector<State*>& particles = static_cast<const ParticleBelief*>(belief)->particles();
+	
+	// double status = 0;
+	vector<double> probs(_cp_state->risk_pose.size(), 0.0);
+	for (int i = 0; i < particles.size(); i++) {
+		State* particle = particles[i];
+		CPState* state = static_cast<CPState*>(particle);
+		for (auto itr=state->risk_bin.begin(), end=state->risk_bin.end(); itr!=end; itr++) {
+			probs[distance(state->risk_bin.begin(), itr)] += *itr * particle->weight;
+		}
+	}
+    return probs;
 }
 
 

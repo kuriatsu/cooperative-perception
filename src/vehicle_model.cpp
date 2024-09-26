@@ -1,4 +1,4 @@
-#include "vehicle_model.h"
+#include "cooperative_perception/vehicle_model.hpp"
 
 VehicleModel::VehicleModel() :
         _max_speed(11.2),

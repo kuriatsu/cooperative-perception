@@ -1,4 +1,4 @@
-unique_identifier_msgs::msg::UUID object_id
+unique_identifier_msgs/UUID object_id
 float64 likelihood
 ---
 bool result
