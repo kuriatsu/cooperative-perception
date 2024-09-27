@@ -17,10 +17,12 @@ find_package(std_msgs REQUIRED)
 
 # set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} $ENV{DESPOT_ROOT}/build)
 message($ENV{DESPOT_ROOT})
-find_package(Despot REQUIRED PATHS $ENV{DESPOT_ROOT})
+find_package(Despot REQUIRED)
+# find_package(Despot REQUIRED PATHS $ENV{DESPOT_ROOT})
 
 include_directories(
     include
+    ${DESPOT_INCLUDE_DIRS}
 )
 # target_include_directories(${PROJECT_NAME} PUBLIC
 #     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}/include>
@@ -47,31 +49,31 @@ ament_export_dependencies(rosidl_default_runtime)
 ############################
 
 add_executable(${PROJECT_NAME}_node src/cooperative_perception.cpp src/cp_pomdp.cpp src/cp_world.cpp src/operator_model.cpp src/vehicle_model.cpp)
-ament_target_dependencies(
-  ${PROJECT_NAME}_node
-  "rclcpp"
-  "autoware_auto_perception_msgs"
-  "autoware_auto_planning_msgs"
-  "geometry_msgs"
-  "unique_identifier_msgs"
-  "Despot"
+ament_target_dependencies(${PROJECT_NAME}_node
+  rclcpp
+  autoware_auto_perception_msgs
+  autoware_auto_planning_msgs
+  geometry_msgs
+  unique_identifier_msgs
+  Despot
 )
 
 install(TARGETS ${PROJECT_NAME}_node
   DESTINATION lib/${PROJECT_NAME})
+
+rosidl_target_interfaces(${PROJECT_NAME}_node ${PROJECT_NAME} "rosidl_typesupport_cpp")
 
 ############################
 # cp_ros_interface
 ############################
 
 add_executable(cp_ros_interface_node src/cp_ros_interface.cpp)
-ament_target_dependencies(
-  cp_ros_interface_node
-  "rclcpp"
-  "autoware_auto_perception_msgs"
-  "autoware_auto_planning_msgs"
-  "geometry_msgs"
-  "unique_identifier_msgs"
+ament_target_dependencies(cp_ros_interface_node
+  rclcpp
+  autoware_auto_perception_msgs
+  autoware_auto_planning_msgs
+  geometry_msgs
+  unique_identifier_msgs
 )
 # to use Intervention.msg
 rosidl_target_interfaces(cp_ros_interface_node ${PROJECT_NAME} "rosidl_typesupport_cpp")

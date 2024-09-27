@@ -3,8 +3,6 @@
 #include <iostream>
 #include <math.h>
 
-using namespace libtraci;
-
 class Pose {
 public:
     double x, y;
@@ -191,7 +189,7 @@ public:
         if (action == no_action_head) {
             out <<  "NO_ACTION" << std::endl;
         }
-        else if (request_head <= action && action < change_recog_head) {
+        else if (request_head <= action) {
             target_index = action - request_head;
             out << "REQUEST to " << target_index;
         }

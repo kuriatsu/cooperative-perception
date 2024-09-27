@@ -1,7 +1,9 @@
 #include "cooperative_perception/cp_world.hpp"
 
-CPWorld::CPworld()
-    : Node("CPWorldNode")
+CPWorld::CPworld(int _argc, char* _argv[]) : 
+    Node("CPWorldNode"),
+    argc(argc),
+    argv(argv)
 {
     intervention_client_ = this->create_service<cooperative_perception::srv::Intervention>("intervention");
     current_state_client_ = this->create_service<cooperative_perception::srv::State>("cp_current_state");
@@ -18,10 +20,11 @@ State* CPWorld::Initialize()
     return nullptr;
 }
 
-bool CPWorld::Connect(int argc, char* argv[])
+
+bool CPWorld::Connect()
 {
     rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<CPWorld>(argc, argv));
+    rclcpp::spin(this);
 }
 
 
@@ -183,7 +186,7 @@ bool CPWorld::ExecuteAction(ACT_TYPE &action, OBS_TYPE& obs) {
     }
 
     obs_history_.emplace_back(obs);
-    cp_values->printObs(obs);
+    cp_values_->printObs(obs);
 }
 
 
@@ -221,19 +224,19 @@ void CPWorld::UpdatePerception(const ACT_TYPE &action, const OBS_TYPE &obs, cons
 ACT_TYPE CPWorld::MyopicAction() {
 
     // if intervention requested to the target and can request more
-    if (0 < pomdp_state_->req_time && pomdp_state_->req_time < 6 && pomdp_state_->risk_pose[pomdp_state_->req_target] > vehicle_model->getDecelDistance(pomdp_state_->ego_speed, vehicle_model->m_max_decel, 0.0)) {
-        return cp_values->getAction(CPState::REQUEST, pomdp_state_->req_target);
+    if (0 < pomdp_state_->req_time && pomdp_state_->req_time < 6 && pomdp_state_->risk_pose[pomdp_state_->req_target] > vehicle_model_->getDecelDistance(pomdp_state_->ego_speed, vehicle_model_->m_max_decel, 0.0)) {
+        return cp_values_->getAction(CPState::REQUEST, pomdp_state_->req_target);
     }
     // finish request and change state 
     else if (0 < pomdp_state_->req_time && pomdp_state_->ego_recog[pomdp_state_->req_target] != obs_history_.back()) {
-        return cp_values->getAction(CPState::RECOG, pomdp_state_->req_target);
+        return cp_values_->getAction(CPState::RECOG, pomdp_state_->req_target);
     }
 
     // find request target
     int closest_target = -1, min_dist = 100000;
     for (int i=0; i<pomdp_state_->risk_pose.size(); i++) {
         int is_in_history = std::count(req_target_history.begin(), req_target_history.end(), id_idx_list[i]);
-        double request_distance = vehicle_model->getDecelDistance(pomdp_state_->ego_pose, vehicle_model->m_min_decel, vehicle_model->m_safety_margin) + vehicle_model->m_yield_speed * (6.0 - vehicle_model->getDecelTime(pomdp_state_->ego_speed, vehicle_model->m_min_decel)); 
+        double request_distance = vehicle_model_->getDecelDistance(pomdp_state_->ego_pose, vehicle_model_->m_min_decel, vehicle_model_->m_safety_margin) + vehicle_model_->m_yield_speed * (6.0 - vehicle_model_->getDecelTime(pomdp_state_->ego_speed, vehicle_model_->m_min_decel)); 
        if (is_in_history == 0 && pomdp_state_->risk_pose[i] > request_distance) {
             if (pomdp_state_->risk_pose[i] < min_dist) {
                min_dist = pomdp_state_->risk_pose[i];
@@ -243,12 +246,12 @@ ACT_TYPE CPWorld::MyopicAction() {
     }
 
     if (closest_target != -1) {
-        return cp_values->getAction(CPState::REQUEST, closest_target);
+        return cp_values_->getAction(CPState::REQUEST, closest_target);
     }
     else
-        return cp_values->getAction(CPState::NO_ACTION, 0);
+        return cp_values_->getAction(CPState::NO_ACTION, 0);
 }
 
 ACT_TYPE CPWorld::EgoisticAction() {
-    return cp_values->getAction(CPState::NO_ACTION, 0);
+    return cp_values_->getAction(CPState::NO_ACTION, 0);
 }

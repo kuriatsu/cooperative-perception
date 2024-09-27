@@ -19,22 +19,22 @@ double OperatorModel::InterventionAccuracy(const int time) const {
 
 int OperatorModel::ExecIntervention(const int time, const int action, const std::string target, const bool risk) const {
 
-    if (action == TAValues::RECOG || action == TAValues::NO_ACTION) {
+    if (action == CPValues::RECOG || action == CPValues::NO_ACTION) {
         _last_target_id = "NONE";
-        return TAValues::NONE;
+        return CPValues::NONE;
     }
     else {
         double rand_num = despot::Random::RANDOM.NextDouble();
-        double acc = int_acc(time);
+        double acc = InterventionAccuracy(time);
         _last_target_id = target;
     
         // TODO: is this output is okay? especially "else" section
         if (rand_num < acc) {
-            return (risk == TAValues::RISK) ? TAValues::RISK : TAValues::NO_RISK;    
+            return (risk == CPValues::RISK) ? CPValues::RISK : CPValues::NO_RISK;    
         }
         else {
-            return (risk == TAValues::RISK) ? TAValues::NO_RISK : TAValues::RISK;    
-            // return (rand_num < 0.5) ? TAValues::RISK : TAValues::NO_RISK;
+            return (risk == CPValues::RISK) ? CPValues::NO_RISK : CPValues::RISK;    
+            // return (rand_num < 0.5) ? CPValues::RISK : CPValues::NO_RISK;
         }
 
     }

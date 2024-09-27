@@ -2,9 +2,9 @@
 
 #include "despot/interface/pomdp.h"
 #include "despot/core/mdp.h"
-#include "operator_model.hpp"
-#include "libgeometry.hpp"
-#include "vehicle_model.hpp"
+#include "cooperative_perception/operator_model.hpp"
+#include "cooperative_perception/libgeometry.hpp"
+#include "cooperative_perception/vehicle_model.hpp"
 
 namespace despot {
 

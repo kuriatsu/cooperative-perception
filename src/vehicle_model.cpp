@@ -10,7 +10,7 @@ VehicleModel::VehicleModel() :
         _delta_t(1.0) {
         }
 
-VehicleModel::VehicleModel(const double delta_t) :
+VehicleModel::VehicleModel(const double delta_t);
         _delta_t(delta_t) {
         }
 

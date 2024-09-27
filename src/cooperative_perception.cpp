@@ -50,6 +50,7 @@ int CooperativePerception::RunPlanning(int argc, char* argv[])
 }
 
 
+
 void CooperativePerception::PlanningLoop(Solver*& solver, World* world, DSPOMDP* model, Logger* logger) 
 {
     bool terminal = false;
@@ -115,12 +116,15 @@ bool CooperativePerception::RunStep(State* solver, World* world, DSPOMDP* model,
 
 void CooperativePerception::InitializeWorld(int argc, char* argv[])
 {
-    std::shared_ptr<CPWorld> world = std::make_shared<CPWorld>();
-    world->Connect(argc, argv);
+    std::shared_ptr<CPWorld> world = std::make_shared<CPWorld>(argc, argv);
+    world->Connect();
     world->Initialize();
     return world;
 }
 
+std::string CooperativePerception::ChooseSolver() {
+    return "DESPOT";
+}
 
 void CooperativePerception::InitializeDefaultParameters() 
 {
@@ -139,5 +143,5 @@ DSPOMDP* InitializeModel(option::Option* options)
 
 int main(int argc, char ** argv)
 {
-    return CooperativePerception::RunPlanning(argc, argv);
+    return CooperativePerception().RunPlanning(argc, argv);
 }

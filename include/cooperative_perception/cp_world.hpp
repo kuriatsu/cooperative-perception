@@ -1,18 +1,19 @@
 #pragma once
 #include "rclcpp/rclcpp.hpp"
 
-#include <despot/interface/world.h>
+#include "despot/interface/world.h"
 #include "cooperative_perception/libgeometry.hpp"
-#include <unique_identifier_msgs/msg/UUID.hpp>
-#include "cooperative_perception/srv/Intervention.hpp"
-#include "cooperative_perception/srv/State.hpp"
-#include "cooperative_perception/srv/UpdatePerception.hpp"
+#include <unique_identifier_msgs/msg/uuid.hpp>
+#include "cooperative_perception/srv/intervention.hpp"
+#include "cooperative_perception/srv/state.hpp"
+#include "cooperative_perception/srv/update_perception.hpp"
 
 
 using namespace despot;
 
-class RasWorld: public World, public rclcpp::Node {
+class CPWorld: public World, public rclcpp::Node {
 private:
+    int argc; char* argv[];
     // recognition result
     std::map<std::int8_t, unique_identifier_msgs::msg::UUID> id_idx_list_;
 
@@ -26,10 +27,11 @@ private:
 
 
 public:
-    CPWorld();
+    CPWorld(int argc, char* argv[]);
     ~CPWorld();
     State* Initialize();
-    bool Connect(int argc, char *argv[]);
+    bool Connect(int argc, char* argv[]);
+    bool Connect();
     State* GetCurrentState();
     void GetCurrentState(State &state, std::vector<double> &likelihood_list);
     bool ExecuteAction(ACT_TYPE action, OBS_TYPE& obs);

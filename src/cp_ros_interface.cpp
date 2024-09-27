@@ -153,7 +153,7 @@ void CPRosInterface::UpdatePerceptionService(const std::shared_ptr<cooperative_p
 int main(int argc, char* argv[])
 {
     rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<CPRosInterface>(argc, argv));
+    rclcpp::spin(std::make_shared<CPRosInterface>());
     rclcpp::shutdown();
     return 0;
 }
