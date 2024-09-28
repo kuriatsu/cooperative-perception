@@ -6,13 +6,13 @@
 
 class VehicleModel {
 public:
-    double _max_speed;
-    double _yield_speed;
-    double _max_accel;
-    double _max_decel;
-    double _min_decel;
-    int _safety_margin;
-    double _delta_t;
+    double max_speed_;
+    double yield_speed_;
+    double max_accel_;
+    double max_decel_;
+    double min_decel_;
+    int safety_margin_;
+    double delta_t_;
 
 public:
     VehicleModel(); 

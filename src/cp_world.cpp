@@ -1,9 +1,7 @@
 #include "cooperative_perception/cp_world.hpp"
 
-CPWorld::CPworld(int _argc, char* _argv[]) : 
+CPWorld::CPworld() : 
     Node("CPWorldNode"),
-    argc(argc),
-    argv(argv)
 {
     intervention_client_ = this->create_service<cooperative_perception::srv::Intervention>("intervention");
     current_state_client_ = this->create_service<cooperative_perception::srv::State>("cp_current_state");
@@ -23,17 +21,19 @@ State* CPWorld::Initialize()
 
 bool CPWorld::Connect()
 {
+    int argc;
+    char** argv;
     rclcpp::init(argc, argv);
     rclcpp::spin(this);
 }
 
 
 State* CPWorld::GetCurrentState() {
-    return static_cast<State*>(pomdp_state_);
+    return static_cast<State*>(cp_state__);
 }
 
 
-void CPWorld::GetCurrentState(State &state, std::vector<double> &likelihood_list) 
+void CPWorld::GetCurrentState(State* state, std::vector<double> &likelihood_list) 
 {
 
     /* request to service */
@@ -80,7 +80,7 @@ void CPWorld::GetCurrentState(State &state, std::vector<double> &likelihood_list
         _cp_state->risk_bin.emplace_back(likelihood>_risk_thresh);
 
         /* is this request target (index can change at each time step) */
-        if (req_taret_history_.size() > 0 && req_taret_history_.back() == result.get()->object_id[i]) {
+        if (req_target_history_.size() > 0 && req_target_history_.back() == result.get()->object_id[i]) {
             is_last_req_target_exist = true;
             _cp_state->req_target = target_index; 
         }
@@ -100,10 +100,10 @@ void CPWorld::GetCurrentState(State &state, std::vector<double> &likelihood_list
         _cp_state->req_time = 0;
     } else 
     {
-        std::cout << "req target found again, id: " << req_target_history.back() << ", idx: " << _cp_state->req_target << std::endl;
+        std::cout << "req target found again, id: " << req_target_history_.back() << ", idx: " << _cp_state->req_target << std::endl;
     }
 
-    cp_values_ = new CPState(_cp_state->risk_pose.size());
+    cp_values_ = new CPValues(_cp_state->risk_pose.size());
 
     state = static_cast<State*>(_cp_state);
 }
@@ -119,22 +119,22 @@ bool CPWorld::ExecuteAction(ACT_TYPE &action, OBS_TYPE& obs) {
     auto request = std::make_shared<cooperative_perception::srv::Intervention::Request>();
     
     // intervention request
-    if (cp_values_->getActionAttrib(action) == CPState::REQUEST) {
+    if (cp_values_->getActionAttrib(action) == CPValues::REQUEST) {
         int req_target_idx = cp_values_->getActionTarget(action);
-        unique_identifier_msgs::msg::UUID req_target_id = id_idx_list[req_target_idx];
+        unique_identifier_msgs::msg::UUID req_target_id = id_idx_list_[req_target_idx];
 
         /* check intervention request */
         /* keep request to the same target */
-        if (req_target_history.empty() || req_target_history.back() == req_target_id) {
+        if (req_target_history_.empty() || req_target_history_.back() == req_target_id) {
             _cp_state->req_time += Globals::config.time_per_move;
         }
         else {
-            _cp_state->ego_recog[req_target_idx] = CPState::RISK;
+            _cp_state->ego_recog[req_target_idx] = CPValues::RISK;
             _cp_state->req_time = Globals::config.time_per_move;
             _cp_state->req_target = req_target_idx;
         }
 
-        req_taret_history_.emplace_back(req_target_id);
+        req_target_history_.emplace_back(req_target_id);
 
         request->action = CPValues::REQUEST;
         request->object_id = req_target_id;
@@ -145,7 +145,7 @@ bool CPWorld::ExecuteAction(ACT_TYPE &action, OBS_TYPE& obs) {
         _cp_state->req_time = 0;
         _cp_state->req_target = 0;
 
-        req_taret_history_.emplace_back("none");
+        req_target_history_.emplace_back("none");
 
         request->action = CPValues::NO_ACTION;
         request->object_id = 0;
@@ -164,7 +164,7 @@ bool CPWorld::ExecuteAction(ACT_TYPE &action, OBS_TYPE& obs) {
 
     /* send request */
     auto result = intervention_client_->async_send_request(request);
-    if (rclcpp::spin_until_future_complete(this, result) != rclcpp::FutureReturnCode::SUCCESS)
+    if (rclcpp::spin_until_future_complete(static_cast<rclcpp::Node*>(this), result) != rclcpp::FutureReturnCode::SUCCESS)
     {
         RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "[cp_world_node] failed to call service Intervention");
         return;
@@ -190,68 +190,32 @@ bool CPWorld::ExecuteAction(ACT_TYPE &action, OBS_TYPE& obs) {
 }
 
 
-void CPWorld::UpdatePerception(const ACT_TYPE &action, const OBS_TYPE &obs, const std::vector<double> &risk_probs)
+void CPWorld::UpdatePerception (const ACT_TYPE &action, const OBS_TYPE &obs, const std::vector<double> &risk_probs)
 {
     std::int8_t target_index = cp_values_->getActionTarget(action);
-    unique_identifier_msgs::msg::UUID target_id = ;
 
-    auto request = std::make_shared<cooperative_perception::srv::UpdatePerception::Request>();
+    /* request instance */
+    auto request = std::make_shared<cooperative_perception::srv::UpdatePerception::Request> ();
     request->object_id = id_idx_list_[target_index];
     request->likelihood = risk_probs[target_index];
 
     /* throw request */
-    while (!update_perception_client_->wait_for_service(1s))
-    {
-        if (!rclcpp::ok())
-        {
+    while (!update_perception_client_->wait_for_service(1s)) {
+        if (!rclcpp::ok()) {
             RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "[cp_world_node::update_perception_client] Interrupted while waiting for service. Exit");
             return;
         } 
+
         RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "[cp_world_node::update_perception_client] service not available");
     }
 
-    /* send request */
+    /* get request */
     auto result = update_perception_client_->async_send_request(request);
 
-    if (rclcpp::spin_until_future_complete(this, result) != rclcpp::FutureReturnCode::SUCCESS)
-    {
-        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "[cp_world_node::update_perception_client] failed to call service Intervention");
+    if (rclcpp::spin_until_future_complete(static_cast<rclcpp::Node*>(this), result) != rclcpp::FutureReturnCode::SUCCESS) {
+        RCLCPP_ERROR (rclcpp::get_logger("rclcpp"), "[cp_world_node::update_perception_client] failed to call service Intervention");
         return;
     }
 }
 
 
-ACT_TYPE CPWorld::MyopicAction() {
-
-    // if intervention requested to the target and can request more
-    if (0 < pomdp_state_->req_time && pomdp_state_->req_time < 6 && pomdp_state_->risk_pose[pomdp_state_->req_target] > vehicle_model_->getDecelDistance(pomdp_state_->ego_speed, vehicle_model_->m_max_decel, 0.0)) {
-        return cp_values_->getAction(CPState::REQUEST, pomdp_state_->req_target);
-    }
-    // finish request and change state 
-    else if (0 < pomdp_state_->req_time && pomdp_state_->ego_recog[pomdp_state_->req_target] != obs_history_.back()) {
-        return cp_values_->getAction(CPState::RECOG, pomdp_state_->req_target);
-    }
-
-    // find request target
-    int closest_target = -1, min_dist = 100000;
-    for (int i=0; i<pomdp_state_->risk_pose.size(); i++) {
-        int is_in_history = std::count(req_target_history.begin(), req_target_history.end(), id_idx_list[i]);
-        double request_distance = vehicle_model_->getDecelDistance(pomdp_state_->ego_pose, vehicle_model_->m_min_decel, vehicle_model_->m_safety_margin) + vehicle_model_->m_yield_speed * (6.0 - vehicle_model_->getDecelTime(pomdp_state_->ego_speed, vehicle_model_->m_min_decel)); 
-       if (is_in_history == 0 && pomdp_state_->risk_pose[i] > request_distance) {
-            if (pomdp_state_->risk_pose[i] < min_dist) {
-               min_dist = pomdp_state_->risk_pose[i];
-               closest_target = i;
-            }
-        }
-    }
-
-    if (closest_target != -1) {
-        return cp_values_->getAction(CPState::REQUEST, closest_target);
-    }
-    else
-        return cp_values_->getAction(CPState::NO_ACTION, 0);
-}
-
-ACT_TYPE CPWorld::EgoisticAction() {
-    return cp_values_->getAction(CPState::NO_ACTION, 0);
-}

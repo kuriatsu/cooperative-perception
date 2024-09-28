@@ -7,6 +7,7 @@
 #include "cooperative_perception/cp_world.hpp"
 #include "cooperative_perception/operator_model.hpp"
 #include "cooperative_perception/vehicle_model.hpp"
+#include "cooperative_perception/modelbase_planner.hpp"
 
 #include "autoware_auto_perception_msgs/msg/predicted_objects.hpp"
 #include "autoware_auto_planning_msgs/msg/trajectory.hpp"
@@ -34,13 +35,10 @@ private:
 
     // model parameters
     string policy_type_ = "DESPOT"; // DESPOT, MYOPIC, EGOISTIC
+    string belief_type_ = "DEFAULT";
     
     // pomdp
-    Solver *solver_;
-    Logger *logger_;
-    Belief *belief_;
-    Model *model_;
-    World *world_;
+    option::Option *options_;
     
     // models
     OperatorModel *operator_model_;
@@ -48,9 +46,11 @@ private:
     
 private:
     void PlanningLoop(Solver*& solver, World* world, DSPOMDP* model, Logger* logger);
-    bool RunStep(State* solver, World* world, DSPOMDP* model, Logger* logger); 
-    void InitializeWorld(int argc, char* argv[]);
+    bool RunStep(Solver* solver, World* world, DSPOMDP* model, Logger* logger); 
     void InitializeDefaultParameters(); 
+    Solver* CPInitializeSolver(DSPOMDP *model, Belief *belief);
+    std::string ChooseSolver();
     DSPOMDP* InitializeModel(option::Option* options);
+    World* InitializeWorld(std::string& world_type, DSPOMDP* model, option::Option* options);
 
 };

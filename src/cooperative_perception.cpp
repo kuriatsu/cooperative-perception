@@ -8,47 +8,66 @@ int CooperativePerception::RunPlanning(int argc, char* argv[])
 {
     // models
     operator_model_ = new OperatorModel();
-    vehicle_model_ = new VehicleModel(_delta_t);
+    vehicle_model_ = new VehicleModel(delta_t_);
 
     bool search_solver;
     int num_runs = 1;
     string world_type = "simulator";
-    string belief_type = "DEFAULT";
     int time_limit = -1;
 
-    option::Option *options = InitializeParamers(argc, argv, solver_type_,
-                search_solver, num_runs, world_type, belief_type, time_limit);
-    if(options==nullptr)
+    option::Option *options_ = InitializeParamers(argc, argv, policy_type_,
+                search_solver, num_runs, world_type, belief_type_, time_limit);
+    if(options_==nullptr)
         return 0;
     clock_t main_clock_start = clock();
 
-    DSPOMDP *model = InitializeModel(options);
+    DSPOMDP *model = InitializeModel(options_);
     assert(model != nullptr);
     // model_ = new CPPOMDP(planning_horizon_, risk_thresh_, vehicle_model_, operator_model_, delta_t_);
 
-    world_ = InitializeWorld("simulator", model_, options_);
+    World* world = InitializeWorld(world_type, model, options_);
     assert(world != nullptr);
 
     Belief *belief = nullptr;
     Solver *solver = nullptr;
     Logger *logger = nullptr;
 
-    InitializeLogger(logger, options, model, belief, solver, num_runs,
+    InitializeLogger(logger, options_, model, belief, solver, num_runs,
             main_clock_start, world, world_type, time_limit, policy_type_);
 
-    DisplayParameters(options_, model_);
+    DisplayParameters(options_, model);
 
-    logger_->InitRound(world->GetCurrentState());
+    logger->InitRound(world->GetCurrentState());
     round_=0; step_=0;
     PlanningLoop(solver, world, model, logger);
-    logger_->EndRound();
+    logger->EndRound();
 
     delete world;
-    PrintResult(1, logger_, main_clock_start);
+    PrintResult(1, logger, main_clock_start);
 
     return 0;
 }
 
+Solver* CooperativePerception::CPInitializeSolver(DSPOMDP *model, Belief *belief)
+{
+    Solver* solver = nullptr;
+    if (policy_type_ == "DESPOT") {
+        solver = InitializeSolver(model, belief, policy_type_, options_);
+
+    } else if (policy_type_ == "NOREQUEST") {
+        solver = new NoRequestModel();
+        solver->belief(belief);
+
+    } else if (policy_type_ == "MYOPIC") {
+        solver = new MyopicModel(vehicle_model_, 
+                                 operator_model_, 
+                                 cp_state_, 
+                                 cp_values_);
+        solver->belief(belief);
+    }
+
+    return solver;
+}
 
 
 void CooperativePerception::PlanningLoop(Solver*& solver, World* world, DSPOMDP* model, Logger* logger) 
@@ -59,7 +78,7 @@ void CooperativePerception::PlanningLoop(Solver*& solver, World* world, DSPOMDP*
     }
 }
 
-bool CooperativePerception::RunStep(State* solver, World* world, DSPOMDP* model, Logger* logger)
+bool CooperativePerception::RunStep(Solver* solver, World* world, DSPOMDP* model, Logger* logger)
 {
 
     logger->CheckTargetTime();
@@ -68,31 +87,19 @@ bool CooperativePerception::RunStep(State* solver, World* world, DSPOMDP* model,
     CPWorld* cp_world = static_cast<CPWorld*>(world);
     CPPOMDP* cp_model = static_cast<CPPOMDP*>(model);
 
-    if (cp_world->IsTerminate())
-    {
-        return true;
-    }
 
     std::vector<double> likelihood_list;
-    std::shared_ptr<CPState> *state = std::make_shared<CPState>();
-    cp_world->GetCurrentState(state, likelihood_list)
+    State *state = new State();
+    cp_world->GetCurrentState(state, likelihood_list);
 
-    Belief* belief = cp_model->InitialBelief(state, likelihood_list, belief_type);
+    Belief* belief = cp_model->InitialBelief(state, likelihood_list, belief_type_);
     assert(belief != NULL);
     // solver->belief(belief);
 
-    solver = InitializeSolver(model, belief, "DESPOT", options);
+    solver = CPInitializeSolver(model, belief);
 
     double start_t = get_time_second();
-
-    ACT_TYPE action;
-    if (policy_type == "MYOPIC")
-        action = MyopicAction();
-    else if (policy_type == "EGOISTIC")
-        action = EgoisticAction();
-    else
-        action = solver->Search().action;
-
+    ACT_TYPE action = solver->Search().action;
     double end_t = get_time_second();
     double search_time = end_t - start_t;
 
@@ -108,22 +115,22 @@ bool CooperativePerception::RunStep(State* solver, World* world, DSPOMDP* model,
     end_t = get_time_second();
     double update_time = end_t - start_t;
 
-    cp_world->UpdatePerception(cp_model->GetPerceptionLikelihood(belief));
+    cp_world->UpdatePerception(action, obs, cp_model->GetPerceptionLikelihood(belief));
 
     return logger->SummarizeStep(step_++, round_, terminal, action, obs, step_start_t);
 }
 
 
-void CooperativePerception::InitializeWorld(int argc, char* argv[])
+World* CooperativePerception::InitializeWorld(std::string& world_type, DSPOMDP* model, option::Option* options)
 {
-    std::shared_ptr<CPWorld> world = std::make_shared<CPWorld>(argc, argv);
+    CPWorld* world = new CPWorld();
     world->Connect();
     world->Initialize();
     return world;
 }
 
 std::string CooperativePerception::ChooseSolver() {
-    return "DESPOT";
+    return policy_type_;
 }
 
 void CooperativePerception::InitializeDefaultParameters() 
@@ -134,9 +141,9 @@ void CooperativePerception::InitializeDefaultParameters()
 }
 
 
-DSPOMDP* InitializeModel(option::Option* options)
+DSPOMDP* CooperativePerception::InitializeModel(option::Option* options)
 {
-    std::shared_ptr<DSPOMDP> model = std::make_shared<CPPOMDP>();
+    CPPOMDP* model = new CPPOMDP(planning_horizon_, risk_thresh_, vehicle_model_, operator_model_, delta_t_);
     return model;
 }
 

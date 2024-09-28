@@ -48,7 +48,7 @@ ament_export_dependencies(rosidl_default_runtime)
 # cooperative_perception
 ############################
 
-add_executable(${PROJECT_NAME}_node src/cooperative_perception.cpp src/cp_pomdp.cpp src/cp_world.cpp src/operator_model.cpp src/vehicle_model.cpp)
+add_executable(${PROJECT_NAME}_node src/cooperative_perception.cpp src/cp_pomdp.cpp src/cp_world.cpp src/operator_model.cpp src/vehicle_model.cpp src/modelbase_planner.cpp)
 ament_target_dependencies(${PROJECT_NAME}_node
   rclcpp
   autoware_auto_perception_msgs

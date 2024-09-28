@@ -42,7 +42,7 @@ private:
 	int r_comf           = -1;
 	int r_request        = -1;
 
-    int m_max_perception_num = 3;
+    int max_perception_num_ = 3;
 
 public:
     CPPOMDP(int planning_horizon, double risk_thresh, VehicleModel* vehicle_model, OperatorModel* operator_model, double delta_t); 
@@ -50,20 +50,20 @@ public:
     CPPOMDP();
 
 	// state transition parameter
-	int    m_planning_horizon;
-	double m_yield_speed;
-	double m_max_speed;
-	double m_risk_thresh;
-    double m_delta_t;
+	int    planning_horizon_;
+	double yield_speed_;
+	double max_speed_;
+	double risk_thresh_;
+    double delta_t_;
 
 	// recognition likelihood of the ADSbelief(belief);::vector<double> risk_recog;
-    std::vector<double> m_recog_likelihood;
-	// std::vector<int> m_risk_positions;
+    std::vector<double> recog_likelihood_;
+	// std::vector<int> risk_positions_;
 
-    VehicleModel* m_vehicle_model;
-    OperatorModel* m_operator_model;
-    CPState* m_start_state;
-    TAValues* m_cp_values;
+    VehicleModel* vehicle_model_;
+    OperatorModel* operator_model_;
+    CPState* start_state_;
+    TAValues* cp_values_;
 
 public:
 	// Essential
