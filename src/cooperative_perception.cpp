@@ -48,25 +48,28 @@ int CooperativePerception::RunPlanning(int argc, char* argv[])
     return 0;
 }
 
-Solver* CooperativePerception::CPInitializeSolver(DSPOMDP *model, Belief *belief)
+Solver* CooperativePerception::CPInitializeSolver(DSPOMDP *model, Belief *belief, World *world)
 {
-    Solver* solver = nullptr;
     if (policy_type_ == "DESPOT") {
-        solver = InitializeSolver(model, belief, policy_type_, options_);
+        Solver *solver = InitializeSolver(model, belief, policy_type_, options_);
+        return solver;
 
     } else if (policy_type_ == "NOREQUEST") {
-        solver = new NoRequestModel();
+        NoRequestModel *solver = new NoRequestModel(model, belief, world);
         solver->belief(belief);
+        return solver;
 
     } else if (policy_type_ == "MYOPIC") {
-        solver = new MyopicModel(vehicle_model_, 
-                                 operator_model_, 
-                                 cp_state_, 
-                                 cp_values_);
+        MyopicModel *solver = new MyopicModel(model,
+                                 belief,
+                                 vehicle_model_, 
+                                 operator_model_,
+                                 world);
+
         solver->belief(belief);
+        return solver;
     }
 
-    return solver;
 }
 
 
@@ -90,13 +93,13 @@ bool CooperativePerception::RunStep(Solver* solver, World* world, DSPOMDP* model
 
     std::vector<double> likelihood_list;
     State *state = new State();
-    cp_world->GetCurrentState(state, likelihood_list);
+    cp_world->GetCurrentState(state, likelihood_list, risk_thresh_);
 
     Belief* belief = cp_model->InitialBelief(state, likelihood_list, belief_type_);
     assert(belief != NULL);
     // solver->belief(belief);
 
-    solver = CPInitializeSolver(model, belief);
+    solver = CPInitializeSolver(model, belief, world);
 
     double start_t = get_time_second();
     ACT_TYPE action = solver->Search().action;
@@ -105,7 +108,7 @@ bool CooperativePerception::RunStep(Solver* solver, World* world, DSPOMDP* model
 
     start_t = get_time_second();
     OBS_TYPE obs;
-    bool terminal = cp_world->ExecuteAction(action, obs);
+    bool terminal = cp_world->CPExecuteAction(action, obs);
     end_t = get_time_second();
     double execute_time = end_t - start_t;
 
@@ -137,7 +140,7 @@ void CooperativePerception::InitializeDefaultParameters()
 {
     Globals::config.num_scenarios = 100;
     Globals::config.sim_len = 90;
-    Globals::config.time_per_move = 2.0; 
+    Globals::config.time_per_move = 1.0; 
 }
 
 

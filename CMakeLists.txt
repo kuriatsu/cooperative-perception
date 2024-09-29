@@ -17,13 +17,14 @@ find_package(std_msgs REQUIRED)
 
 # set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} $ENV{DESPOT_ROOT}/build)
 message($ENV{DESPOT_ROOT})
-find_package(Despot REQUIRED)
-# find_package(Despot REQUIRED PATHS $ENV{DESPOT_ROOT})
+#find_package(Despot REQUIRED)
+find_package(Despot REQUIRED PATHS $ENV{DESPOT_ROOT})
 
 include_directories(
     include
     ${DESPOT_INCLUDE_DIRS}
 )
+message(${DESPOT_INCLUDE_DIRS})
 # target_include_directories(${PROJECT_NAME} PUBLIC
 #     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}/include>
 #   $<INSTALL_INTERFACE:include>)

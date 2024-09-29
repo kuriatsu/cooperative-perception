@@ -48,7 +48,7 @@ private:
     void PlanningLoop(Solver*& solver, World* world, DSPOMDP* model, Logger* logger);
     bool RunStep(Solver* solver, World* world, DSPOMDP* model, Logger* logger); 
     void InitializeDefaultParameters(); 
-    Solver* CPInitializeSolver(DSPOMDP *model, Belief *belief);
+    Solver* CPInitializeSolver(DSPOMDP *model, Belief *belief, World *world);
     std::string ChooseSolver();
     DSPOMDP* InitializeModel(option::Option* options);
     World* InitializeWorld(std::string& world_type, DSPOMDP* model, option::Option* options);

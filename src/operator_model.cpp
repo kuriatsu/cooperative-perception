@@ -19,7 +19,7 @@ double OperatorModel::InterventionAccuracy(const int time) const {
 
 int OperatorModel::ExecIntervention(const int time, const int action, const std::string target, const bool risk) const {
 
-    if (action == CPValues::RECOG || action == CPValues::NO_ACTION) {
+    if (action == CPValues::NO_ACTION) {
         _last_target_id = "NONE";
         return CPValues::NONE;
     }

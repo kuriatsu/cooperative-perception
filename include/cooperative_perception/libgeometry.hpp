@@ -2,6 +2,62 @@
 
 #include <iostream>
 #include <math.h>
+#include "despot/interface/pomdp.h"
+
+namespace despot {
+
+class CPState : public State {
+public:
+	int ego_pose;
+    double ego_speed;
+	std::vector<bool> ego_recog;
+	int req_time;
+	int req_target;
+    std::vector<int> risk_pose;
+
+	// hidden state
+	std::vector<bool> risk_bin;
+    
+    CPState() : State() {
+        ego_pose = 0;
+        ego_speed = 11.2;
+        req_time = 0;
+        req_target = 0;
+        // ego_recog = {false, true, true};
+        // risk_pose = {80, 100, 120};
+        // risk_bin = {true, true, false};
+        ego_recog = {false, false, true};
+        risk_pose = {60, 100, 120};
+        risk_bin = {false, false, true};
+    }
+
+    CPState(int _ego_pose, float _ego_speed, std::vector<bool> _ego_recog, int _req_time, int _req_target, std::vector<bool> _risk_bin, std::vector<int> _risk_pose) :
+            ego_pose(_ego_pose),
+            ego_speed(_ego_speed),
+            ego_recog(_ego_recog),
+            req_time(_req_time),
+            req_target(_req_target),
+            risk_pose(_risk_pose),
+            risk_bin(_risk_bin)	{
+    }
+
+    ~CPState() {
+    }
+
+    std::string text() const {
+        return "ego_pose: " + to_string(ego_pose) + "\n" + 
+               "ego_speed: " + to_string(ego_speed) + "\n" + 
+               "ego_recog: " + to_string(ego_recog) + "\n" +
+               "req_time: " + to_string(req_time) + "\n" +
+               "req_target: " + to_string(req_target) + "\n" +
+               "risk_pose: " + to_string(risk_pose) + "\n" +
+               "risk_bin: " + to_string(risk_bin) + "\n"; 
+        // return "";
+    }
+};
+
+}
+
 
 class Pose {
 public:

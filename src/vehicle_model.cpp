@@ -3,21 +3,21 @@
 VehicleModel::VehicleModel() :
         max_speed_(11.2),
         yield_speed_(2.8),
-        _max_accel(0.15*9.8),
+        max_accel_(0.15*9.8),
         max_decel_(0.3*9.8),
         min_decel_(0.2*9.8),
         safety_margin_(5),
         delta_t_(1.0) {
         }
 
-VehicleModel::VehicleModel(const double delta_t);
+VehicleModel::VehicleModel(const double delta_t):
         delta_t_(delta_t) {
         }
 
 VehicleModel::VehicleModel(double max_speed, double yield_speed, double max_accel, double max_decel, double min_decel, double safety_margin, double delta_t) :
         max_speed_(max_speed_),
         yield_speed_(yield_speed_),
-        _max_accel(max_accel_),
+        max_accel_(max_accel_),
         max_decel_(max_decel_),
         min_decel_(min_decel_),
         safety_margin_(safety_margin_),
@@ -67,7 +67,7 @@ double VehicleModel::GetAccel(const double speed, const int pose, const std::vec
     }
 
     if (speed < max_speed_ || speed < yield_speed_) 
-        acc_list.emplace_back(_max_accel);
+        acc_list.emplace_back(max_accel_);
 
     double min_acc = 1000.0;
     for (const auto itr : acc_list) {
@@ -91,8 +91,8 @@ double VehicleModel::ClipSpeed(const double acc, const double v0) const{
     double clipped_acc=acc;
 
     // std::cout << "acc : " << acc << " : max_decel : " << max_decel_ << " v0 : " << v0 << " yield: " << yield_speed_ << std::endl;
-    if (acc >= 0.0 && acc > _max_accel)
-        clipped_acc = _max_accel;
+    if (acc >= 0.0 && acc > max_accel_)
+        clipped_acc = max_accel_;
     else if (acc < 0.0 && acc < -max_decel_)
         clipped_acc = -max_decel_;
 

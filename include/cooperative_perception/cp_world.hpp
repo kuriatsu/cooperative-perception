@@ -11,19 +11,21 @@
 
 using namespace despot;
 
-class CPWorld: public World, public rclcpp::Node {
+class CPWorld: public World {
 private:
-    // recognition result
-    std::map<std::int8_t, unique_identifier_msgs::msg::UUID> id_idx_list_;
 
     // store previous state
     CPState* cp_state_;
-    std::vector<unique_identifier_msgs::msg::UUID> req_target_history_;
     std::vector<OBS_TYPE> obs_history_;
 
     // act, obs -> target index mapping
     CPValues* cp_values_;
+    std::shared_ptr<rclcpp::Node> node_;
 
+public:
+    // recognition result
+    std::map<int, unique_identifier_msgs::msg::UUID> id_idx_list_;
+    std::vector<unique_identifier_msgs::msg::UUID> req_target_history_;
 
 public:
     CPWorld ();
@@ -32,8 +34,9 @@ public:
     bool Connect (int argc, char* argv[]);
     bool Connect ();
     State* GetCurrentState ();
-    void GetCurrentState (State* state, std::vector<double> &likelihood_list);
-    bool ExecuteAction (ACT_TYPE action, OBS_TYPE& obs);
+    void GetCurrentState (State* state, std::vector<double> &likelihood_list, const double risk_thresh);
+    bool ExecuteAction (ACT_TYPE action, OBS_TYPE &obs);
+    bool CPExecuteAction (ACT_TYPE &action, OBS_TYPE &obs);
     void UpdatePerception (const ACT_TYPE &action, const OBS_TYPE &obs, const std::vector<double> &risk_probs);
 
 
