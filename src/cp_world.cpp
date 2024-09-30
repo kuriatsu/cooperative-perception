@@ -25,6 +25,7 @@ bool CPWorld::Connect()
     rclcpp::init(argc, argv);
     node_ = rclcpp::Node::make_shared("CPWorldNode");
     rclcpp::spin(node_);
+    return true;
 }
 
 
@@ -70,7 +71,7 @@ void CPWorld::GetCurrentState(State* state, std::vector<double> &likelihood_list
 
     id_idx_list_.clear();
 
-    for (int i=0; i<sizeof(result.get()->object_id)/sizeof(unique_identifier_msgs::msg::UUID); i++) 
+    for (int i=0; i<int(sizeof(result.get()->object_id)/sizeof(unique_identifier_msgs::msg::UUID)); i++) 
     {
         id_idx_list_[i] = result.get()->object_id[i];
         double &likelihood = result.get()->likelihood[i];

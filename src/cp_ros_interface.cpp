@@ -74,6 +74,8 @@ void CPRosInterface::InterventionService(const std::shared_ptr<cooperative_perce
 
 void CPRosInterface::CurrentStateService(const std::shared_ptr<cooperative_perception::srv::State::Request> request, std::shared_ptr<cooperative_perception::srv::State::Response> response)
 {
+    if (!request->request) return;
+
     std::vector<int> distances; 
     std::vector<double> probs;
     std::vector<unique_identifier_msgs::msg::UUID> ids;

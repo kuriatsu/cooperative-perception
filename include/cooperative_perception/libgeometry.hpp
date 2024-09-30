@@ -89,12 +89,7 @@ public:
     Pose() {
     }
 
-    Pose transformTo(const Pose& origin);
-
-};
-
-
-Pose Pose::transformTo(const Pose& origin) {
+    Pose transformTo(const Pose& origin) {
     // transform target position to ego vehicle coordinage
     double s_x, s_y, r_x, r_y;
     s_x = x - origin.x;
@@ -104,6 +99,8 @@ Pose Pose::transformTo(const Pose& origin) {
     Pose out_pose(r_x, r_y);
     return out_pose; 
 }
+};
+
 
 class Risk {
 public:

@@ -18,9 +18,9 @@ find_package(std_msgs REQUIRED)
 # set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} $ENV{DESPOT_ROOT}/build)
 message($ENV{DESPOT_ROOT})
 #find_package(Despot REQUIRED)
-find_package(Despot REQUIRED PATHS $ENV{DESPOT_ROOT})
+find_package(Despot CONFIG REQUIRED PATHS $ENV{DESPOT_ROOT})
 
-include_directories(
+include_directories (
     include
     ${DESPOT_INCLUDE_DIRS}
 )
@@ -56,13 +56,17 @@ ament_target_dependencies(${PROJECT_NAME}_node
   autoware_auto_planning_msgs
   geometry_msgs
   unique_identifier_msgs
-  Despot
 )
+target_link_libraries(${PROJECT_NAME}_node despot)
 
 install(TARGETS ${PROJECT_NAME}_node
   DESTINATION lib/${PROJECT_NAME})
 
-rosidl_target_interfaces(${PROJECT_NAME}_node ${PROJECT_NAME} "rosidl_typesupport_cpp")
+## ros galactic or lower
+# rosidl_target_interfaces(${PROJECT_NAME}_node ${PROJECT_NAME} "rosidl_typesupport_cpp")
+## ros humble
+rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
+target_link_libraries(${PROJECT_NAME}_node "${cpp_typesupport_target}")
 
 ############################
 # cp_ros_interface
@@ -76,8 +80,11 @@ ament_target_dependencies(cp_ros_interface_node
   geometry_msgs
   unique_identifier_msgs
 )
-# to use Intervention.msg
-rosidl_target_interfaces(cp_ros_interface_node ${PROJECT_NAME} "rosidl_typesupport_cpp")
+
+## to use Intervention.msg
+# rosidl_target_interfaces(cp_ros_interface_node ${PROJECT_NAME} "rosidl_typesupport_cpp")
+rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
+target_link_libraries(cp_ros_interface_node "${cpp_typesupport_target}")
 
 
 install(TARGETS cp_ros_interface_node
