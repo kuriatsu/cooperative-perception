@@ -2,9 +2,6 @@
 
 CPWorld::CPWorld()
 {
-    intervention_client_ = node_->create_client<cooperative_perception::srv::Intervention>("intervention");
-    current_state_client_ = node_->create_client<cooperative_perception::srv::State>("cp_current_state");
-    update_perception_client_ = node_->create_client<cooperative_perception::srv::UpdatePerception>("cp_updated_target");
 }
 
 CPWorld::~CPWorld() {
@@ -24,10 +21,20 @@ bool CPWorld::Connect()
     char** argv;
     rclcpp::init(argc, argv);
     node_ = rclcpp::Node::make_shared("CPWorldNode");
-    rclcpp::spin(node_);
+
+    intervention_client_ = node_->create_client<cooperative_perception::srv::Intervention>("intervention");
+    current_state_client_ = node_->create_client<cooperative_perception::srv::State>("cp_current_state");
+    update_perception_client_ = node_->create_client<cooperative_perception::srv::UpdatePerception>("cp_updated_target");
+
+    rclcpp::spin_some(node_);
     return true;
 }
 
+
+void CPWorld::Step() 
+{
+    rclcpp::spin_some(node_);
+}
 
 State* CPWorld::GetCurrentState() {
     return static_cast<State*>(cp_state_);
@@ -45,16 +52,16 @@ void CPWorld::GetCurrentState(State* state, std::vector<double> &likelihood_list
     {
         if (!rclcpp::ok())
         {
-            RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "[cp_world_node] Interrupted while waiting for service. Exit");
+            RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "[cp_world::GetCurrentState] Interrupted while waiting for service. Exit");
             return;
         } 
-        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "[cp_world_node] service not available");
+        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "[cp_world::GetCurrentState] service not available");
     }
 
     auto result = current_state_client_->async_send_request(request);
     if (rclcpp::spin_until_future_complete(node_, result) != rclcpp::FutureReturnCode::SUCCESS)
     {
-        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "[cp_world_node] failed to call service Intervention");
+        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "[cp_world::GetCurrentState] failed to call service Intervention");
         return;
     }
 
@@ -161,17 +168,17 @@ bool CPWorld::CPExecuteAction(ACT_TYPE &action, OBS_TYPE& obs) {
     {
         if (!rclcpp::ok())
         {
-            RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "[cp_world_node] Interrupted while waiting for service. Exit");
+            RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "[cp_world::CPExecuteAction] Interrupted while waiting for service. Exit");
             return false;
         } 
-        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "[cp_world_node] service not available");
+        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "[cp_world::CPExecuteAction] service not available");
     }
 
     /* send request */
     auto result = intervention_client_->async_send_request(request);
     if (rclcpp::spin_until_future_complete(node_, result) != rclcpp::FutureReturnCode::SUCCESS)
     {
-        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "[cp_world_node] failed to call service Intervention");
+        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "[cp_world::CPExecuteAction] failed to call service Intervention");
         return false;
     }
 
@@ -187,7 +194,7 @@ bool CPWorld::CPExecuteAction(ACT_TYPE &action, OBS_TYPE& obs) {
             obs = intervention_result;
             break;
         }
-        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "[cp_world_node] intervention target no longer exist");
+        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "[cp_world::CPExecuteAction] intervention target no longer exist");
     }
 
     obs_history_.emplace_back(obs);
@@ -208,18 +215,18 @@ void CPWorld::UpdatePerception (const ACT_TYPE &action, const OBS_TYPE &obs, con
     /* throw request */
     while (!update_perception_client_->wait_for_service(1s)) {
         if (!rclcpp::ok()) {
-            RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "[cp_world_node::update_perception_client] Interrupted while waiting for service. Exit");
+            RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "[cp_world::update_perception_client] Interrupted while waiting for service. Exit");
             return;
         } 
 
-        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "[cp_world_node::update_perception_client] service not available");
+        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "[cp_world::update_perception_client] service not available");
     }
 
     /* get request */
     auto result = update_perception_client_->async_send_request(request);
 
     if (rclcpp::spin_until_future_complete(node_, result) != rclcpp::FutureReturnCode::SUCCESS) {
-        RCLCPP_ERROR (rclcpp::get_logger("rclcpp"), "[cp_world_node::update_perception_client] failed to call service Intervention");
+        RCLCPP_ERROR (rclcpp::get_logger("rclcpp"), "[cp_world::update_perception_client] failed to call service Intervention");
         return;
     }
 }

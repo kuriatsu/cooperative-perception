@@ -24,6 +24,10 @@ include_directories (
     include
     ${DESPOT_INCLUDE_DIRS}
 )
+link_directories (
+    ${DESPOT_LIBRARIES}
+    ${DESPOT_ROOT}/../../
+)
 message(${DESPOT_INCLUDE_DIRS})
 # target_include_directories(${PROJECT_NAME} PUBLIC
 #     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}/include>

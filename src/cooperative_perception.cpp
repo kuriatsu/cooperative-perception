@@ -119,6 +119,7 @@ bool CooperativePerception::RunStep(Solver* solver, World* world, DSPOMDP* model
     double update_time = end_t - start_t;
 
     cp_world->UpdatePerception(action, obs, cp_model->GetPerceptionLikelihood(belief));
+    cp_world->Step();
 
     return logger->SummarizeStep(step_++, round_, terminal, action, obs, step_start_t);
 }
@@ -126,9 +127,11 @@ bool CooperativePerception::RunStep(Solver* solver, World* world, DSPOMDP* model
 
 World* CooperativePerception::InitializeWorld(std::string& world_type, DSPOMDP* model, option::Option* options)
 {
+    std::cout << "debug" << std::endl;
     CPWorld* world = new CPWorld();
     world->Connect();
     world->Initialize();
+    world->Step();
     return world;
 }
 
