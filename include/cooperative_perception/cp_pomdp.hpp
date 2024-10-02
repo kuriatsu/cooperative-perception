@@ -11,9 +11,9 @@ namespace despot {
 class CPPOMDP: public DSPOMDP {
 protected:
 	mutable MemoryPool<CPState>      memory_pool;
-	std::vector<CPState*>            states;
-	mutable std::vector<ValuedAction> mdp_policy;
-	OperatorModel                     operator_model;
+	// std::vector<CPState*>            states;
+	// mutable std::vector<ValuedAction> mdp_policy;
+	// OperatorModel                     operator_model;
 	
 private:
 	// reward
@@ -25,11 +25,6 @@ private:
 
     int max_perception_num_ = 3;
 
-public:
-    CPPOMDP (int planning_horizon, double risk_thresh, VehicleModel* vehicle_model, OperatorModel* operator_model, double delta_t); 
-    CPPOMDP (const double delta_t_, const std::vector<int> risk_pose_, const std::vector<double> risk_likelihood_);
-    CPPOMDP ();
-
 	// state transition parameter
 	int    planning_horizon_;
 	double yield_speed_;
@@ -37,21 +32,26 @@ public:
 	double risk_thresh_;
     double delta_t_;
 
-	// recognition likelihood of the ADSbelief(belief);::vector<double> risk_recog;
-    std::vector<double> risk_likelihood_;
-	// std::vector<int> risk_positions_;
+
+public:
+    CPPOMDP ();
+    CPPOMDP (const int planning_horizon, const double risk_thresh, const double delta_t, VehicleModel* vehicle_model, OperatorModel* operator_model, State* state); 
+
 
     VehicleModel* vehicle_model_;
     OperatorModel* operator_model_;
-    CPState* cp_state_;
+    // CPState* cp_state_;
     CPValues* cp_values_;
+	// recognition likelihood of the ADSbelief(belief);::vector<double> risk_recog;
+    // std::vector<double> risk_likelihood_;
+	// std::vector<int> risk_positions_;
+
 
 public:
 	// Essential
 	int NumActions() const;
 	bool Step (State& state, double rand_num, ACT_TYPE action, double& reward, OBS_TYPE& obs) const;
 	double ObsProb (OBS_TYPE obs, const State& state, ACT_TYPE action) const;
-	State* CreateStartState (std::string type="DEFAULT") const;
 	Belief* InitialBelief (const State* start, std::string type = "DEFAULT") const;
 	Belief* InitialBelief (const State* start, const std::vector<double>& likelihood, std::string type = "DEFAULT") const;
 

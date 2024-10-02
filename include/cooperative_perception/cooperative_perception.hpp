@@ -51,6 +51,8 @@ private:
     Solver* CPInitializeSolver(DSPOMDP *model, Belief *belief, World *world);
     std::string ChooseSolver();
     DSPOMDP* InitializeModel(option::Option* options);
+    CPPOMDP* InitializeModel (State* state);
+    World* InitializeWorld(int argc, char* argv[], std::string& world_type, DSPOMDP* model, option::Option* options);
     World* InitializeWorld(std::string& world_type, DSPOMDP* model, option::Option* options);
 
 };

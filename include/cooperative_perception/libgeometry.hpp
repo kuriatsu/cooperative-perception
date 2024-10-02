@@ -26,9 +26,9 @@ public:
         // ego_recog = {false, true, true};
         // risk_pose = {80, 100, 120};
         // risk_bin = {true, true, false};
-        ego_recog = {false, false, true};
-        risk_pose = {60, 100, 120};
-        risk_bin = {false, false, true};
+        ego_recog = std::vector<bool>();
+        risk_pose = std::vector<int>();
+        risk_bin = std::vector<bool>();
     }
 
     CPState(int _ego_pose, float _ego_speed, std::vector<bool> _ego_recog, int _req_time, int _req_target, std::vector<bool> _risk_bin, std::vector<int> _risk_pose) :
@@ -139,11 +139,13 @@ private:
     int request_head = 1;
     int max_action_num = 2;
 
+    int num_targets = 1;
+
 public:
     CPValues() {
     };
 
-    CPValues(int num_targets){
+    CPValues(int _num_targets){
         if (num_targets == 0) {
             no_action_head = 0;
             request_head = 0;
@@ -151,7 +153,8 @@ public:
         }
         no_action_head = 0;
         request_head = 1;
-        max_action_num = 1 + num_targets;
+        max_action_num = 1 + _num_targets;
+        num_targets = _num_targets;
     };
 
     enum OBS {NONE, NO_RISK, RISK};
@@ -159,6 +162,10 @@ public:
 
     int numActions() {
         return max_action_num;
+    };
+
+    int getNumTargets() {
+        return num_targets;
     };
 
     int getActionTarget(int action) const {

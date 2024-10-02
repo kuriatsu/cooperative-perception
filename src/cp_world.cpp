@@ -2,6 +2,7 @@
 
 CPWorld::CPWorld()
 {
+    cp_state_ = new CPState();
 }
 
 CPWorld::~CPWorld() {
@@ -16,9 +17,12 @@ State* CPWorld::Initialize()
 
 
 bool CPWorld::Connect()
+{
+    return true;
+}
+
+bool CPWorld::Connect(int argc, char* argv[])
 { 
-    int argc;
-    char** argv;
     rclcpp::init(argc, argv);
     node_ = rclcpp::Node::make_shared("CPWorldNode");
 
@@ -48,6 +52,7 @@ void CPWorld::GetCurrentState(State* state, std::vector<double> &likelihood_list
     auto request = std::make_shared<cooperative_perception::srv::State::Request>();
     request->request = true;
 
+    std::cout << "send request" << std::endl;
     while (!current_state_client_->wait_for_service(1s))
     {
         if (!rclcpp::ok())
@@ -69,26 +74,30 @@ void CPWorld::GetCurrentState(State* state, std::vector<double> &likelihood_list
     // check wether last request target still exists in the perception targets
     bool is_last_req_target_exist = false;
 
+    std::cout << "start store result" << std::endl;
+    std::shared_ptr<cooperative_perception::srv::State::Response> buf_result = result.get();
     cp_state_->risk_pose.clear();
     cp_state_->ego_recog.clear();
     cp_state_->risk_bin.clear();
     cp_state_->ego_pose = 0;
-    cp_state_->ego_speed = result.get()->ego_speed;
-    cp_state_->risk_pose = result.get()->risk_pose;
+    cp_state_->ego_speed = buf_result->ego_speed;
 
     id_idx_list_.clear();
 
-    for (int i=0; i<int(sizeof(result.get()->object_id)/sizeof(unique_identifier_msgs::msg::UUID)); i++) 
+
+    for (auto it = buf_result->object_id.begin(), end = buf_result->object_id.end(); it != end; ++it) 
     {
-        id_idx_list_[i] = result.get()->object_id[i];
-        double &likelihood = result.get()->likelihood[i];
+        int i = std::distance(it, buf_result->object_id.begin());
+        id_idx_list_[i] = *it;
+        double &likelihood = buf_result->likelihood[i];
         likelihood_list.emplace_back(likelihood);
 
         cp_state_->ego_recog.emplace_back(likelihood>risk_thresh);
         cp_state_->risk_bin.emplace_back(likelihood>risk_thresh);
+        cp_state_->risk_pose.emplace_back(buf_result->risk_pose[i]);
 
         /* is this request target (index can change at each time step) */
-        if (req_target_history_.size() > 0 && req_target_history_.back().uuid == result.get()->object_id[i].uuid) {
+        if (req_target_history_.size() > 0 && req_target_history_.back().uuid == buf_result->object_id[i].uuid) {
             is_last_req_target_exist = true;
             cp_state_->req_target = i; 
         }
@@ -100,6 +109,7 @@ void CPWorld::GetCurrentState(State* state, std::vector<double> &likelihood_list
             "prob :" << likelihood << "\n" <<
             std::endl;
     }
+    std::cout << "finish store result " << cp_state_->risk_pose.size() << std::endl;
 
 
     // check last request and update request time
@@ -113,7 +123,7 @@ void CPWorld::GetCurrentState(State* state, std::vector<double> &likelihood_list
 
     cp_values_ = new CPValues(cp_state_->risk_pose.size());
 
-    state = static_cast<State*>(cp_state_);
+    state = cp_state_;
 }
 
 

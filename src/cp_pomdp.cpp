@@ -37,101 +37,7 @@ public:
                 if (cp_model->operator_model_->InterventionAccuracy(cp_state.req_time) <= 0.5) {
                     return cp_values->getAction(CPValues::REQUEST, cp_state.req_target);
                 }
-                // else if (cp_model->operator_model_->InterventionAccuracy(cp_state.req_time) == 1.0) {
-                //    if (obs != cp_state.ego_recog[cp_state.req_target]) {
-                //        return cp_values->getAction(CPValues::RECOG, cp_state.req_target);
-                //    }
-                //}
             }
-            
-//            else {
-//                double comf_stop_dist = vehicle_model->getDecelDistance(cp_state.ego_speed, vehicle_model->min_decel_, vehicle_model->safety_margin_);
-//                double harsh_stop_dist = vehicle_model->getDecelDistance(cp_state.ego_speed, vehicle_model->max_decel_, 0.0);
-//
-//                // std::cout << "create list" << "comf_stop_dist : " << comf_stop_dist << " harsh_stop_dist : " << harsh_stop_dist << std::endl;
-//                std::vector<int> recog_target_list, request_target_list;
-//                for (int i=0; i<cp_state.risk_pose.size(); ++i) {
-//
-//                    // if (cp_state.ego_recog[i] == cp_state.risk_bin[i] || cp_state.risk_pose[i] - cp_state.ego_pose < harsh_stop_dist)
-//                    if (cp_state.risk_pose[i] - cp_state.ego_pose < harsh_stop_dist)
-//                        continue;
-//
-////                    else if (cp_state.risk_pose[i] - cp_state.ego_pose < comf_stop_dist) {
-////                        bool in_history = false;
-////                        for (int j = history.Size()-1; j >= 0; j--) {
-////                            if (history.Action(j) == cp_values->getAction(CPValues::RECOG, i)) {
-////                                in_history = true;
-////                                break;
-////                            }
-////                        }
-////                        if (!in_history)
-////                            recog_target_list.emplace_back(i);
-////                    }
-////                    else {
-//
-//
-//
-//                    if (cp_state.risk_pose[i] - cp_state.ego_pose >= comf_stop_dist) {
-//                        bool in_history = false;
-//                        for (int j = history.Size()-1; j >= 0; j--) {
-//                            if (history.Action(j) == cp_values->getAction(CPValues::REQUEST, i)) {
-//                                // std::cout << "already in hist : " << i << std::endl;
-//                                in_history = true;
-//                                break;
-//                            }
-//                        }
-//                        if (!in_history)
-//                            request_target_list.emplace_back(i); 
-//                    }
-//                    if (cp_state.ego_recog[i] == CPValues::NO_RISK) {
-//                        recog_target_list.emplace_back(i);
-//                    }
-//                }
-//
-//                int recog_target = 1000, request_target = 1000, min_dist;
-//                min_dist = 1000;
-//                for(const auto idx : recog_target_list) {
-//                    if (min_dist > cp_state.risk_pose[idx]) {
-//                        min_dist = cp_state.risk_pose[idx];
-//                        recog_target = idx;
-//                    }
-//                }
-//                min_dist = 1000;
-//                for(const auto idx : request_target_list) {
-//                    if (min_dist > cp_state.risk_pose[idx]) {
-//                        min_dist = cp_state.risk_pose[idx];
-//                        request_target = idx;
-//                    }
-//                }
-
-                // std::cout << "#########" << std::endl;
-                // std::cout << cp_state.ego_pose << "," << harsh_stop_dist << "," << comf_stop_dist << cp_state.risk_bin << cp_state.ego_recog << request_target_list << recog_target_list << std::endl;
-//                // std::cout << "compare" << cp_state.ego_pose << "," << request_target << "," << recog_target << "comf_stop_dist : " << comf_stop_dist << " harsh_stop_dist : " << harsh_stop_dist << std::endl;
-                //    // std::cout << recog_target_list.size() << ", " << request_target_list.size() << std::endl;
-//                if (recog_target_list.size()==0 && request_target_list.size()==0) { 
-//                    // std::cout << "no action selected" << std::endl;
-//                    return cp_model->cp_values_->getAction(CPValues::NO_ACTION, 0);
-//                }
-//
-//                else if (recog_target_list.empty()) {
-//                    // std::cout <<  "request selected : " << request_target << std::endl;
-//                    return cp_values->getAction(CPValues::REQUEST, request_target);
-//                }
-//
-//                else if (request_target_list.empty()) {
-//                    // std::cout <<  "recog selected : " << recog_target << std::endl;
-//                    return cp_values->getAction(CPValues::RECOG, recog_target);
-//                }
-//                else if (cp_state.risk_pose[request_target] < cp_state.risk_pose[recog_target]) {
-//                    // std::cout <<  "request selected : " << request_target << std::endl;
-//                    return cp_values->getAction(CPValues::REQUEST, request_target);
-//                }
-//                else {
-//                    // std::cout <<  "recog selected : " << recog_target << std::endl;
-//                    return cp_values->getAction(CPValues::RECOG, recog_target);
-//                }
-//            }
-
         }
         return cp_model->cp_values_->getAction(CPValues::NO_ACTION, 0);
     }
@@ -149,57 +55,37 @@ public:
 //     double Value(const State& state) const {
 //         const CPState& cp_state = static_cast<const CPState&>(state);
         
-CPPOMDP::CPPOMDP(int planning_horizon, double risk_thresh, VehicleModel* vehicle_model, OperatorModel* operator_model, double delta_t){ 
-    planning_horizon_ = planning_horizon;
-    risk_thresh_ = risk_thresh; 
-    vehicle_model_ = vehicle_model;
-    operator_model_ = operator_model;
-    max_speed_ = vehicle_model_->max_speed_;
-    yield_speed_ = vehicle_model_->yield_speed_;
-    delta_t_ = delta_t;
-}
 
 CPPOMDP::CPPOMDP() {
     planning_horizon_ = 150;
     risk_thresh_ = 0.5; 
     // delta_t_ = Globals::config.time_per_move;
-    delta_t_ = 2.0;
+    delta_t_ = 1.0;
 
     vehicle_model_ = new VehicleModel();
     operator_model_ = new OperatorModel();
-    cp_state_ = new CPState();
-    cp_values_ = new CPValues(cp_state_->risk_pose.size());
-
-    vehicle_model_->delta_t_ = delta_t_;
-    max_speed_ = vehicle_model_->max_speed_;
-    yield_speed_ = vehicle_model_->yield_speed_;
-
-    risk_likelihood_ = {0.4, 0.4, 0.6};
-}
-
-CPPOMDP::CPPOMDP(const double delta_t, const std::vector<int> risk_pose, const std::vector<double> risk_likelihood)
-    : delta_t_(delta_t),
-      risk_likelihood_(risk_likelihood)
-    {
-    planning_horizon_ = 150;
-    risk_thresh_ = 0.5; 
-
-    vehicle_model_ = new VehicleModel();
-    operator_model_ = new OperatorModel();
-
-    std::vector<bool> risk_bin;
-    for (const auto likelihood : risk_likelihood_) {
-        risk_bin.emplace_back((likelihood > risk_thresh_) ? true : false);
-    }
-
-    cp_state_ = new CPState(0.0, max_speed_, risk_bin, 0, 0, risk_bin, risk_pose);
-    cp_values_ = new CPValues(cp_state_->risk_pose.size());
+    cp_values_ = new CPValues();
 
     vehicle_model_->delta_t_ = delta_t_;
     max_speed_ = vehicle_model_->max_speed_;
     yield_speed_ = vehicle_model_->yield_speed_;
 
 }
+
+
+CPPOMDP::CPPOMDP (const int planning_horizon, const double risk_thresh, const double delta_t, VehicleModel* vehicle_model, OperatorModel* operator_model, State* state) 
+    : planning_horizon_(planning_horizon),
+      risk_thresh_(risk_thresh),
+      delta_t_(delta_t),
+      vehicle_model_(vehicle_model),
+      operator_model_(operator_model),
+      yield_speed_(vehicle_model->yield_speed_),
+      max_speed_(vehicle_model->max_speed_)
+
+{ 
+    cp_values_ = new CPValues(static_cast<CPState*>(state)->risk_pose.size());
+}
+
 
 ScenarioUpperBound* CPPOMDP::CreateScenarioUpperBound(std::string name, std::string particle_bound_name) const {
     if (name == "TRIVIAL") {
@@ -233,7 +119,7 @@ ScenarioLowerBound* CPPOMDP::CreateScenarioLowerBound(std::string name, std::str
 
 
 int CPPOMDP::NumActions() const {
-	return 1 + cp_state_->risk_pose.size() * 2;
+	return cp_values_->numActions();
 }
 
 bool CPPOMDP::Step(State& state, double rand_num, ACT_TYPE action, double& reward, OBS_TYPE& obs)  const {
@@ -351,55 +237,13 @@ ValuedAction CPPOMDP::GetBestAction() const {
 }
 
 
-State* CPPOMDP::CreateStartState(string type) const {
-    return cp_state_;
-}
-
-Belief* CPPOMDP::InitialBelief(const State* start, std::string type) const {
-   
-    const CPState *cp_start_state = static_cast<const CPState*>(start);
-
-	// recognition likelihood of the automated system
-    vector<bool> buf(cp_start_state->risk_pose.size(), false);
-	vector<vector<bool>> risk_bin_list;
-	GetBinProduct(risk_bin_list, buf, 0); 
+Belief* CPPOMDP::InitialBelief (const State* start, std::string type) const 
+{
 	vector<State*> particles;
-
-	for (auto row : risk_bin_list) {
-		double prob = 1.0;
-		vector<bool> _ego_recog, _risk_bin;
-		// set ego_recog and risk_bin based on threshold
-		for (auto col=row.begin(), end=row.end(); col!=end; col++) {
-			int idx = distance(row.begin(), col);
-			_ego_recog.emplace_back((cp_start_state->ego_recog[idx] < risk_thresh_) ? false : true);
-			if (*col) {
-				prob *= risk_likelihood_[idx]; 
-				// prob *= 0.5 ; 
-				_risk_bin.emplace_back(true);
-			}
-			else {
-				prob *= 1.0 - risk_likelihood_[idx]; 
-				// prob *= 0.5; 
-				_risk_bin.emplace_back(false);
-			}
-		}
-
-        // TODO define based on the given sitiation
-		CPState* p = static_cast<CPState*>(Allocate(-1, prob));  
-		p->ego_pose = cp_start_state->ego_pose;
-		p->ego_speed = cp_start_state->ego_speed;
-		p->ego_recog = cp_start_state->ego_recog;
-		p->req_time = cp_start_state->req_time;
-	  	p->req_target = cp_start_state->req_target;
-	  	p->risk_pose = cp_start_state->risk_pose;
-		p->risk_bin = _risk_bin;
-        cout << *p << endl;
-		particles.push_back(p);
-	}
 	return new ParticleBelief(particles, this);
 }
 
-Belief* CPPOMDP::InitialBelief(const State* start, const std::vector<double>& likelihood, std::string type) const {
+Belief* CPPOMDP::InitialBelief (const State* start, const std::vector<double>& likelihood, std::string type) const {
    
     const CPState *cp_start_state = static_cast<const CPState*>(start);
 
@@ -442,7 +286,7 @@ Belief* CPPOMDP::InitialBelief(const State* start, const std::vector<double>& li
         cout << *p << endl;
 		particles.push_back(p);
 	}
-    std::cout << "initial belief" << std::endl;
+    std::cout << "[cp_pomdp.cpp] initial belief created" << std::endl;
 	return new ParticleBelief(particles, this);
 }
 
@@ -467,7 +311,7 @@ std::vector<double> CPPOMDP::GetPerceptionLikelihood(const Belief* belief) {
 	const vector<State*>& particles = static_cast<const ParticleBelief*>(belief)->particles();
 	
 	// double status = 0;
-	vector<double> probs(cp_state_->risk_pose.size(), 0.0);
+	vector<double> probs(cp_values_->getNumTargets(), 0.0);
 	for (int i = 0; i < particles.size(); i++) {
 		State* particle = particles[i];
 		CPState* state = static_cast<CPState*>(particle);
@@ -501,39 +345,6 @@ int CPPOMDP::NumActiveParticles() const {
 	return memory_pool.num_allocated();
 }
 
-// void CPPOMDP::syncCurrentState(State* state, std::vector<double>& likelihood_list) {
-//     std::cout << "sync current state" << std::endl;
-//     cp_state_ = static_cast<CPState*>(state);
-    
-//    // target number up to 3
-//    if (cp_state_->risk_pose.size() > max_perception_num_) {
-//        std::vector<double> pose_list;
-//        for (const auto pose : cp_state_->risk_pose) {
-//            pose_list.emplace_back(pose);
-//        }
-//        std::sort(pose_list.begin(), pose_list.end());
-//        
-//        // remove targets farther than the 4th target
-//        planning_horizon_ = pose_list[max_perception_num_];
-//        for (auto i=0; i<cp_state_->risk_pose.size();) {
-//            if (cp_state_->risk_pose[i] >= planning_horizon_) {
-//                cp_state_->risk_pose.erase(cp_state_->risk_pose.begin() + i);
-//                cp_state_->risk_bin.erase(cp_state_->risk_bin.begin() + i);
-//                cp_state_->ego_recog.erase(cp_state_->ego_recog.begin() + i);
-//                likelihood_list.erase(likelihood_list.begin() + i);
-//            }
-//            else {
-//                ++i;
-//            }
-//        }
-//    }
-//    else {
-//        planning_horizon_ = 150;
-//    }
-
-//     cp_values_ = new CPValues(cp_state_->risk_pose.size());
-// }
-
 
 void CPPOMDP::PrintState(const State& state, ostream& out) const {
 	const CPState& ras_state = static_cast<const CPState&>(state);
@@ -563,10 +374,11 @@ void CPPOMDP::PrintObs(const State& state, OBS_TYPE obs, ostream& out) const {
 }
 
 void CPPOMDP::PrintBelief(const Belief& belief, ostream& out) const {
+    std::cout << "[cp_pomdp.cpp PrintBelief] target num: " << cp_values_->getNumTargets() << std::endl;
 	const vector<State*>& particles = static_cast<const ParticleBelief&>(belief).particles();
 	
 	// double status = 0;
-	vector<double> probs(cp_state_->risk_pose.size());
+	vector<double> probs(cp_values_->getNumTargets());
 	for (int i = 0; i < particles.size(); i++) {
 		State* particle = particles[i];
         const CPState* state = static_cast<const CPState*>(particle);
@@ -575,7 +387,7 @@ void CPPOMDP::PrintBelief(const Belief& belief, ostream& out) const {
 		}
 	}
 
-	for (int i = 0; i < cp_state_->risk_pose.size(); i++) {
+	for (int i = 0; i < cp_values_->getNumTargets(); i++) {
 		out << "risk id : " << i << " prob : " << probs[i] << endl;
 	}
 }

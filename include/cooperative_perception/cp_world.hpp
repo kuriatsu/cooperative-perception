@@ -31,7 +31,8 @@ public:
     CPWorld ();
     ~CPWorld ();
     State* Initialize ();
-    bool Connect ();
+    bool Connect(int argc, char* argv[]);
+    bool Connect();
     void Step();
     State* GetCurrentState ();
     void GetCurrentState (State* state, std::vector<double> &likelihood_list, const double risk_thresh);
