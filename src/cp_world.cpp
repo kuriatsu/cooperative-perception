@@ -26,9 +26,9 @@ bool CPWorld::Connect(int argc, char* argv[])
     rclcpp::init(argc, argv);
     node_ = rclcpp::Node::make_shared("CPWorldNode");
 
-    intervention_client_ = node_->create_client<cooperative_perception::srv::Intervention>("intervention");
-    current_state_client_ = node_->create_client<cooperative_perception::srv::State>("cp_current_state");
-    update_perception_client_ = node_->create_client<cooperative_perception::srv::UpdatePerception>("cp_updated_target");
+    intervention_client_ = node_->create_client<cooperative_perception::srv::Intervention>("/intervention");
+    current_state_client_ = node_->create_client<cooperative_perception::srv::State>("/cp_current_state");
+    update_perception_client_ = node_->create_client<cooperative_perception::srv::UpdatePerception>("/cp_updated_target");
 
     rclcpp::spin_some(node_);
     return true;
@@ -45,36 +45,35 @@ State* CPWorld::GetCurrentState() {
 }
 
 
-void CPWorld::GetCurrentState(State* state, std::vector<double> &likelihood_list, const double risk_thresh) 
+State* CPWorld::GetCurrentState(std::vector<double> &likelihood_list, const double risk_thresh) 
 {
 
     /* request to service */
     auto request = std::make_shared<cooperative_perception::srv::State::Request>();
     request->request = true;
 
-    std::cout << "send request" << std::endl;
     while (!current_state_client_->wait_for_service(1s))
     {
         if (!rclcpp::ok())
         {
-            RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "[cp_world::GetCurrentState] Interrupted while waiting for service. Exit");
-            return;
+            RCLCPP_ERROR(node_->get_logger(), "[cp_world::GetCurrentState] Interrupted while waiting for service. Exit");
+            return nullptr;
         } 
-        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "[cp_world::GetCurrentState] service not available");
+        RCLCPP_INFO(node_->get_logger(), "[cp_world::GetCurrentState] service not available");
     }
 
     auto result = current_state_client_->async_send_request(request);
     if (rclcpp::spin_until_future_complete(node_, result) != rclcpp::FutureReturnCode::SUCCESS)
     {
-        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "[cp_world::GetCurrentState] failed to call service Intervention");
-        return;
+        RCLCPP_ERROR(node_->get_logger(), "[cp_world::GetCurrentState] failed to call service Intervention");
+        return nullptr;
     }
 
+    RCLCPP_INFO(node_->get_logger(), "[GetCurrentState] update cp_state_, id_idx_list_, likelihood_list ");
     /* start making current state*/
     // check wether last request target still exists in the perception targets
     bool is_last_req_target_exist = false;
 
-    std::cout << "start store result" << std::endl;
     std::shared_ptr<cooperative_perception::srv::State::Response> buf_result = result.get();
     cp_state_->risk_pose.clear();
     cp_state_->ego_recog.clear();
@@ -83,6 +82,7 @@ void CPWorld::GetCurrentState(State* state, std::vector<double> &likelihood_list
     cp_state_->ego_speed = buf_result->ego_speed;
 
     id_idx_list_.clear();
+
 
 
     for (auto it = buf_result->object_id.begin(), end = buf_result->object_id.end(); it != end; ++it) 
@@ -102,28 +102,29 @@ void CPWorld::GetCurrentState(State* state, std::vector<double> &likelihood_list
             cp_state_->req_target = i; 
         }
 
-
-        std::cout << 
-            "id :" << i << "\n" <<
-            "distance :" << cp_state_->risk_pose[i] << "\n" <<
-            "prob :" << likelihood << "\n" <<
-            std::endl;
+        std::stringstream ss;
+        ss << "[GetCurrentState]" << "\n"
+           << "id   :" << i << "\n" 
+           << "pose :" << cp_state_->risk_pose[i] << "\n" 
+           << "prob :" << likelihood << "\n";
+        RCLCPP_INFO(node_->get_logger(), ss.str().c_str());
     }
-    std::cout << "finish store result " << cp_state_->risk_pose.size() << std::endl;
 
 
     // check last request and update request time
     if (!is_last_req_target_exist) 
     {
         cp_state_->req_time = 0;
+        RCLCPP_INFO(node_->get_logger(), "[GetCurrentState] new request state");
     } 
-    // else {
-    //     std::cout << "req target found again, id: " << req_target_history_.back() << ", idx: " << cp_state_->req_target << std::endl;
-    // }
+    else  {
+        RCLCPP_INFO(node_->get_logger(), "[GetCurrentState] continue request");
+    }
 
     cp_values_ = new CPValues(cp_state_->risk_pose.size());
-
-    state = cp_state_;
+    // state = dynamic_cast<CPState>(*cp_state_);
+    std::cout << cp_state_->risk_pose.size() << std::endl;
+    return cp_state_;
 }
 
 
@@ -133,12 +134,15 @@ bool CPWorld::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 
 bool CPWorld::CPExecuteAction(ACT_TYPE &action, OBS_TYPE& obs) {
 
-    std::cout << "execute action" << std::endl;
+    stringstream ss;
+    ss << "[CPExecuteAction] execute action" << cp_values_->getActionName(action);
+    RCLCPP_INFO(node_->get_logger(), ss.str().c_str());
+
 
     /* request to service */
     auto request = std::make_shared<cooperative_perception::srv::Intervention::Request>();
     
-    // intervention request
+    /* intervention request */
     if (cp_values_->getActionAttrib(action) == CPValues::REQUEST) {
         int req_target_idx = cp_values_->getActionTarget(action);
         unique_identifier_msgs::msg::UUID req_target_id = id_idx_list_[req_target_idx];
@@ -160,8 +164,8 @@ bool CPWorld::CPExecuteAction(ACT_TYPE &action, OBS_TYPE& obs) {
         request->object_id = req_target_id;
 
     } else 
+    /* no request */
     {
-        std::cout << "NO_ACTION" << std::endl;
         cp_state_->req_time = 0;
         cp_state_->req_target = 0;
 
@@ -178,33 +182,33 @@ bool CPWorld::CPExecuteAction(ACT_TYPE &action, OBS_TYPE& obs) {
     {
         if (!rclcpp::ok())
         {
-            RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "[cp_world::CPExecuteAction] Interrupted while waiting for service. Exit");
+            RCLCPP_ERROR(node_->get_logger(), "[CPExecuteAction] Interrupted while waiting for service. Exit");
             return false;
         } 
-        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "[cp_world::CPExecuteAction] service not available");
+        RCLCPP_INFO(node_->get_logger(), "[CPExecuteAction] service not available");
     }
 
     /* send request */
     auto result = intervention_client_->async_send_request(request);
     if (rclcpp::spin_until_future_complete(node_, result) != rclcpp::FutureReturnCode::SUCCESS)
     {
-        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "[cp_world::CPExecuteAction] failed to call service Intervention");
+        RCLCPP_ERROR(node_->get_logger(), "[CPExecuteAction] failed to call service Intervention");
         return false;
     }
 
     /* process request result (observation) */
-    auto intervention_target_id = result.get()->object_id;
-    std::int8_t intervention_result = result.get()->result;
-    for (const auto &itr : id_idx_list_) 
-    {
-        if (itr.second == intervention_target_id)
-        {
-            /* intervention result is the result of action at last time step */
-            action = cp_values_->getAction(CPValues::REQUEST, itr.first);
-            obs = intervention_result;
-            break;
+    std::shared_ptr<cooperative_perception::srv::Intervention::Response> result_get = result.get();
+    auto intervention_target_id = result_get->object_id;
+    obs = result_get->result;
+    if (obs != CPValues::NONE) {
+        for (const auto &itr : id_idx_list_) {
+            if (itr.second == intervention_target_id) {
+                /* intervention result is the result of action at last time step */
+                action = cp_values_->getAction(CPValues::REQUEST, itr.first);
+                break;
+            }
         }
-        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "[cp_world::CPExecuteAction] intervention target no longer exist");
+        RCLCPP_INFO(node_->get_logger(), "[CPExecuteAction] intervention target no longer exist");
     }
 
     obs_history_.emplace_back(obs);
@@ -215,7 +219,11 @@ bool CPWorld::CPExecuteAction(ACT_TYPE &action, OBS_TYPE& obs) {
 
 void CPWorld::UpdatePerception (const ACT_TYPE &action, const OBS_TYPE &obs, const std::vector<double> &risk_probs)
 {
-    std::int8_t target_index = cp_values_->getActionTarget(action);
+    if (cp_values_->getActionAttrib(action) == CPValues::NO_ACTION) {
+        RCLCPP_INFO(node_->get_logger(), "[UpdatePerception] NO_ACTION");
+        return;
+    }
+    int target_index = cp_values_->getActionTarget(action);
 
     /* request instance */
     auto request = std::make_shared<cooperative_perception::srv::UpdatePerception::Request> ();
@@ -225,18 +233,18 @@ void CPWorld::UpdatePerception (const ACT_TYPE &action, const OBS_TYPE &obs, con
     /* throw request */
     while (!update_perception_client_->wait_for_service(1s)) {
         if (!rclcpp::ok()) {
-            RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "[cp_world::update_perception_client] Interrupted while waiting for service. Exit");
+            RCLCPP_ERROR(node_->get_logger(), "[UpdatePerception] Interrupted while waiting for service. Exit");
             return;
         } 
 
-        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "[cp_world::update_perception_client] service not available");
+        RCLCPP_INFO(node_->get_logger(), "[UpdatePerception] service not available");
     }
 
     /* get request */
     auto result = update_perception_client_->async_send_request(request);
 
     if (rclcpp::spin_until_future_complete(node_, result) != rclcpp::FutureReturnCode::SUCCESS) {
-        RCLCPP_ERROR (rclcpp::get_logger("rclcpp"), "[cp_world::update_perception_client] failed to call service Intervention");
+        RCLCPP_ERROR (node_->get_logger(), "[UpdatePerception] failed to call service Intervention");
         return;
     }
 }

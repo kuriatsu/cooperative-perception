@@ -248,7 +248,10 @@ Belief* CPPOMDP::InitialBelief (const State* start, const std::vector<double>& l
     const CPState *cp_start_state = static_cast<const CPState*>(start);
 
     if (likelihood.size() != cp_start_state->risk_pose.size()) {
-        std::cout << "likelihood and risk have different list size!" << std::endl;
+        std::cout << "likelihood and risk have different list size!" << "\n"
+            << "likelihood: " << likelihood[0]
+            << "risk: " << cp_start_state->risk_pose.size() 
+            << std::endl;
         exit(0);
     }
 

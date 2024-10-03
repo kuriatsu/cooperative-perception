@@ -35,7 +35,7 @@ public:
     bool Connect();
     void Step();
     State* GetCurrentState ();
-    void GetCurrentState (State* state, std::vector<double> &likelihood_list, const double risk_thresh);
+    State* GetCurrentState (std::vector<double> &likelihood_list, const double risk_thresh);
     bool ExecuteAction (ACT_TYPE action, OBS_TYPE &obs);
     bool CPExecuteAction (ACT_TYPE &action, OBS_TYPE &obs);
     void UpdatePerception (const ACT_TYPE &action, const OBS_TYPE &obs, const std::vector<double> &risk_probs);

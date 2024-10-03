@@ -15,7 +15,7 @@ int CooperativePerception::RunPlanning(int argc, char* argv[])
     string world_type = "simulator";
     int time_limit = -1;
 
-    option::Option *options_ = InitializeParamers(argc, argv, policy_type_,
+    options_ = InitializeParamers(argc, argv, policy_type_,
                 search_solver, num_runs, world_type, belief_type_, time_limit);
     if(options_==nullptr)
         return 0;
@@ -53,7 +53,7 @@ Solver* CooperativePerception::CPInitializeSolver(DSPOMDP *model, Belief *belief
 {
     if (policy_type_ == "DESPOT") {
         Solver *solver = InitializeSolver(model, belief, policy_type_, options_);
-        std::cout << "initialize solver" << std::endl;
+        std::cout << "[cooperative_perception::CPInitializeSolver] initialize solver" << std::endl;
         return solver;
 
     } else if (policy_type_ == "NOREQUEST") {
@@ -93,10 +93,11 @@ bool CooperativePerception::RunStep(Solver* solver, World* world, DSPOMDP* model
 
 
     std::vector<double> likelihood_list;
-    CPState *state = new CPState();
-    cp_world->GetCurrentState(state, likelihood_list, risk_thresh_);
+    State *state = cp_world->GetCurrentState(likelihood_list, risk_thresh_);
+    
+    std::cout << static_cast<CPState*>(state)->risk_pose.size() << std::endl;
 
-    std::cout << "[cooperative_perception.cpp] curent_state: \n" << static_cast<CPState*>(state)->text() << std::endl;
+    std::cout << "[cooperative_perception::RunStep] curent_state: \n" << state->text() << std::endl;
 
     CPPOMDP* cp_model = InitializeModel(state);
 
@@ -106,13 +107,13 @@ bool CooperativePerception::RunStep(Solver* solver, World* world, DSPOMDP* model
     // solver->belief(belief);
 
     solver = CPInitializeSolver(cp_model, belief, cp_world);
-    std::cout << "[cooperative_perception] initialized solver" << std::endl;
+    std::cout << "[cooperative_perception::RunStep] initialized solver" << std::endl;
 
     double start_t = get_time_second();
     ACT_TYPE action = solver->Search().action;
     double end_t = get_time_second();
     double search_time = end_t - start_t;
-    std::cout << "[cooperative_perception] search completed" << std::endl;
+    std::cout << "[cooperative_perception::RunStep] search completed" << std::endl;
 
     start_t = get_time_second();
     OBS_TYPE obs;
@@ -135,7 +136,7 @@ bool CooperativePerception::RunStep(Solver* solver, World* world, DSPOMDP* model
 
 World* CooperativePerception::InitializeWorld(int argc, char* argv[], std::string& world_type, DSPOMDP* model, option::Option* options)
 {
-    std::cout << "initialize world" << std::endl;
+    std::cout << "[cooperative_perception::InitializeWorld] initialize world" << std::endl;
     CPWorld* world = new CPWorld();
     world->Connect(argc, argv);
     world->Initialize();

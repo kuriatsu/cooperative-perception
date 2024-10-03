@@ -6,33 +6,36 @@ using std::placeholders::_2;
 CPRosInterface::CPRosInterface()
     : Node("CPRosInterface")
 {
-    _sub_objects = this->create_subscription<autoware_auto_perception_msgs::msg::PredictedObjects>("/objects/predicted_objects", 10, std::bind(&CPRosInterface::ObjectsCb, this, _1));
+    _sub_objects = this->create_subscription<autoware_auto_perception_msgs::msg::PredictedObjects>("/perception/object_recognition/objects", 10, std::bind(&CPRosInterface::ObjectsCb, this, _1));
     _sub_ego_pose = this->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>("/localization/pose_with_covariance", 10, std::bind(&CPRosInterface::EgoPoseCb, this, _1));
-    _sub_ego_speed = this->create_subscription<geometry_msgs::msg::TwistWithCovarianceStamped>("/localization/twist", 10, std::bind(&CPRosInterface::EgoSpeedCb, this, _1));
+    _sub_ego_speed = this->create_subscription<geometry_msgs::msg::TwistWithCovarianceStamped>("/localization/twist_estimator/twist_with_covariance", 10, std::bind(&CPRosInterface::EgoSpeedCb, this, _1));
     _sub_ego_traj = this->create_subscription<autoware_auto_planning_msgs::msg::Trajectory>("/planning/scenario_planning/trajectory", 10, std::bind(&CPRosInterface::EgoTrajectoryCb, this, _1));
     _sub_intervention = this->create_subscription<cooperative_perception::msg::Intervention>("/intervention_result", 10, std::bind(&CPRosInterface::InterventionCb, this, _1));
 
     _pub_updated_object = this->create_publisher<autoware_auto_perception_msgs::msg::PredictedObject>("/updated_objects", 10);
     _pub_intervention = this->create_publisher<cooperative_perception::msg::Intervention>("/intervention_target", 10);
 
-    _intervention_service = this->create_service<cooperative_perception::srv::Intervention> ("intervention", std::bind(&CPRosInterface::InterventionService, this, _1, _2));
-    _current_state_service = this->create_service<cooperative_perception::srv::State> ("cp_current_state", std::bind(&CPRosInterface::CurrentStateService, this, _1, _2));
-    _update_perception_service = this->create_service<cooperative_perception::srv::UpdatePerception> ("cp_updated_target", std::bind(&CPRosInterface::UpdatePerceptionService, this, _1, _2));
+    _intervention_service = this->create_service<cooperative_perception::srv::Intervention> ("/intervention", std::bind(&CPRosInterface::InterventionService, this, _1, _2));
+    _current_state_service = this->create_service<cooperative_perception::srv::State> ("/cp_current_state", std::bind(&CPRosInterface::CurrentStateService, this, _1, _2));
+    _update_perception_service = this->create_service<cooperative_perception::srv::UpdatePerception> ("/cp_updated_target", std::bind(&CPRosInterface::UpdatePerceptionService, this, _1, _2));
 
 }
 
 void CPRosInterface::EgoPoseCb(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg) 
 {
+    // std::cout << "get pose" << std::endl;
     ego_pose_ = (*msg).pose.pose;
 }
 
 void CPRosInterface::EgoSpeedCb(const geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr msg) 
 {
+    // std::cout << "get speed " << std::endl;
     ego_speed_ = (*msg).twist.twist;
 }
 
 void CPRosInterface::EgoTrajectoryCb(const autoware_auto_planning_msgs::msg::Trajectory::SharedPtr msg) 
 {
+    // std::cout << "get trajectory" << std::endl;
     ego_trajectory_ = *msg;
 }
 
@@ -43,6 +46,7 @@ void CPRosInterface::InterventionCb(const cooperative_perception::msg::Intervent
 
 void CPRosInterface::ObjectsCb(const autoware_auto_perception_msgs::msg::PredictedObjects::SharedPtr msg) 
 {
+    // std::cout << "get object" << std::endl;
     predicted_objects_ = *msg;
 }
 
@@ -50,6 +54,7 @@ void CPRosInterface::ObjectsCb(const autoware_auto_perception_msgs::msg::Predict
 
 void CPRosInterface::InterventionService(const std::shared_ptr<cooperative_perception::srv::Intervention::Request> request, std::shared_ptr<cooperative_perception::srv::Intervention::Response> response)
 {
+    RCLCPP_INFO(this->get_logger(), "[InterventionService] sending intervention request");
     cooperative_perception::msg::Intervention out_msg;
     out_msg.object_id = request->object_id;
     for (const auto &object : predicted_objects_.objects)
@@ -64,17 +69,19 @@ void CPRosInterface::InterventionService(const std::shared_ptr<cooperative_perce
             out_msg.distance = collision_point;
             out_msg.path_index = path_index;
             _pub_intervention->publish(out_msg);
-
-            response->result = true;
         }
     }
-    response->result = false;
+
+    RCLCPP_INFO(this->get_logger(), "[InterventionService] sending intervention result");
+    response->object_id = intervention_result_.object_id;
+    response->result = intervention_result_.intervention;
 }
 
 
 void CPRosInterface::CurrentStateService(const std::shared_ptr<cooperative_perception::srv::State::Request> request, std::shared_ptr<cooperative_perception::srv::State::Response> response)
 {
     if (!request->request) return;
+    RCLCPP_INFO(this->get_logger(), "[CurrentStateService] get current state");
 
     std::vector<int> distances; 
     std::vector<double> probs;
@@ -94,6 +101,10 @@ void CPRosInterface::CurrentStateService(const std::shared_ptr<cooperative_perce
         probs.emplace_back(collision_prob);
         ids.emplace_back(object.object_id);
     }
+    std::stringstream ss;
+    ss << "[CurrentStateService]" << "\n"
+       << "ego_speed   :" << ego_speed_.linear.x << "\n" ;
+    RCLCPP_INFO(this->get_logger(), ss.str().c_str());
     response->risk_pose = distances;
     response->likelihood = probs;
     response->ego_speed = ego_speed_.linear.x;
@@ -135,6 +146,7 @@ void CPRosInterface::GetCollisionPointAndRisk(const autoware_auto_planning_msgs:
 
 void CPRosInterface::UpdatePerceptionService(const std::shared_ptr<cooperative_perception::srv::UpdatePerception::Request> request, std::shared_ptr<cooperative_perception::srv::UpdatePerception::Response> response)
 {
+    RCLCPP_INFO(this->get_logger(), "[UpdatePerceptionService] sending updated perception");
     for (auto &object : predicted_objects_.objects)
     {
         if (object.object_id == request->object_id)

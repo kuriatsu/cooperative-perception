@@ -170,7 +170,7 @@ public:
 
     int getActionTarget(int action) const {
         if (action == no_action_head) {
-            return 0;
+            return -1;
         }
         else if (request_head <= action) {
             return action - request_head;
@@ -179,7 +179,7 @@ public:
             std::cerr << "action index may be out of range \n" <<
                 "num_action :" << max_action_num << "\n" << 
                 "action :" << action << std::endl;
-            return 0;
+            return -1;
         }
     };
 
