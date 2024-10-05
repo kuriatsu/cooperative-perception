@@ -11,6 +11,7 @@
 #include "cooperative_perception/srv/state.hpp"
 #include "cooperative_perception/srv/update_perception.hpp"
 #include <unique_identifier_msgs/msg/uuid.hpp>
+#include <std_msgs/msg/string.hpp>
 
 using std::placeholders::_1;
 using std::placeholders::_2;

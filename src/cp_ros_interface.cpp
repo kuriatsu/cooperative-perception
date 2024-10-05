@@ -46,8 +46,13 @@ void CPRosInterface::InterventionCb(const cooperative_perception::msg::Intervent
 
 void CPRosInterface::ObjectsCb(const autoware_auto_perception_msgs::msg::PredictedObjects::SharedPtr msg) 
 {
-    // std::cout << "get object" << std::endl;
     predicted_objects_ = *msg;
+    int i = 0;
+    for (const auto &obj : predicted_objects_.objects) {
+        i++;
+    }
+    std::cout << "get object # is " << i << std::endl;
+
 }
 
 
@@ -73,7 +78,10 @@ void CPRosInterface::InterventionService(const std::shared_ptr<cooperative_perce
     }
 
     RCLCPP_INFO(this->get_logger(), "[InterventionService] sending intervention result");
-    response->object_id = intervention_result_.object_id;
+    /*TODO change id to intervention result
+     */
+    response->object_id = request->object_id;
+    // response->object_id = intervention_result_.object_id;
     response->result = intervention_result_.intervention;
 }
 
@@ -81,13 +89,21 @@ void CPRosInterface::InterventionService(const std::shared_ptr<cooperative_perce
 void CPRosInterface::CurrentStateService(const std::shared_ptr<cooperative_perception::srv::State::Request> request, std::shared_ptr<cooperative_perception::srv::State::Response> response)
 {
     if (!request->request) return;
-    RCLCPP_INFO(this->get_logger(), "[CurrentStateService] get current state");
+    // RCLCPP_INFO(this->get_logger(), "[CurrentStateService] creating current state");
 
     std::vector<int> distances; 
     std::vector<double> probs;
     std::vector<unique_identifier_msgs::msg::UUID> ids;
+    std::vector<std_msgs::msg::String> types;
+    int i=0;
     for (const auto &object: predicted_objects_.objects)
     {
+        i++;
+        std::stringstream ss;
+        ss << "[CurrentStateService] creating current state,  #objects : " 
+           << i;
+        RCLCPP_INFO(this->get_logger(), ss.str().c_str());
+
     /* get collision point and confidence */
         double collision_prob;
         double collision_point;
@@ -100,15 +116,23 @@ void CPRosInterface::CurrentStateService(const std::shared_ptr<cooperative_perce
         distances.emplace_back(int(collision_point));
         probs.emplace_back(collision_prob);
         ids.emplace_back(object.object_id);
+        std_msgs::msg::String buf_type;
+        buf_type.data = "hard";
+        // buf_type.data = std::string(object.classification[0].label);
+        types.emplace_back(buf_type);
     }
+
+    // std::stringstream ss;
     std::stringstream ss;
     ss << "[CurrentStateService]" << "\n"
        << "ego_speed   :" << ego_speed_.linear.x << "\n" ;
     RCLCPP_INFO(this->get_logger(), ss.str().c_str());
+
     response->risk_pose = distances;
     response->likelihood = probs;
     response->ego_speed = ego_speed_.linear.x;
     response->object_id = ids;
+    response->type = types;
 }
 
 void CPRosInterface::GetCollisionPointAndRisk(const autoware_auto_planning_msgs::msg::Trajectory &ego_traj, const autoware_auto_perception_msgs::msg::PredictedObjectKinematics &obj_kinematics, double &collision_prob, double &collision_point, int &path_index) const

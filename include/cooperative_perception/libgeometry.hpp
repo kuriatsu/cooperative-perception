@@ -6,6 +6,17 @@
 
 namespace despot {
 
+std::string ConvertUUIDtoIntString(std::array<unsigned char, 16> &uuid) 
+{
+    std::string out_string = "";
+    for (const auto &id : uuid) {
+        out_string += static_cast<int>(id) + "-";
+    }
+    return out_string;
+}
+
+
+
 class CPState : public State {
 public:
 	int ego_pose;
@@ -14,6 +25,7 @@ public:
 	int req_time;
 	int req_target;
     std::vector<int> risk_pose;
+    std::vector<std::string> risk_type;
 
 	// hidden state
 	std::vector<bool> risk_bin;
@@ -23,12 +35,10 @@ public:
         ego_speed = 11.2;
         req_time = 0;
         req_target = 0;
-        // ego_recog = {false, true, true};
-        // risk_pose = {80, 100, 120};
-        // risk_bin = {true, true, false};
         ego_recog = std::vector<bool>();
         risk_pose = std::vector<int>();
         risk_bin = std::vector<bool>();
+        risk_type = std::vector<std::string>();
     }
 
     CPState(int _ego_pose, float _ego_speed, std::vector<bool> _ego_recog, int _req_time, int _req_target, std::vector<bool> _risk_bin, std::vector<int> _risk_pose) :
@@ -51,13 +61,22 @@ public:
                "req_time: " + to_string(req_time) + "\n" +
                "req_target: " + to_string(req_target) + "\n" +
                "risk_pose: " + to_string(risk_pose) + "\n" +
-               "risk_bin: " + to_string(risk_bin) + "\n"; 
+               "risk_bin: " + to_string(risk_bin) + "\n" + 
+               "risk_type: " + to_string(risk_type) + "\n";
         // return "";
     }
 };
 
 }
 
+struct PerceptionPerformance {
+    double ope_min_time;
+    double ope_min_acc;
+    double ope_slope_acc_time;
+    double ope_max_acc;
+    double ads_mean_acc;
+    double ads_dev_acc;
+};
 
 class Pose {
 public:
@@ -157,7 +176,7 @@ public:
         num_targets = _num_targets;
     };
 
-    enum OBS {NONE, NO_RISK, RISK};
+    enum OBS {NO_RISK, RISK};
     enum ACT {NO_ACTION, REQUEST};
 
     int numActions() {
@@ -235,9 +254,6 @@ public:
         else if (obs == RISK) {
             return "RISK";
         }
-        else if (obs == NONE) {
-            return "NONE";
-        }
         else {
             std::cerr << "obs value is out of range" << std::endl;
             return "ERR";
@@ -267,9 +283,6 @@ public:
         }
         else if (obs == RISK) {
             std::cout << "obs : RISK" << std::endl;
-        }
-        else if (obs == NONE) {
-            std::cout << "obs : NONE" << std::endl;
         }
         else {
             std::cout << "obs value is out of range" << std::endl;

@@ -91,12 +91,14 @@ bool CooperativePerception::RunStep(Solver* solver, World* world, DSPOMDP* model
 
     CPWorld* cp_world = static_cast<CPWorld*>(world);
 
-
     std::vector<double> likelihood_list;
     State *state = cp_world->GetCurrentState(likelihood_list, risk_thresh_);
+    if (state == nullptr) {
+        assert(state != nullptr);
+        std::cout << "[cooperative_perception::RunStep] no state info obtained" << std::endl;
+        return true;
+    }
     
-    std::cout << static_cast<CPState*>(state)->risk_pose.size() << std::endl;
-
     std::cout << "[cooperative_perception::RunStep] curent_state: \n" << state->text() << std::endl;
 
     CPPOMDP* cp_model = InitializeModel(state);
@@ -122,12 +124,15 @@ bool CooperativePerception::RunStep(Solver* solver, World* world, DSPOMDP* model
     double execute_time = end_t - start_t;
 
     
+    std::cout << "[cooperative_perception::RunStep] update belief" << std::endl;
     start_t = get_time_second();
     solver->BeliefUpdate(action, obs);
     end_t = get_time_second();
     double update_time = end_t - start_t;
+    std::cout << "[cooperative_perception::RunStep] updated belief" << std::endl;
 
     cp_world->UpdatePerception(action, obs, cp_model->GetPerceptionLikelihood(belief));
+    std::cout << "[cooperative_perception::RunStep] update intervention target" << std::endl;
     cp_world->Step();
 
     return logger->SummarizeStep(step_++, round_, terminal, action, obs, step_start_t);

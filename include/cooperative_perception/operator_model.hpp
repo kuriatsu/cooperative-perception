@@ -5,28 +5,22 @@
 
 class OperatorModel {
 public:
-    double _min_time;
-    double _acc_time_min;
-    double _acc_time_slope;
-    
-public:
-    OperatorModel():
-        _min_time(3.0),
-        _acc_time_min(0.5),
-        _acc_time_slope(0.25){
-        }
+    /* min_time, min_acc, slope, max_acc, ads_mean, ads_dev */
+    std::map<std::string, PerceptionPerformance> performance_{
+        {"easy", {1.0, 0.9, 0.025, 0.95, 0.9, 0.1}},
+        {"hard", {1.0, 0.65, 0.075, 0.8, 0.6, 0.1}},
+        {"easy_plus", {1.0, 0.9, 0.01, 0.95, 0.9, 0.1}},
+        {"hard_plus", {1.0, 0.65, 0.03, 0.8, 0.6, 0.1}},
+        {"future", {1.0, 0.65, 0.03, 0.8, 0.9, 0.1}},
+    };
 
-    OperatorModel(int min_time, double acc_time_min, double acc_time_slope):
-        _min_time(min_time),
-        _acc_time_min(acc_time_min),
-        _acc_time_slope(acc_time_slope){
-        }
+public:
+    OperatorModel();
+    OperatorModel(const std::map<std::string, PerceptionPerformance> &perception_performance);
     ~OperatorModel();
 	
-	double InterventionAccuracy(const int time) const;
-    int ExecIntervention(const int time, const int action, const std::string target, const bool risk) const;
+    double InterventionAccuracy(const int time, const std::string type) const;
+    int ExecIntervention(const int time, const bool risk, const std::string type) const;
+    int ExecIntervention(const int time, const bool risk, const double rand_num, const std::string type) const;
     
-private:
-    enum { NO_RISK = 0, RISK = 1, NONE = 2};
-    mutable std::string _last_target_id = "NONE";
 };

@@ -78,6 +78,7 @@ State* CPWorld::GetCurrentState(std::vector<double> &likelihood_list, const doub
     cp_state_->risk_pose.clear();
     cp_state_->ego_recog.clear();
     cp_state_->risk_bin.clear();
+    cp_state_->risk_type.clear();
     cp_state_->ego_pose = 0;
     cp_state_->ego_speed = buf_result->ego_speed;
 
@@ -87,7 +88,7 @@ State* CPWorld::GetCurrentState(std::vector<double> &likelihood_list, const doub
 
     for (auto it = buf_result->object_id.begin(), end = buf_result->object_id.end(); it != end; ++it) 
     {
-        int i = std::distance(it, buf_result->object_id.begin());
+        int i = std::distance(buf_result->object_id.begin(), it);
         id_idx_list_[i] = *it;
         double &likelihood = buf_result->likelihood[i];
         likelihood_list.emplace_back(likelihood);
@@ -95,6 +96,7 @@ State* CPWorld::GetCurrentState(std::vector<double> &likelihood_list, const doub
         cp_state_->ego_recog.emplace_back(likelihood>risk_thresh);
         cp_state_->risk_bin.emplace_back(likelihood>risk_thresh);
         cp_state_->risk_pose.emplace_back(buf_result->risk_pose[i]);
+        cp_state_->risk_type.emplace_back(buf_result->type[i].data);
 
         /* is this request target (index can change at each time step) */
         if (req_target_history_.size() > 0 && req_target_history_.back().uuid == buf_result->object_id[i].uuid) {
@@ -135,7 +137,7 @@ bool CPWorld::ExecuteAction(ACT_TYPE action, OBS_TYPE& obs) {
 bool CPWorld::CPExecuteAction(ACT_TYPE &action, OBS_TYPE& obs) {
 
     stringstream ss;
-    ss << "[CPExecuteAction] execute action" << cp_values_->getActionName(action);
+    ss << "[CPExecuteAction] execute action " << cp_values_->getActionName(action);
     RCLCPP_INFO(node_->get_logger(), ss.str().c_str());
 
 
@@ -198,21 +200,50 @@ bool CPWorld::CPExecuteAction(ACT_TYPE &action, OBS_TYPE& obs) {
 
     /* process request result (observation) */
     std::shared_ptr<cooperative_perception::srv::Intervention::Response> result_get = result.get();
-    auto intervention_target_id = result_get->object_id;
-    obs = result_get->result;
-    if (obs != CPValues::NONE) {
-        for (const auto &itr : id_idx_list_) {
-            if (itr.second == intervention_target_id) {
-                /* intervention result is the result of action at last time step */
-                action = cp_values_->getAction(CPValues::REQUEST, itr.first);
-                break;
-            }
+    auto intervention_target_id = result_get->object_id.uuid;
+
+    /* action of the obs can be different
+     * because of time delay of operator intervention
+     */
+    bool is_intervention_target_found = false;
+    for (const auto &itr : id_idx_list_) {
+        std::cout 
+            << static_cast<int>(itr.second.uuid[0])
+            << static_cast<int>(itr.second.uuid[1])
+            << static_cast<int>(itr.second.uuid[2])
+            << static_cast<int>(itr.second.uuid[3])
+            << static_cast<int>(itr.second.uuid[4])
+            << static_cast<int>(itr.second.uuid[5])
+            << static_cast<int>(itr.second.uuid[6])
+            << static_cast<int>(itr.second.uuid[7])
+            << static_cast<int>(itr.second.uuid[8])
+            << static_cast<int>(itr.second.uuid[9])
+            << static_cast<int>(itr.second.uuid[10])
+            << static_cast<int>(itr.second.uuid[11])
+            << static_cast<int>(itr.second.uuid[12])
+            << static_cast<int>(itr.second.uuid[13])
+            << static_cast<int>(itr.second.uuid[14])
+            << static_cast<int>(itr.second.uuid[15])
+            << std::endl;
+        if (itr.second.uuid == intervention_target_id) {
+            /* intervention result is the result of action at last time step */
+            action = cp_values_->getAction(CPValues::REQUEST, itr.first);
+            obs = result_get->result;
+            is_intervention_target_found = true;
+            RCLCPP_INFO(node_->get_logger(), "[CPExecuteAction] intervention target found");
+            cp_values_->printObs(obs);
+            std::cout << cp_values_->getActionTarget(action) << std::endl;
+            break;
         }
-        RCLCPP_INFO(node_->get_logger(), "[CPExecuteAction] intervention target no longer exist");
     }
 
+    if (!is_intervention_target_found) {
+        RCLCPP_INFO(node_->get_logger(), "[CPExecuteAction] intervention target no longer exist");
+        obs = CPValues::RISK;
+    }
+
+
     obs_history_.emplace_back(obs);
-    cp_values_->printObs(obs);
     return false;
 }
 

@@ -34,7 +34,7 @@ public:
 
             if (cp_state.req_time > 0) { 
 
-                if (cp_model->operator_model_->InterventionAccuracy(cp_state.req_time) <= 0.5) {
+                if (cp_model->operator_model_->InterventionAccuracy(cp_state.req_time, cp_state.risk_type[cp_state.req_target]) <= 0.5) {
                     return cp_values->getAction(CPValues::REQUEST, cp_state.req_target);
                 }
             }
@@ -127,8 +127,9 @@ bool CPPOMDP::Step(State& state, double rand_num, ACT_TYPE action, double& rewar
 	CPState state_prev = state_curr;
 	reward = 0.0;
 
-	// ego state trantion
-	// EgoVehicleTransition(state_curr.ego_pose, state_curr.ego_speed, state_prev.ego_recog, risk_pose, action);
+	/* ego state trantion
+	* EgoVehicleTransition(state_curr.ego_pose, state_curr.ego_speed, state_prev.ego_recog, risk_pose, action);
+    */
     vehicle_model_->GetTransition(state_curr.ego_speed, state_curr.ego_pose, state_prev.ego_recog, state_prev.risk_pose);
     
     int target_idx = cp_values_->getActionTarget(action);
@@ -136,38 +137,26 @@ bool CPPOMDP::Step(State& state, double rand_num, ACT_TYPE action, double& rewar
     
     // when action == no_action
     if (cp_action == CPValues::NO_ACTION) {
-        // std::cout << "action : NO_ACTION" << std::endl;
         state_curr.req_time = 0;
-        state_curr.req_target = 0;
-        obs = operator_model_->ExecIntervention(state_curr.req_time, cp_action, "", CPValues::NO_RISK);
+        obs = operator_model_->ExecIntervention(0, false, rand_num, "");
     }
-    
-	// when action = change recog state
-    // else if (cp_action == CPValues::RECOG) {
-        // std::cout << "action : RECOG" << std::endl;
-	// 	state_curr.ego_recog[target_idx] = (state_prev.ego_recog[target_idx] == CPValues::RISK) ? CPValues::NO_RISK : CPValues::RISK;
-    //     state_curr.req_time = 0;
-    //     state_curr.req_target = 0;
-    //     obs = operator_model_->ExecIntervention(state_curr.req_time, cp_action, "", CPValues::NO_RISK);
-	// }
     
 	// when action = request intervention
 	else if (cp_action == CPValues::REQUEST) {
         // std::cout << "action : REQUEST" << std::endl;
-        state_curr.ego_recog[target_idx] = CPValues::RISK;
+        state_curr.req_target = target_idx;
 
-		// request to the same target
-		if (state_prev.req_target == target_idx) {
+		// request to the same target or started to request
+		if (state_prev.req_target == target_idx || state_prev.req_time == 0) {
             state_curr.req_time += delta_t_;
-			state_curr.req_target = target_idx;
 		} 
-		// request to new target
+		// change request target 
 		else {
 			state_curr.req_time = delta_t_;
-			state_curr.req_target = target_idx;
 		}
 
-        obs = operator_model_->ExecIntervention(state_curr.req_time, cp_action, std::to_string(target_idx), state_curr.risk_bin[target_idx]);
+        obs = operator_model_->ExecIntervention(state_curr.req_time, state_curr.risk_bin[state_curr.req_target], rand_num, state_curr.risk_type[state_curr.req_target]);
+        state_curr.ego_recog[state_curr.req_target] = obs;
 
 	}
 	reward = CalcReward(state_prev, state_curr, action);
@@ -179,21 +168,18 @@ bool CPPOMDP::Step(State& state, double rand_num, ACT_TYPE action, double& rewar
 }
 
 
-double CPPOMDP::ObsProb(OBS_TYPE obs, const State& state, ACT_TYPE action) const {
-
+double CPPOMDP::ObsProb(OBS_TYPE obs, const State& state, ACT_TYPE action) const 
+{
     int target_idx = cp_values_->getActionTarget(action);
     CPValues::ACT cp_action = cp_values_->getActionAttrib(action);
+    const CPState& cp_state = static_cast<const CPState&>(state);
 
-    if (cp_action == CPValues::REQUEST) {
-        const CPState& ras_state = static_cast<const CPState&>(state);
-        double acc = operator_model_->InterventionAccuracy(ras_state.req_time);
-
-        if (obs == CPValues::NONE) return 0.0;
-        return (ras_state.risk_bin[target_idx] == obs) ? acc : 1.0 - acc;
+    if (cp_action == CPValues::NO_ACTION) {
+        return obs == CPValues::RISK;
     }
     else {
-        return obs == CPValues::NONE;
-        // return 1.0;
+        double acc = operator_model_->InterventionAccuracy(cp_state.req_time, cp_state.risk_type[cp_state.req_target]);
+        return (cp_state.risk_bin[cp_state.req_target] == obs) ? acc : 1.0 - acc;
     }
 }
 
@@ -210,20 +196,33 @@ int CPPOMDP::CalcReward(const State& _state_prev, const State& _state_curr, cons
 		if (state_prev.ego_pose <= *it && *it < state_curr.ego_pose) {
             int passed_index = distance(state_curr.risk_pose.begin(), it);
 
-			// driving safety
-            reward += (state_prev.risk_bin[passed_index] == state_prev.ego_recog[passed_index]) ? 10 : -10;
-            if (state_prev.risk_bin[passed_index] == CPValues::RISK) {
-                reward += (state_prev.ego_speed - yield_speed_)/(max_speed_ - yield_speed_) * -100;
+            /* driving safety */
+            if (state_curr.risk_bin[passed_index] == CPValues::RISK) {
+                reward += (state_curr.ego_speed - vehicle_model_->yield_speed_)/(vehicle_model_->max_speed_ - vehicle_model_->yield_speed_) * -100.0;
             }
+            /* driving efficiency */
             else {
-                reward += (state_prev.ego_speed - yield_speed_)/(max_speed_ - yield_speed_) * 10;
+                reward += (vehicle_model_->max_speed_ - state_prev.ego_speed)/(vehicle_model_->max_speed_ - vehicle_model_->yield_speed_) * -100.0;
             }
 		}
 	}
 
+    // driving comfort
+    double deceleration = (state_curr.ego_speed < state_prev.ego_speed) ? (state_curr.ego_speed - state_prev.ego_speed)/delta_t_ : 0.0;
+    reward += (deceleration < -vehicle_model_->max_decel_) ? -100.0 : 0.0;
+
+    // penalty for initial intervention request
 	if (cp_action == CPValues::REQUEST && (state_curr.req_time == delta_t_ || state_prev.req_target != state_curr.req_target)) {
-        reward += 1 * -1 ;
-	}
+        reward += 0.0;
+    }
+
+    /* end of the request */
+    if (state_prev.req_time > 0 && (cp_action != CPValues::REQUEST || state_curr.req_target != state_prev.req_target)) {
+        /* when operator took mistake <- if no penalty, bet 0.5 of obs = no-risk if it want to keep speed*/
+        if (state_curr.risk_bin[state_prev.req_target] != state_curr.ego_recog[state_prev.req_target]) {
+            reward += -100.0;
+        }
+    }
 
 	return reward;
 }
@@ -285,6 +284,7 @@ Belief* CPPOMDP::InitialBelief (const State* start, const std::vector<double>& l
 		p->req_time = cp_start_state->req_time;
 	  	p->req_target = cp_start_state->req_target;
 	  	p->risk_pose = cp_start_state->risk_pose;
+        p->risk_type = cp_start_state->risk_type;
 		p->risk_bin = _risk_bin;
         cout << *p << endl;
 		particles.push_back(p);
@@ -358,15 +358,13 @@ void CPPOMDP::PrintState(const State& state, ostream& out) const {
  		<< "risk_pose : " << ras_state.risk_pose << "\n"
  		<< "req_target : " << ras_state.req_target << "\n"
  		<< "risk_bin : " << ras_state.risk_bin << "\n"
+ 		<< "risk_type : " << ras_state.risk_type << "\n"
         << "weight : " << ras_state.weight << "\n"
 	 	<< endl;
 }
 
 void CPPOMDP::PrintObs(const State& state, OBS_TYPE obs, ostream& out) const {
     switch(obs) {
-        case CPValues::NONE:
-            out << "NONE" << endl;
-            break;
         case CPValues::NO_RISK:
             out << "NO_RISK" << endl;
             break;
