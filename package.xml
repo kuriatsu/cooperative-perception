@@ -7,8 +7,6 @@
   <maintainer email="kuriatsubayashi712@gmail.com">kuriatsu</maintainer>
   <license>Apache-2.0</license>
 
-  <depend>autoware_auto_perception_msgs</depend>
-  <depend>autoware_auto_planning_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>unique_identifier_msgs</depend>
   <depend>std_msgs</depend>
