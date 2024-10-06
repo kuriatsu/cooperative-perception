@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.5)
 
 ### Export headers
-project(autoware_auto_perception_msgs)
+project(cooperative_perception)
 
 # Generate messages
 find_package(ament_cmake_auto REQUIRED)
