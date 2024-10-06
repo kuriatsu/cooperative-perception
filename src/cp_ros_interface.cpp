@@ -10,11 +10,11 @@ CPRosInterface::CPRosInterface()
     sub_ego_pose_ = this->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>("/localization/pose_with_covariance", 10, std::bind(&CPRosInterface::EgoPoseCb, this, _1));
     sub_ego_speed_ = this->create_subscription<geometry_msgs::msg::TwistWithCovarianceStamped>("/localization/twist_estimator/twist_with_covariance", 10, std::bind(&CPRosInterface::EgoSpeedCb, this, _1));
     sub_ego_traj_ = this->create_subscription<autoware_auto_planning_msgs::msg::Trajectory>("/planning/scenario_planning/trajectory", 10, std::bind(&CPRosInterface::EgoTrajectoryCb, this, _1));
-    sub_intervention_ = this->create_subscription<cooperative_perception::msg::Intervention>("/cooperative_perception/intervention_result", 10, std::bind(&CPRosInterface::InterventionCb, this, _1));
+    sub_intervention_ = this->create_subscription<cooperative_perception::msg::CPIntervention>("/cooperative_perception/intervention_result", 10, std::bind(&CPRosInterface::InterventionCb, this, _1));
 
     pub_objects_ = this->create_publisher<autoware_auto_perception_msgs::msg::PredictedObjects>("/perception/object_recognition/objects_cooperative_perception", 10);
-    pub_cp_object_ = this->create_publisher<cooperative_perception::msg::PredictedObject>("/cooperative_perception/object_ue", 10);
-    pub_intervention_ = this->create_publisher<cooperative_perception::msg::Intervention>("/cooperative_perception/intervention_request", 10);
+    pub_cp_object_ = this->create_publisher<cooperative_perception::msg::CPPredictedObject>("/cooperative_perception/object_ue", 10);
+    pub_intervention_ = this->create_publisher<cooperative_perception::msg::CPIntervention>("/cooperative_perception/intervention_request", 10);
     pub_trajectory_ = this->create_publisher<nav_msgs::msg::Path>("/cooperative_perception/trajectory_path", 10);
 
     intervention_service_ = this->create_service<cooperative_perception::srv::Intervention> ("/cooperative_perception/intervention", std::bind(&CPRosInterface::InterventionService, this, _1, _2));
@@ -51,7 +51,7 @@ void CPRosInterface::EgoTrajectoryCb(const autoware_auto_planning_msgs::msg::Tra
     pub_trajectory_->publish(path);
 }
 
-void CPRosInterface::InterventionCb(const cooperative_perception::msg::Intervention::SharedPtr msg)
+void CPRosInterface::InterventionCb(const cooperative_perception::msg::CPIntervention::SharedPtr msg)
 {
     intervention_result_ = *msg;
 }
@@ -97,7 +97,7 @@ void CPRosInterface::ObjectsCb(const autoware_auto_perception_msgs::msg::Predict
         out_auto_msg.objects.emplace_back(auto_obj);
 
         /* pub rclre object msgs */
-        cooperative_perception::msg::PredictedObject out_cp_msg;
+        cooperative_perception::msg::CPPredictedObject out_cp_msg;
         out_cp_msg.object_id = itr->second.predicted_object.object_id;
         out_cp_msg.existence_probability = itr->second.predicted_object.existence_probability;
         out_cp_msg.pose = itr->second.predicted_object.kinematics.initial_pose_with_covariance.pose;
@@ -130,7 +130,7 @@ void CPRosInterface::InterventionService(const std::shared_ptr<cooperative_perce
     std::string object_id = despot::CPRosTools().ConvertUUIDtoIntString(request->object_id.uuid);
 
     if (objects_.count(object_id) != 0) {
-        cooperative_perception::msg::Intervention out_msg;
+        cooperative_perception::msg::CPIntervention out_msg;
         out_msg.object_id = request->object_id;
         out_msg.distance = objects_[object_id].collision_point;
         out_msg.path_index = objects_[object_id].collision_path_index;

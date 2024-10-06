@@ -40,14 +40,15 @@ message(${DESPOT_INCLUDE_DIRS})
 # msg
 ############################
 rosidl_generate_interfaces(${PROJECT_NAME}
-    "msg/Intervention.msg"
-    "msg/PredictedObject.msg"
+    "msg/CPIntervention.msg"
+    "msg/CPPredictedObject.msg"
     "srv/UpdatePerception.srv"
     "srv/Intervention.srv"
     "srv/State.srv"
     DEPENDENCIES
     "std_msgs"
     "unique_identifier_msgs"
+    "geometry_msgs"
     ADD_LINTER_TESTS
 ) 
 ament_export_dependencies(rosidl_default_runtime)
