@@ -200,7 +200,7 @@ bool CPWorld::CPExecuteAction(ACT_TYPE &action, OBS_TYPE& obs) {
 
     /* process request result (observation) */
     std::shared_ptr<cooperative_perception::srv::Intervention::Response> result_get = result.get();
-    auto intervention_target_id = result_get->object_id.uuid;
+    auto intervention_target_id = CPRosTools().ConvertUUIDtoIntString(result_get->object_id.uuid);
 
     /* action of the obs can be different
      * because of time delay of operator intervention
@@ -208,24 +208,9 @@ bool CPWorld::CPExecuteAction(ACT_TYPE &action, OBS_TYPE& obs) {
     bool is_intervention_target_found = false;
     for (const auto &itr : id_idx_list_) {
         std::cout 
-            << static_cast<int>(itr.second.uuid[0])
-            << static_cast<int>(itr.second.uuid[1])
-            << static_cast<int>(itr.second.uuid[2])
-            << static_cast<int>(itr.second.uuid[3])
-            << static_cast<int>(itr.second.uuid[4])
-            << static_cast<int>(itr.second.uuid[5])
-            << static_cast<int>(itr.second.uuid[6])
-            << static_cast<int>(itr.second.uuid[7])
-            << static_cast<int>(itr.second.uuid[8])
-            << static_cast<int>(itr.second.uuid[9])
-            << static_cast<int>(itr.second.uuid[10])
-            << static_cast<int>(itr.second.uuid[11])
-            << static_cast<int>(itr.second.uuid[12])
-            << static_cast<int>(itr.second.uuid[13])
-            << static_cast<int>(itr.second.uuid[14])
-            << static_cast<int>(itr.second.uuid[15])
-            << std::endl;
-        if (itr.second.uuid == intervention_target_id) {
+            << CPRosTools().ConvertUUIDtoIntString(itr.second.uuid) << "\n" 
+            << intervention_target_id << std::endl;
+        if (CPRosTools().ConvertUUIDtoIntString(itr.second.uuid) == intervention_target_id) {
             /* intervention result is the result of action at last time step */
             action = cp_values_->getAction(CPValues::REQUEST, itr.first);
             obs = result_get->result;

@@ -6,18 +6,20 @@ using std::placeholders::_2;
 CPRosInterface::CPRosInterface()
     : Node("CPRosInterface")
 {
-    _sub_objects = this->create_subscription<autoware_auto_perception_msgs::msg::PredictedObjects>("/perception/object_recognition/objects", 10, std::bind(&CPRosInterface::ObjectsCb, this, _1));
-    _sub_ego_pose = this->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>("/localization/pose_with_covariance", 10, std::bind(&CPRosInterface::EgoPoseCb, this, _1));
-    _sub_ego_speed = this->create_subscription<geometry_msgs::msg::TwistWithCovarianceStamped>("/localization/twist_estimator/twist_with_covariance", 10, std::bind(&CPRosInterface::EgoSpeedCb, this, _1));
-    _sub_ego_traj = this->create_subscription<autoware_auto_planning_msgs::msg::Trajectory>("/planning/scenario_planning/trajectory", 10, std::bind(&CPRosInterface::EgoTrajectoryCb, this, _1));
-    _sub_intervention = this->create_subscription<cooperative_perception::msg::Intervention>("/intervention_result", 10, std::bind(&CPRosInterface::InterventionCb, this, _1));
+    sub_objects_ = this->create_subscription<autoware_auto_perception_msgs::msg::PredictedObjects>("/perception/object_recognition/objects", 10, std::bind(&CPRosInterface::ObjectsCb, this, _1));
+    sub_ego_pose_ = this->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>("/localization/pose_with_covariance", 10, std::bind(&CPRosInterface::EgoPoseCb, this, _1));
+    sub_ego_speed_ = this->create_subscription<geometry_msgs::msg::TwistWithCovarianceStamped>("/localization/twist_estimator/twist_with_covariance", 10, std::bind(&CPRosInterface::EgoSpeedCb, this, _1));
+    sub_ego_traj_ = this->create_subscription<autoware_auto_planning_msgs::msg::Trajectory>("/planning/scenario_planning/trajectory", 10, std::bind(&CPRosInterface::EgoTrajectoryCb, this, _1));
+    sub_intervention_ = this->create_subscription<cooperative_perception::msg::Intervention>("/cooperative_perception/intervention_result", 10, std::bind(&CPRosInterface::InterventionCb, this, _1));
 
-    _pub_updated_object = this->create_publisher<autoware_auto_perception_msgs::msg::PredictedObject>("/updated_objects", 10);
-    _pub_intervention = this->create_publisher<cooperative_perception::msg::Intervention>("/intervention_target", 10);
+    pub_objects_ = this->create_publisher<autoware_auto_perception_msgs::msg::PredictedObjects>("/perception/object_recognition/objects_cooperative_perception", 10);
+    pub_cp_object_ = this->create_publisher<cooperative_perception::msg::PredictedObject>("/cooperative_perception/object_ue", 10);
+    pub_intervention_ = this->create_publisher<cooperative_perception::msg::Intervention>("/cooperative_perception/intervention_request", 10);
+    pub_trajectory_ = this->create_publisher<nav_msgs::msg::Path>("/cooperative_perception/trajectory_path", 10);
 
-    _intervention_service = this->create_service<cooperative_perception::srv::Intervention> ("/intervention", std::bind(&CPRosInterface::InterventionService, this, _1, _2));
-    _current_state_service = this->create_service<cooperative_perception::srv::State> ("/cp_current_state", std::bind(&CPRosInterface::CurrentStateService, this, _1, _2));
-    _update_perception_service = this->create_service<cooperative_perception::srv::UpdatePerception> ("/cp_updated_target", std::bind(&CPRosInterface::UpdatePerceptionService, this, _1, _2));
+    intervention_service_ = this->create_service<cooperative_perception::srv::Intervention> ("/cooperative_perception/intervention", std::bind(&CPRosInterface::InterventionService, this, _1, _2));
+    current_state_service_ = this->create_service<cooperative_perception::srv::State> ("/cooperative_perception/cp_current_state", std::bind(&CPRosInterface::CurrentStateService, this, _1, _2));
+    update_perception_service_ = this->create_service<cooperative_perception::srv::UpdatePerception> ("/cooperative_perception/cp_updated_target", std::bind(&CPRosInterface::UpdatePerceptionService, this, _1, _2));
 
 }
 
@@ -37,6 +39,16 @@ void CPRosInterface::EgoTrajectoryCb(const autoware_auto_planning_msgs::msg::Tra
 {
     // std::cout << "get trajectory" << std::endl;
     ego_trajectory_ = *msg;
+
+    /* join trajectory for rclUE */
+    nav_msgs::msg::Path path;
+    path.header = msg->header;
+    for (const auto &point : msg->points) {
+        geometry_msgs::msg::PoseStamped buf_pose;
+        buf_pose.pose = point.pose;
+        path.poses.emplace_back(buf_pose);
+    }
+    pub_trajectory_->publish(path);
 }
 
 void CPRosInterface::InterventionCb(const cooperative_perception::msg::Intervention::SharedPtr msg)
@@ -46,13 +58,68 @@ void CPRosInterface::InterventionCb(const cooperative_perception::msg::Intervent
 
 void CPRosInterface::ObjectsCb(const autoware_auto_perception_msgs::msg::PredictedObjects::SharedPtr msg) 
 {
-    predicted_objects_ = *msg;
-    int i = 0;
-    for (const auto &obj : predicted_objects_.objects) {
-        i++;
-    }
-    std::cout << "get object # is " << i << std::endl;
 
+    /* store and manage objects */
+    for (const auto &msg_obj : msg->objects) {
+        std::string object_id = despot::CPRosTools().ConvertUUIDtoIntString(msg_obj.object_id.uuid);
+
+        /* new object */
+        if (objects_.count(object_id) == 0) {
+            Object buf_obj;
+            buf_obj.predicted_object = msg_obj;
+            buf_obj.decay_time = 0;
+            GetCollisionPointAndRisk(ego_trajectory_, msg_obj.kinematics, buf_obj.collision_prob, buf_obj.collision_point, buf_obj.collision_path_index);
+            objects_[object_id] = buf_obj;
+        }
+        /* update object info */
+        else {
+            Object &buf_obj = objects_[object_id];
+            buf_obj.predicted_object = msg_obj;
+            double collision_prob;
+            GetCollisionPointAndRisk(ego_trajectory_, msg_obj.kinematics, collision_prob, buf_obj.collision_point, buf_obj.collision_path_index);
+        }
+    }
+
+    /* publish objects for rclUE */
+    autoware_auto_perception_msgs::msg::PredictedObjects out_auto_msg;
+
+    for (auto itr = objects_.begin(), end = objects_.end() ; itr != end;) {
+        /* update decay time */
+        itr->second.decay_time++;
+        if (itr->second.decay_time > 5.0) {
+            itr = objects_.erase(itr);
+            continue;
+        }
+
+        /* autoware perception msg */
+        autoware_auto_perception_msgs::msg::PredictedObject auto_obj = itr->second.predicted_object;
+        auto_obj.kinematics.predicted_paths[itr->second.collision_path_index].confidence = itr->second.collision_prob;
+        out_auto_msg.objects.emplace_back(auto_obj);
+
+        /* pub rclre object msgs */
+        cooperative_perception::msg::PredictedObject out_cp_msg;
+        out_cp_msg.object_id = itr->second.predicted_object.object_id;
+        out_cp_msg.existence_probability = itr->second.predicted_object.existence_probability;
+        out_cp_msg.pose = itr->second.predicted_object.kinematics.initial_pose_with_covariance.pose;
+        out_cp_msg.dimension = itr->second.predicted_object.shape.dimensions;
+        for (const auto& classification : itr->second.predicted_object.classification) {
+            out_cp_msg.classifications.emplace_back(classification.label);
+            out_cp_msg.classification_confidences.emplace_back(classification.probability);
+        }
+
+        for (const auto& path : itr->second.predicted_object.kinematics.predicted_paths) {
+            out_cp_msg.pathes.insert(out_cp_msg.pathes.end(), path.path.begin(), path.path.end());
+            geometry_msgs::msg::Pose separator;
+            out_cp_msg.pathes.emplace_back(separator);
+            out_cp_msg.path_confidences.emplace_back(path.confidence);
+        }
+        out_cp_msg.path_confidences[itr->second.collision_path_index] = itr->second.collision_prob;
+        pub_cp_object_->publish(out_cp_msg);
+
+        ++itr;
+    }
+
+    pub_objects_->publish(out_auto_msg);
 }
 
 
@@ -60,21 +127,14 @@ void CPRosInterface::ObjectsCb(const autoware_auto_perception_msgs::msg::Predict
 void CPRosInterface::InterventionService(const std::shared_ptr<cooperative_perception::srv::Intervention::Request> request, std::shared_ptr<cooperative_perception::srv::Intervention::Response> response)
 {
     RCLCPP_INFO(this->get_logger(), "[InterventionService] sending intervention request");
-    cooperative_perception::msg::Intervention out_msg;
-    out_msg.object_id = request->object_id;
-    for (const auto &object : predicted_objects_.objects)
-    {
-        if (object.object_id == out_msg.object_id)
-        {
-            double collision_prob;
-            double collision_point;
-            int path_index;
-            GetCollisionPointAndRisk(ego_trajectory_, object.kinematics, collision_prob, collision_point, path_index);
+    std::string object_id = despot::CPRosTools().ConvertUUIDtoIntString(request->object_id.uuid);
 
-            out_msg.distance = collision_point;
-            out_msg.path_index = path_index;
-            _pub_intervention->publish(out_msg);
-        }
+    if (objects_.count(object_id) != 0) {
+        cooperative_perception::msg::Intervention out_msg;
+        out_msg.object_id = request->object_id;
+        out_msg.distance = objects_[object_id].collision_point;
+        out_msg.path_index = objects_[object_id].collision_path_index;
+        pub_intervention_->publish(out_msg);
     }
 
     RCLCPP_INFO(this->get_logger(), "[InterventionService] sending intervention result");
@@ -95,38 +155,25 @@ void CPRosInterface::CurrentStateService(const std::shared_ptr<cooperative_perce
     std::vector<double> probs;
     std::vector<unique_identifier_msgs::msg::UUID> ids;
     std::vector<std_msgs::msg::String> types;
-    int i=0;
-    for (const auto &object: predicted_objects_.objects)
+
+    for (const auto &obj: objects_)
     {
-        i++;
         std::stringstream ss;
-        ss << "[CurrentStateService] creating current state,  #objects : " 
-           << i;
+        ss << "[CurrentStateService] creating current state of " 
+           << obj.first;
         RCLCPP_INFO(this->get_logger(), ss.str().c_str());
 
-    /* get collision point and confidence */
-        double collision_prob;
-        double collision_point;
-        int path_index;
-        GetCollisionPointAndRisk(ego_trajectory_, object.kinematics, collision_prob, collision_point, path_index);
-
         /* no collision point -> ignore it */
-        if (collision_point == 0.0) continue;
+        if (obj.second.collision_point == 0.0) continue;
 
-        distances.emplace_back(int(collision_point));
-        probs.emplace_back(collision_prob);
-        ids.emplace_back(object.object_id);
+        distances.emplace_back(int(obj.second.collision_point));
+        probs.emplace_back(obj.second.collision_prob);
+        ids.emplace_back(obj.second.predicted_object.object_id);
         std_msgs::msg::String buf_type;
         buf_type.data = "hard";
-        // buf_type.data = std::string(object.classification[0].label);
+        // buf_type.data = std::string(obj.second.predicted_object.classification[0].label);
         types.emplace_back(buf_type);
     }
-
-    // std::stringstream ss;
-    std::stringstream ss;
-    ss << "[CurrentStateService]" << "\n"
-       << "ego_speed   :" << ego_speed_.linear.x << "\n" ;
-    RCLCPP_INFO(this->get_logger(), ss.str().c_str());
 
     response->risk_pose = distances;
     response->likelihood = probs;
@@ -171,19 +218,12 @@ void CPRosInterface::GetCollisionPointAndRisk(const autoware_auto_planning_msgs:
 void CPRosInterface::UpdatePerceptionService(const std::shared_ptr<cooperative_perception::srv::UpdatePerception::Request> request, std::shared_ptr<cooperative_perception::srv::UpdatePerception::Response> response)
 {
     RCLCPP_INFO(this->get_logger(), "[UpdatePerceptionService] sending updated perception");
-    for (auto &object : predicted_objects_.objects)
-    {
-        if (object.object_id == request->object_id)
-        {
-            double collision_prob;
-            double collision_point;
-            int path_index;
-            GetCollisionPointAndRisk(ego_trajectory_, object.kinematics, collision_prob, collision_point, path_index);
-            object.kinematics.predicted_paths[path_index].confidence = request->likelihood;
-            response->result = true;
-            _pub_updated_object->publish(object);
-            break;
-        }
+    std::string object_id = despot::CPRosTools().ConvertUUIDtoIntString(request->object_id.uuid);
+
+    if (objects_.count(object_id) != 0) {
+        objects_[object_id].collision_prob = request->likelihood;
+        response->result = true;
+        return;
     }
     response->result = false;
 }

@@ -6,14 +6,19 @@
 
 namespace despot {
 
-std::string ConvertUUIDtoIntString(std::array<unsigned char, 16> &uuid) 
-{
-    std::string out_string = "";
-    for (const auto &id : uuid) {
-        out_string += static_cast<int>(id) + "-";
+class CPRosTools {
+
+public:
+    std::string ConvertUUIDtoIntString(const std::array<unsigned char, 16> &uuid) 
+    {
+        std::string out_string = "";
+        for (const auto &id : uuid) {
+            out_string += static_cast<int>(id) + "-";
+        }
+        return out_string;
     }
-    return out_string;
-}
+
+};
 
 
 

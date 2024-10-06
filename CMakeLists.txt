@@ -18,7 +18,7 @@ find_package(unique_identifier_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 
 # set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} $ENV{DESPOT_ROOT}/build)
-message($ENV{DESPOT_ROOT})
+message(STATUS $ENV{DESPOT_ROOT})
 #find_package(Despot REQUIRED)
 find_package(Despot CONFIG REQUIRED PATHS $ENV{DESPOT_ROOT})
 
@@ -41,6 +41,7 @@ message(${DESPOT_INCLUDE_DIRS})
 ############################
 rosidl_generate_interfaces(${PROJECT_NAME}
     "msg/Intervention.msg"
+    "msg/PredictedObject.msg"
     "srv/UpdatePerception.srv"
     "srv/Intervention.srv"
     "srv/State.srv"
