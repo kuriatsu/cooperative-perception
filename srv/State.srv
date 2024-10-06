@@ -1,7 +1,0 @@
-bool request
----
-unique_identifier_msgs/UUID[] object_id
-float64 ego_speed
-int32[] risk_pose
-float64[] likelihood
-std_msgs/String[] type
