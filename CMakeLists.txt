@@ -6,7 +6,6 @@ project(cooperative_perception)
 
 # Generate messages
 find_package(ament_cmake_auto REQUIRED)
-find_package(geometry_msgs REQUIRED)
 ament_auto_find_build_dependencies()
 
 rosidl_generate_interfaces(${PROJECT_NAME}
